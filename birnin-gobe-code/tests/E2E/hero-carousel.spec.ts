@@ -65,8 +65,11 @@ test.describe('Hero — carrousel de la page d’accueil', () => {
   test('defile 1 vers 5 puis revient a la premiere, toutes les 5 s', async ({ page }) => {
     // 6 transitions a 5 s : au-dela du delai par defaut de Playwright (30 s).
     test.setTimeout(75_000);
+    // On attend qu'une diapo soit active, pas que ce soit la premiere : sur un
+    // reseau reel le carrousel a deja pu avancer, et il faudrait 25 s pour que
+    // la premiere redevienne active — bien au-dela du delai d'assertion.
     await page.goto('/');
-    await expect(slides(page).first()).toHaveClass(/is-active/);
+    await expect(page.locator('.crossfade-layer.is-active')).toHaveCount(1);
 
     // Un tour complet (5 changements) + un cran de plus : le 6e sert a mesurer
     // 5 intervalles reels entre transitions. Le tout premier intervalle n'est
@@ -155,11 +158,14 @@ test.describe('Hero — carrousel de la page d’accueil', () => {
     await expect(dots(page).nth(0)).toHaveAttribute('aria-selected', 'false');
     expect(await activeIndex(page)).toBe(3);
 
-    // La minuterie repart de zero apres un clic : toujours sur la 4e photo a +4 s...
-    await page.waitForTimeout(4000);
+    // La minuterie repart de zero apres un clic : toujours sur la 4e photo a
+    // +2,5 s. On garde une marge confortable sous les 5 s — les etapes entre le
+    // clic et l'attente coutent elles-memes du temps sur un site distant, et une
+    // marge d'une seconde suffisait a rendre le test instable.
+    await page.waitForTimeout(2500);
     expect(await activeIndex(page)).toBe(3);
     // ...puis elle enchaine sur la 5e (une seule minuterie, pas de saut de deux crans).
-    await expect.poll(() => activeIndex(page), { timeout: 4000 }).toBe(4);
+    await expect.poll(() => activeIndex(page), { timeout: 6000 }).toBe(4);
   });
 
   test('le texte du Hero ne change pas quand la photo change', async ({ page }) => {
@@ -177,7 +183,7 @@ test.describe('Hero — carrousel de la page d’accueil', () => {
     for (const width of [320, 360, 375, 390, 430, 768, 1024, 1280, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto('/');
-      await expect(slides(page).first()).toHaveClass(/is-active/);
+      await expect(page.locator('.crossfade-layer.is-active')).toHaveCount(1);
 
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,

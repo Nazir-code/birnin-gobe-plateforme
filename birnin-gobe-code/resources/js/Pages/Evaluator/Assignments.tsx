@@ -52,12 +52,61 @@ export default function Assignments() {
 
             <Reveal delay={120}><Card className="mt-5 overflow-hidden">
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4"><h3 className="text-lg font-black">Grille d’évaluation (100 points)</h3><div className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-extrabold">Total <span className="ml-2">0 / 100</span></div></div>
-              <div className="overflow-x-auto soft-scrollbar">
-                <table className="w-full min-w-[800px] text-left">
-                  <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500"><tr><th className="px-5 py-3">Critères d’évaluation</th><th className="px-4 py-3">Pondération</th><th className="px-4 py-3">Note (0–5)</th><th className="px-4 py-3 text-right">Score pondéré</th></tr></thead>
-                  <tbody className="divide-y divide-slate-100">{criteria.map(([name,weight,desc])=><tr key={name} className="align-top transition-colors hover:bg-slate-50/70"><td className="px-5 py-4"><div className="flex gap-3"><div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-50 text-brand-800"><Star size={15}/></div><div><div className="text-sm font-extrabold text-slate-800">{name}</div><div className="mt-0.5 text-[11px] leading-4 text-slate-400">{desc}</div></div></div></td><td className="px-4 py-4 text-sm font-bold text-slate-600">{weight} pts</td><td className="px-4 py-4"><input type="number" min="0" max="5" defaultValue="0" className="focus-ring h-10 w-20 rounded-lg border border-slate-300 px-3 text-sm transition-shadow"/></td><td className="px-4 py-4 text-right text-sm font-bold text-slate-700">0,00</td></tr>)}</tbody>
-                </table>
+              {/* Une seule structure, reorganisee par la mise en page : cartes
+                  empilees sous `lg`, colonnes alignees au-dela. Dupliquer un
+                  tableau et une liste aurait mis deux champs de saisie par
+                  critere dans le DOM. `lg:contents` fait remonter les trois
+                  valeurs dans la grille de la ligne au lieu de les imbriquer. */}
+              <div className="hidden bg-slate-50 px-5 py-3 text-[11px] uppercase tracking-wide text-slate-500 lg:grid lg:grid-cols-[1fr_120px_128px_140px] lg:items-center lg:gap-4">
+                <div>Critères d’évaluation</div>
+                <div>Pondération</div>
+                <div>Note (0–5)</div>
+                <div className="text-right">Score pondéré</div>
               </div>
+
+              <ul className="space-y-3 p-4 lg:space-y-0 lg:divide-y lg:divide-slate-100 lg:p-0">
+                {criteria.map(([name, weight, desc], index) => {
+                  const noteId = `note-critere-${index}`;
+                  return (
+                    <li
+                      key={name}
+                      className="rounded-xl border border-slate-200 p-4 transition-colors lg:grid lg:grid-cols-[1fr_120px_128px_140px] lg:items-center lg:gap-4 lg:rounded-none lg:border-0 lg:px-5 lg:py-4 lg:hover:bg-slate-50/70"
+                    >
+                      <div className="flex gap-3">
+                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-50 text-brand-800"><Star size={15} /></div>
+                        <div className="min-w-0">
+                          <label htmlFor={noteId} className="text-sm font-extrabold text-slate-800">{name}</label>
+                          <div className="mt-0.5 text-[11px] leading-4 text-slate-400">{desc}</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-3 items-start gap-3 lg:mt-0 lg:contents">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden">Pondération</div>
+                          <div className="mt-1 text-sm font-bold text-slate-600 lg:mt-0">{weight} pts</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden" aria-hidden="true">Note</div>
+                          <input
+                            id={noteId}
+                            type="number"
+                            min="0"
+                            max="5"
+                            defaultValue="0"
+                            inputMode="numeric"
+                            className="focus-ring mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-sm transition-shadow lg:mt-0 lg:h-10 lg:w-20"
+                          />
+                        </div>
+                        <div className="lg:text-right">
+                          <div className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden">Score</div>
+                          <div className="mt-1 text-sm font-bold text-slate-700 lg:mt-0">0,00</div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+
               <div className="border-t border-slate-200 p-5"><label className="block"><span className="text-sm font-extrabold text-slate-800">Commentaires obligatoires</span><span className="mt-1 block text-xs text-slate-500">Vos commentaires doivent justifier les scores et recommandations.</span><textarea className="focus-ring mt-3 min-h-28 w-full rounded-xl border border-slate-300 p-4 text-sm transition-shadow" placeholder="Saisissez vos commentaires ici…"/></label><div className="mt-5 flex flex-wrap gap-3"><Button variant="danger">Signaler un conflit sur ce dossier</Button><Button variant="ghost" className="ml-auto">Enregistrer en brouillon</Button><Button variant="secondary">🔒 Verrouiller l’évaluation</Button></div></div>
             </Card></Reveal>
           </div>

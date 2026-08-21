@@ -15,6 +15,7 @@
  *
  * Usage : node scripts/prerender-static.mjs [origine] [dossier de sortie]
  */
+import { existsSync } from 'node:fs';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -82,6 +83,28 @@ for (const route of ROUTES) {
 // Les binaires servis tels quels : photos du hero, logos officiels, bundle Vite.
 await cp(join(ROOT, 'public/assets'), join(OUT, 'assets'), { recursive: true });
 await cp(join(ROOT, 'public/build'), join(OUT, 'build'), { recursive: true });
+
+/**
+ * Garde-fou : le HTML est capture sur l'application qui tourne, alors que le
+ * bundle est copie depuis le disque. Si l'application sert encore une version
+ * anterieure, le HTML reference une empreinte absente de l'export — le
+ * navigateur reçoit un 404 sur le script et n'affiche qu'une page blanche.
+ * L'erreur est silencieuse : les pages repondent 200. On la fait echouer ici.
+ */
+const indexHtml = await readFile(join(OUT, ROUTES[0].file), 'utf8');
+const referenced = [...indexHtml.matchAll(/\/build\/([^"']+?\.(?:js|css))/g)].map((m) => m[1]);
+if (referenced.length === 0) throw new Error("Aucun asset /build/ reference dans le HTML — capture invalide.");
+for (const asset of new Set(referenced)) {
+  if (!existsSync(join(OUT, 'build', asset))) {
+    throw new Error(
+      `Le HTML reference /build/${asset}, absent de l'export.
+` +
+        "L'application servie n'est pas a jour : reconstruisez (npm run build), " +
+        'redeployez le build vers les conteneurs, puis relancez ce script.',
+    );
+  }
+}
+console.log(`Assets verifies : ${[...new Set(referenced)].join(', ')}`);
 
 // Le routage est genere ici pour rester coherent avec ROUTES.
 // L'ordre compte : la variante XHR d'abord, le HTML ensuite.
