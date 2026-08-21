@@ -56,3 +56,8 @@ blob-report/
 Thumbs.db
 npm-debug.log*
 yarn-error.log*
+
+# --- Export statique de demonstration ----------------------------------------
+# Regenerable par `node scripts/prerender-static.mjs` depuis l'app qui tourne.
+dist-static/
+.vercel/
