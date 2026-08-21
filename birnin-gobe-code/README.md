@@ -65,6 +65,16 @@ Application : `http://localhost:8080`
 - Migrations initiales `campaigns`, `applications`, `attachments`, `audit_events`.
 - Infrastructure PostgreSQL / Redis / S3-compatible / ClamAV / Caddy.
 
+## Déploiement / Niger Télécom
+
+La passation technique destinée au développeur senior — état réel audité du
+dépôt, stack confirmée, cartographie Docker, checklist d'audit serveur et
+matrice d'évolution — se trouve dans
+[`docs/deployment/NIGER_TELECOM_HANDOFF.md`](docs/deployment/NIGER_TELECOM_HANDOFF.md).
+
+Les commandes de déploiement, de test, de redéploiement et de retour arrière
+sont dans [`docs/deployment/NIGER_TELECOM_RUNBOOK.md`](docs/deployment/NIGER_TELECOM_RUNBOOK.md).
+
 ## Références visuelles
 
 Les captures de la présentation sont conservées dans `docs/design/reference/` uniquement comme références de comparaison ; les écrans sont reconstruits en composants React/CSS et ne sont pas rendus comme une grande image.
