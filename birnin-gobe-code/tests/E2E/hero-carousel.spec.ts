@@ -25,10 +25,17 @@ test.describe('Hero — carrousel de la page d’accueil', () => {
     await page.goto('/');
     await expect(slides(page)).toHaveCount(SLIDE_COUNT);
 
+    // `src` porte le repli JPEG ; le WebP est propose par <source> et c'est lui
+    // que les navigateurs actuels telechargent.
     const sources = await slides(page)
       .locator('img')
       .evaluateAll((imgs) => imgs.map((i) => i.getAttribute('src')));
-    expect(sources).toEqual([1, 2, 3, 4, 5].map((n) => `/assets/hero-accueil-${n}.png`));
+    expect(sources).toEqual([1, 2, 3, 4, 5].map((n) => `/assets/hero-accueil-${n}.jpg`));
+
+    const webp = await slides(page)
+      .locator('source[type="image/webp"]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('srcset')));
+    expect(webp).toEqual([1, 2, 3, 4, 5].map((n) => `/assets/hero-accueil-${n}.webp`));
 
     // Chaque photo est reellement decodee : une image manquante produirait un fondu vers le vide.
     await expect

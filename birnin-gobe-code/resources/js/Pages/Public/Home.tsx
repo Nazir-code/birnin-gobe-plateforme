@@ -13,10 +13,12 @@ const countdownLabels: Record<string, string> = { days: 'jours', hours: 'heures'
 /**
  * Les cinq visuels officiels de la campagne, dans leur ordre de défilement.
  *
- * Fichiers déjà présents dans `public/assets/` — aucune image téléchargée ni
- * générée. Les noms d'origine (« Image d'accueil 1 »…) ont été normalisés en
- * kebab-case : une URL statique contenant espaces et apostrophes doit être
- * ré-encodée à chaque usage et finit tôt ou tard en 404.
+ * Aucune image téléchargée ni générée : ce sont les cinq visuels fournis, dont
+ * les masters PNG vivent dans `resources/images/hero/` (hors du dossier servi)
+ * et dont `scripts/optimize-hero-images.mjs` derive le WebP servi et le JPEG de
+ * repli. Les noms d'origine (« Image d'accueil 1 »…) ont été normalisés en
+ * kebab-case : une URL contenant espaces et apostrophes doit être ré-encodée à
+ * chaque usage et finit tôt ou tard en 404.
  *
  * `objectPosition` : les cinq photos sont en 16/9 avec les personnes dans la
  * moitié droite, alors que la zone image devient quasi carrée sous 1024 px.
@@ -24,27 +26,32 @@ const countdownLabels: Record<string, string> = { days: 'jours', hours: 'heures'
  */
 const heroImages: HeroImage[] = [
   {
-    src: '/assets/hero-accueil-1.png',
+    webp: '/assets/hero-accueil-1.webp',
+    src: '/assets/hero-accueil-1.jpg',
     alt: "Quatre jeunes innovateurs nigériens réunis autour d'un ordinateur portable et d'un prototype électronique dans un espace de travail partagé",
     objectPosition: '70% center',
   },
   {
-    src: '/assets/hero-accueil-2.png',
+    webp: '/assets/hero-accueil-2.webp',
+    src: '/assets/hero-accueil-2.jpg',
     alt: 'Une jeune femme présente les résultats de son projet sur une tablette à son équipe pendant une réunion de travail',
     objectPosition: '72% center',
   },
   {
-    src: '/assets/hero-accueil-3.png',
+    webp: '/assets/hero-accueil-3.webp',
+    src: '/assets/hero-accueil-3.jpg',
     alt: "Une équipe de jeunes porteurs de projet examine la maquette d'un quartier durable équipé de panneaux solaires et d'une éolienne",
     objectPosition: '72% center',
   },
   {
-    src: '/assets/hero-accueil-4.png',
+    webp: '/assets/hero-accueil-4.webp',
+    src: '/assets/hero-accueil-4.jpg',
     alt: "Trois jeunes innovateurs assemblent un robot à roues à partir de leurs plans techniques, ordinateur portable ouvert à côté d'eux",
     objectPosition: '68% center',
   },
   {
-    src: '/assets/hero-accueil-5.png',
+    webp: '/assets/hero-accueil-5.webp',
+    src: '/assets/hero-accueil-5.jpg',
     alt: "Un jeune homme présente une solution numérique sur tablette à des habitants d'un village nigérien équipé de panneaux solaires",
     objectPosition: '76% center',
   },
