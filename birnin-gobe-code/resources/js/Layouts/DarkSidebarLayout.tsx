@@ -39,11 +39,14 @@ export function DarkSidebarLayout({ children, items, active, title, subtitle, us
         {bottomCard}
       </MobileNavDrawer>
       <main className="flex min-h-screen min-w-0 flex-col">
-        <header className="flex min-h-[88px] items-center gap-5 border-b border-slate-200 bg-white px-5 sm:px-8">
+        {/* `flex-wrap` + une base de 10rem sur le titre : sous ~640 px les actions
+            passent a la ligne au lieu de comprimer le titre, qui se brisait
+            sinon a un ou deux mots par ligne. */}
+        <header className="flex min-h-[88px] flex-wrap items-center gap-x-5 gap-y-3 border-b border-slate-200 bg-white px-5 py-3 sm:px-8">
           <button className="focus-ring flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-50 lg:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Ouvrir le menu">
             <Menu size={22} />
           </button>
-          <div className="min-w-0 [overflow-wrap:anywhere]">
+          <div className="min-w-0 flex-1 basis-40 [overflow-wrap:anywhere]">
             <h1 className="text-xl font-extrabold text-brand-950 sm:text-2xl">{title}</h1>
             {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
           </div>
