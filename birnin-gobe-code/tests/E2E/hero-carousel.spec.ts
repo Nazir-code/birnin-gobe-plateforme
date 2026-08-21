@@ -99,8 +99,14 @@ test.describe('Hero — carrousel de la page d’accueil', () => {
       { count: SLIDE_COUNT, autoplay: AUTOPLAY_MS, fade: FADE_MS },
     );
 
-    // Ordre impose : 1 -> 2 -> 3 -> 4 -> 5 -> 1 (boucle infinie), puis on repart.
-    expect(observed.map((e) => e.i)).toEqual([1, 2, 3, 4, 0, 1]);
+    // Ordre impose : chaque photo est suivie de la suivante, et la 5e ramene a
+    // la 1re. On verifie la rotation a partir de la diapo reellement active au
+    // demarrage de la sonde — sur reseau lent, ce n'est pas forcement la 1re.
+    const start = observed[0].i === 0 ? SLIDE_COUNT - 1 : observed[0].i - 1;
+    const expected = Array.from({ length: SLIDE_COUNT + 1 }, (_, k) => (start + 1 + k) % SLIDE_COUNT);
+    expect(observed.map((e) => e.i)).toEqual(expected);
+    // Le tour complet doit repasser par les cinq photos.
+    expect(new Set(observed.map((e) => e.i)).size).toBe(SLIDE_COUNT);
 
     // Chaque photo reste visible ~5 000 ms (tolerance ordonnanceur / charge CI).
     const gaps = observed.slice(1).map((e, k) => e.t - observed[k].t);
@@ -113,16 +119,16 @@ test.describe('Hero — carrousel de la page d’accueil', () => {
 
   test('le fondu dure 800 ms et le zoom reste discret', async ({ page }) => {
     await page.goto('/');
-    const styles = await slides(page)
-      .first()
-      .evaluate((el) => {
-        const img = el.querySelector('img')!;
-        return {
-          fade: getComputedStyle(el).transitionDuration,
-          transform: getComputedStyle(img).transform,
-          objectFit: getComputedStyle(img).objectFit,
-        };
-      });
+    // La diapo ACTIVE, pas la premiere : sur un reseau lent le carrousel a
+    // deja pu avancer avant la mesure, et une diapo inactive est au repos.
+    const styles = await page.locator('.crossfade-layer.is-active').evaluate((el) => {
+      const img = el.querySelector('img')!;
+      return {
+        fade: getComputedStyle(el).transitionDuration,
+        transform: getComputedStyle(img).transform,
+        objectFit: getComputedStyle(img).objectFit,
+      };
+    });
 
     expect(styles.fade).toBe('0.8s');
     expect(styles.objectFit).toBe('cover');
@@ -171,7 +177,7 @@ test.describe('Hero — carrousel de la page d’accueil', () => {
       );
       expect(overflow, `debordement horizontal a ${width}px`).toBeLessThanOrEqual(0);
 
-      const box = await slides(page).first().boundingBox();
+      const box = await page.locator('.crossfade-layer.is-active').boundingBox();
       expect(box!.width, `zone image vide a ${width}px`).toBeGreaterThan(0);
       expect(box!.height, `zone image trop courte a ${width}px`).toBeGreaterThan(300);
     }

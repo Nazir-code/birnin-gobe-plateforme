@@ -24,13 +24,20 @@ const OUT = resolve(process.argv[3] ?? 'dist-static');
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Les routes prototypes de routes/web.php. */
+/**
+ * Les pages sont volontairement stockees sous `pages/`, jamais au chemin public.
+ * Sur Vercel les `rewrites` sont un routage de repli : ils ne s'appliquent que
+ * si aucun fichier ne correspond deja a l'URL. Un `admin/dashboard.html` servi
+ * directement gagnerait donc toujours, et la variante conditionnee par
+ * l'en-tete `x-inertia` ne se declencherait jamais.
+ */
 const ROUTES = [
-  { path: '/', file: 'index.html', data: 'inertia-data/home.json' },
-  { path: '/candidate/dashboard', file: 'candidate/dashboard.html', data: 'inertia-data/candidate-dashboard.json' },
-  { path: '/candidate/application/challenge', file: 'candidate/application/challenge.html', data: 'inertia-data/candidate-application-challenge.json' },
-  { path: '/admin/dashboard', file: 'admin/dashboard.html', data: 'inertia-data/admin-dashboard.json' },
-  { path: '/evaluator/assignments', file: 'evaluator/assignments.html', data: 'inertia-data/evaluator-assignments.json' },
-];
+  { path: '/', slug: 'home' },
+  { path: '/candidate/dashboard', slug: 'candidate-dashboard' },
+  { path: '/candidate/application/challenge', slug: 'candidate-application-challenge' },
+  { path: '/admin/dashboard', slug: 'admin-dashboard' },
+  { path: '/evaluator/assignments', slug: 'evaluator-assignments' },
+].map((r) => ({ ...r, file: `pages/${r.slug}.html`, data: `inertia-data/${r.slug}.json` }));
 
 async function write(relativePath, content) {
   const target = join(OUT, relativePath);
@@ -77,23 +84,30 @@ await cp(join(ROOT, 'public/assets'), join(OUT, 'assets'), { recursive: true });
 await cp(join(ROOT, 'public/build'), join(OUT, 'build'), { recursive: true });
 
 // Le routage est genere ici pour rester coherent avec ROUTES.
-const rewrites = ROUTES.map((route) => ({
-  source: route.path,
-  has: [{ type: 'header', key: 'x-inertia' }],
-  destination: `/${route.data}`,
-}));
+// L'ordre compte : la variante XHR d'abord, le HTML ensuite.
+const rewrites = ROUTES.flatMap((route) => [
+  { source: route.path, has: [{ type: 'header', key: 'x-inertia' }], destination: `/${route.data}` },
+  { source: route.path, destination: `/${route.file}` },
+]);
 
 await write(
   'vercel.json',
   `${JSON.stringify(
     {
       $schema: 'https://openapi.vercel.sh/vercel.json',
-      cleanUrls: true,
       trailingSlash: false,
       rewrites,
       headers: [
+        // Inertia ne reconnait une reponse que si cet en-tete est present. Les
+        // regles `headers` s'evaluent sur le chemin DEMANDE, pas sur la
+        // destination reecrite : la condition doit donc etre reportee sur
+        // chaque route, et conditionnee pour ne pas polluer le chargement HTML.
+        ...ROUTES.map((route) => ({
+          source: route.path,
+          has: [{ type: 'header', key: 'x-inertia' }],
+          headers: [{ key: 'X-Inertia', value: 'true' }],
+        })),
         {
-          // Inertia ne reconnait une reponse que si cet en-tete est present.
           source: '/inertia-data/(.*)',
           headers: [
             { key: 'X-Inertia', value: 'true' },
