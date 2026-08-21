@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { Link } from '@inertiajs/react';
-import { ChevronDown, UserRound } from 'lucide-react';
+import { ChevronDown, Menu, UserRound, X } from 'lucide-react';
 import { BrandLogo } from '@/Components/Brand';
 import { SiteFooter } from '@/Components/SiteFooter';
 import { prototypeApplyTarget, quickLinks } from '@/config/site';
@@ -53,6 +53,19 @@ function LoginRoleSwitcher() {
 export function PublicLayout({ children }: PropsWithChildren) {
   const t = useI18n();
   const navLinks = quickLinks.filter((link): link is { key: typeof link.key; href: string } => link.href !== null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // La navigation principale est masquee sous `xl`, et « Se connecter » sous
+  // `md` : sans ce panneau, un visiteur mobile n'avait acces a aucune rubrique,
+  // seul « Candidater » restait visible.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [menuOpen]);
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -72,8 +85,63 @@ export function PublicLayout({ children }: PropsWithChildren) {
             <button className="focus-ring hidden min-h-10 items-center gap-1 rounded-lg px-3 text-sm font-bold text-slate-700 sm:flex">FR <ChevronDown size={15} /></button>
             <LoginRoleSwitcher />
             <a href={prototypeApplyTarget} className="focus-ring inline-flex min-h-11 items-center rounded-xl bg-gold-500 px-5 text-sm font-extrabold text-slate-950 hover:bg-gold-600">{t.footer.ctaApply}</a>
+            <button
+              type="button"
+              className="focus-ring grid h-11 w-11 place-items-center rounded-xl border border-slate-200 text-brand-900 xl:hidden"
+              aria-expanded={menuOpen}
+              aria-controls="menu-mobile"
+              aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              onClick={() => setMenuOpen((v) => !v)}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
+
+        {menuOpen ? (
+          <nav id="menu-mobile" className="border-t border-slate-100 bg-white px-5 pb-5 pt-2 xl:hidden" aria-label="Navigation principale (mobile)">
+            {/* Le slogan est masque sous `lg` faute de place a cote du logo :
+                le panneau deplie est le seul endroit ou il tient. */}
+            <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-[.14em] text-slate-500 lg:hidden">
+              Innovation • Résilience • Jeunesse
+            </div>
+            <ul>
+              {navLinks.map((link) => (
+                <li key={link.key}>
+                  <a
+                    href={link.href}
+                    className="focus-ring flex min-h-12 items-center rounded-lg px-3 text-base font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-900"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {t.footer.links[link.key]}
+                  </a>
+                </li>
+              ))}
+            </ul>
+
+            {/* Reprend les acces du selecteur de role, masque sous `md`. */}
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Accès démonstration</div>
+              <ul>
+                {demoRoles.map((role) => (
+                  <li key={role.href}>
+                    <Link
+                      href={role.href}
+                      className="focus-ring flex min-h-12 items-center rounded-lg px-3 text-base font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-900"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      {role.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <button className="focus-ring mt-3 flex min-h-12 items-center gap-1 rounded-lg px-3 text-base font-bold text-slate-700 sm:hidden">
+              FR <ChevronDown size={16} />
+            </button>
+          </nav>
+        ) : null}
       </header>
       <main className="flex-1">{children}</main>
       <SiteFooter variant="public" />
