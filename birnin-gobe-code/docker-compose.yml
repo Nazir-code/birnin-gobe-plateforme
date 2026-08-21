@@ -1,0 +1,88 @@
+services:
+  app:
+    build: .
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [birnin]
+
+  caddy:
+    build:
+      context: .
+      dockerfile: infrastructure/caddy/Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app]
+    networks: [birnin]
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-birnin_gobe}
+      POSTGRES_USER: ${DB_USERNAME:-birnin_gobe}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-birnin_gobe} -d ${DB_DATABASE:-birnin_gobe}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [birnin]
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [birnin]
+
+  worker:
+    build: .
+    command: php artisan queue:work redis --sleep=1 --tries=3 --timeout=120
+    env_file: .env
+    depends_on: [app, redis, postgres]
+    networks: [birnin]
+
+  scheduler:
+    build: .
+    command: php artisan schedule:work
+    env_file: .env
+    depends_on: [app, redis, postgres]
+    networks: [birnin]
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-birnin}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-change-me}
+    ports:
+      - "9001:9001"
+    volumes: [minio_data:/data]
+    networks: [birnin]
+
+  clamav:
+    image: clamav/clamav:stable
+    volumes: [clamav_data:/var/lib/clamav]
+    networks: [birnin]
+
+networks:
+  birnin: {}
+
+volumes:
+  postgres_data: {}
+  redis_data: {}
+  minio_data: {}
+  clamav_data: {}
+  caddy_data: {}
+  caddy_config: {}

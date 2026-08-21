@@ -1,0 +1,70 @@
+# BIRNIN GOBE — implémentation UI/UX + fondation technique
+
+Première traduction en code des maquettes BIRNIN GOBE, en gardant la présentation comme **référence visuelle** et le cahier des charges / document de passation comme **référence fonctionnelle et technique**.
+
+## Écrans déjà codés
+
+- Accueil public.
+- Dashboard candidat.
+- Formulaire multi-étapes — étape 4 « Défi ».
+- Responsive/mobile-first sur ces écrans.
+- Dashboard back-office administratif.
+- Interface évaluateur / notation.
+
+Voir `docs/design/SCREEN_MAP.md`.
+
+## Stack
+
+- Laravel 13 (monolithe modulaire)
+- React 19 + TypeScript
+- Inertia 3
+- Filament 5 pour l'administration standard
+- Tailwind CSS 4
+- PostgreSQL
+- Redis / workers
+- S3 compatible (MinIO en local)
+- ClamAV
+- Caddy
+- Docker Compose
+- Playwright prévu pour E2E
+
+## Principe important
+
+Les dates, statistiques, noms et compteurs visibles dans les maquettes sont des **données de démonstration**. Ils ne deviennent pas des règles codées en dur. La configuration de campagne doit être stockée côté backend/CMS.
+
+## Démarrage prévu
+
+```bash
+cp .env.example .env
+# remplacer les secrets de développement
+
+docker compose build
+docker compose run --rm app php artisan key:generate
+docker compose run --rm app php artisan migrate
+docker compose up -d
+```
+
+Application : `http://localhost:8080`
+
+> Le dépôt livré ici est un **starter d'implémentation** : les pages UI sont codées et l'ossature d'architecture est posée. L'authentification réelle, les policies RBAC, le CMS, Filament, l'autosave persistant, les uploads S3/antivirus et les workflows métier complets doivent être branchés dans les prochains incréments verticaux.
+
+## Routes de démonstration
+
+- `/`
+- `/candidate/dashboard`
+- `/candidate/application/challenge`
+- `/admin/dashboard`
+- `/evaluator/assignments`
+
+## Sécurité / métier déjà préparés
+
+- Enum de statuts stable (`ApplicationStatus`).
+- Machine à états explicite.
+- Use case `SubmitApplication` pour éviter un simple changement arbitraire de statut.
+- Structure d'audit centralisée.
+- Migrations initiales `campaigns`, `applications`, `attachments`, `audit_events`.
+- Infrastructure PostgreSQL / Redis / S3-compatible / ClamAV / Caddy.
+
+## Références visuelles
+
+Les captures de la présentation sont conservées dans `docs/design/reference/` uniquement comme références de comparaison ; les écrans sont reconstruits en composants React/CSS et ne sont pas rendus comme une grande image.
