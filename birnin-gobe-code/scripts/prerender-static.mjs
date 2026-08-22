@@ -35,7 +35,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ROUTES = [
   { path: '/', slug: 'home' },
   { path: '/candidate/dashboard', slug: 'candidate-dashboard' },
-  { path: '/candidate/application/challenge', slug: 'candidate-application-challenge' },
+  { path: '/candidate/application', slug: 'candidate-application' },
   { path: '/admin/dashboard', slug: 'admin-dashboard' },
   { path: '/evaluator/assignments', slug: 'evaluator-assignments' },
 ].map((r) => ({ ...r, file: `pages/${r.slug}.html`, data: `inertia-data/${r.slug}.json` }));

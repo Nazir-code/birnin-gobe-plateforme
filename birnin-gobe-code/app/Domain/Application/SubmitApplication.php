@@ -19,8 +19,10 @@ final readonly class SubmitApplication
     {
         return DB::transaction(function () use ($application, $actorId): Application {
             $application->refresh();
-            $current = ApplicationStatus::from($application->status);
-            $this->stateMachine->assertCanTransition($current, ApplicationStatus::SUBMITTED);
+            // `status` est casté en `ApplicationStatus` par le modèle : il n'y a
+            // plus de chaîne à reconstruire, et donc plus de statut inconnu
+            // possible entre la base et la machine à états.
+            $this->stateMachine->assertCanTransition($application->status, ApplicationStatus::SUBMITTED);
 
             if (! $application->isCompleteForActiveCampaign()) {
                 throw new RuntimeException('APPLICATION_INCOMPLETE');

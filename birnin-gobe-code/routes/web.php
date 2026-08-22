@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Candidate\ApplicationController;
+use App\Http\Controllers\Candidate\ChallengeSectionController;
+use App\Http\Controllers\Candidate\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -48,13 +51,34 @@ Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
 
 /*
 | Espace candidat
+|
+| Deux niveaux d'autorisation, et il faut les deux :
+|   `role:candidate`        protège l'ESPACE — qui a le droit d'être ici ;
+|   `can:...,application`   protège la RESSOURCE — quel dossier est le sien.
+|
+| Le premier laisse passer tous les candidats, y compris vers le dossier d'un
+| autre. Le second est porté par ApplicationPolicy, déclaré sur la route plutôt
+| que vérifié dans les contrôleurs : une route ajoutée sans sa déclaration se
+| voit à la relecture, un `if` oublié dans une méthode non.
 */
 Route::middleware(['auth', 'role:candidate'])
     ->prefix('candidate')
     ->name('candidate.')
     ->group(function (): void {
-        Route::get('/dashboard', fn () => Inertia::render('Candidate/Dashboard'))->name('dashboard');
-        Route::get('/application/challenge', fn () => Inertia::render('Candidate/Application/Challenge'))->name('application.challenge');
+        Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+        // Création du brouillon. POST : cette requête écrit en base.
+        Route::post('/application', [ApplicationController::class, 'store'])->name('application.store');
+        // Entrée « Ma candidature » de la navigation : redirige, n'écrit rien.
+        Route::get('/application', [ApplicationController::class, 'show'])->name('application.entry');
+
+        Route::get('/application/{application}/challenge', [ChallengeSectionController::class, 'edit'])
+            ->middleware('can:view,application')
+            ->name('application.challenge');
+
+        Route::patch('/application/{application}/challenge', [ChallengeSectionController::class, 'update'])
+            ->middleware('can:update,application')
+            ->name('application.challenge.update');
     });
 
 /*

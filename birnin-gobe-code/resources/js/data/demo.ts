@@ -20,9 +20,9 @@ export const themes = [
   ['Culture & Créativité', 'Design, arts et industries culturelles'],
 ];
 
-export const candidateSteps = [
-  'Éligibilité', 'Profil', 'Structure / équipe', 'Défi', 'Solution', 'Impact / viabilité', 'Plan de mise en œuvre', 'Pièces / déclarations', 'Relecture / envoi',
-];
+// Les neuf etapes du formulaire ne sont plus ici : elles viennent du serveur
+// (App\Domain\Application\ApplicationSection), avec l'etat reel de chacune
+// pour le candidat connecte.
 
 // Répartition géographique de démonstration (voir ADR-002) : en production, les
 // paliers sont calculés à partir du nombre réel de candidatures par région.

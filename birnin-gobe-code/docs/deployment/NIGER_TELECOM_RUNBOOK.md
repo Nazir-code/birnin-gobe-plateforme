@@ -193,7 +193,7 @@ docker compose logs scheduler --tail=50
 |---|---|
 | `/` | Accueil, carrousel du hero (5 photos, 5 s), logos, footer |
 | `/candidate/dashboard` | Tableau de bord candidat |
-| `/candidate/application/challenge` | Formulaire multi-étapes, étape 4 |
+| `/candidate/application` | Redirige vers la section en cours (connexion requise) |
 | `/admin/dashboard` | Back-office administratif |
 | `/evaluator/assignments` | Interface évaluateur / grille de notation |
 

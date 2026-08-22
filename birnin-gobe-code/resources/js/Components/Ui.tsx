@@ -1,9 +1,9 @@
-import type { ButtonHTMLAttributes, PropsWithChildren, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ComponentPropsWithoutRef, PropsWithChildren, ReactNode } from 'react';
 import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
-export function Card({ children, className = '' }: PropsWithChildren<{ className?: string }>) {
-  return <section className={`surface-card ${className}`}>{children}</section>;
+export function Card({ children, className = '', ...props }: PropsWithChildren<ComponentPropsWithoutRef<'section'>>) {
+  return <section className={`surface-card ${className}`} {...props}>{children}</section>;
 }
 
 export function Button({ children, variant = 'primary', className = '', ...props }: PropsWithChildren<ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'ghost' | 'danger' }>) {
@@ -14,7 +14,7 @@ export function Button({ children, variant = 'primary', className = '', ...props
     danger: 'border border-red-300 bg-white text-red-600 hover:bg-red-50',
   };
   return (
-    <button className={`focus-ring press-feedback inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition-colors ${variants[variant]} ${className}`} {...props}>
+    <button className={`focus-ring press-feedback inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${className}`} {...props}>
       {children}
     </button>
   );

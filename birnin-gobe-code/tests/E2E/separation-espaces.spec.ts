@@ -9,11 +9,17 @@ import { expect, test, type Page } from '@playwright/test';
  * masquer un lien n'est pas une autorisation.
  */
 
-/** Pages du parcours candidat, seules concernees par cette contrainte. */
+/**
+ * Pages du parcours candidat, seules concernees par cette contrainte.
+ *
+ * `null` = page publique. Sinon, la preparation amene le candidat connecte
+ * jusqu'a l'ecran vise : l'ecran de candidature n'a plus d'URL fixe, il vit
+ * sous l'identifiant du dossier.
+ */
 const PARCOURS_CANDIDAT = [
-  ['portail public', '/'],
-  ['tableau de bord candidat', '/candidate/dashboard'],
-  ['candidature', '/candidate/application/challenge'],
+  ['portail public', null],
+  ['tableau de bord candidat', ouvrirLeTableauDeBord],
+  ['candidature', ouvrirLaCandidature],
 ] as const;
 
 /** Destinations internes qui ne doivent apparaitre dans aucun lien. */
@@ -61,11 +67,25 @@ async function connecterUnCandidat(page: Page) {
   await expect(page).toHaveURL(/\/candidate\/dashboard$/);
 }
 
+async function ouvrirLeTableauDeBord(page: Page) {
+  await connecterUnCandidat(page);
+}
+
+/**
+ * Ouvre un vrai brouillon et atterrit sur sa section : la candidature n'est
+ * plus un ecran statique, elle appartient a un dossier en base.
+ */
+async function ouvrirLaCandidature(page: Page) {
+  await connecterUnCandidat(page);
+  await page.getByRole('button', { name: /commencer ma candidature/i }).click();
+  await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+}
+
 test.describe('ADR-003 — separation des espaces', () => {
-  for (const [nom, url] of PARCOURS_CANDIDAT) {
+  for (const [nom, preparer] of PARCOURS_CANDIDAT) {
     test(`${nom} : aucun lien vers un espace interne`, async ({ page }) => {
-      if (url.startsWith('/candidate')) await connecterUnCandidat(page);
-      await page.goto(url);
+      if (preparer) await preparer(page);
+      else await page.goto('/');
       await expect(page.locator('body')).toBeVisible();
 
       const trouves = (await liens(page)).filter((l) =>
@@ -74,13 +94,13 @@ test.describe('ADR-003 — separation des espaces', () => {
 
       expect(
         trouves,
-        `Liens internes exposes sur ${url} : ${JSON.stringify(trouves)}`,
+        `Liens internes exposes sur ${nom} : ${JSON.stringify(trouves)}`,
       ).toEqual([]);
     });
 
     test(`${nom} : aucun libelle de bascule de role`, async ({ page }) => {
-      if (url.startsWith('/candidate')) await connecterUnCandidat(page);
-      await page.goto(url);
+      if (preparer) await preparer(page);
+      else await page.goto('/');
       await expect(page.locator('body')).toBeVisible();
 
       const textes = (await liens(page)).map((l) => l.texte).filter(Boolean);
@@ -89,7 +109,7 @@ test.describe('ADR-003 — separation des espaces', () => {
 
       for (const motif of LIBELLES_INTERDITS) {
         const fautifs = tous.filter((t) => motif.test(t));
-        expect(fautifs, `Libelle interdit ${motif} sur ${url} : ${fautifs.join(', ')}`).toEqual([]);
+        expect(fautifs, `Libelle interdit ${motif} sur ${nom} : ${fautifs.join(', ')}`).toEqual([]);
       }
     });
   }

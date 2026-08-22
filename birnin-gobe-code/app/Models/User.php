@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domain\Auth\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -40,5 +41,19 @@ class User extends Authenticatable
     public function isCandidate(): bool
     {
         return $this->hasRole(UserRole::CANDIDATE);
+    }
+
+    /**
+     * Candidatures déposées par cet utilisateur.
+     *
+     * La colonne s'appelle `candidate_id` depuis la migration initiale : elle
+     * dit à quel titre l'utilisateur figure sur la candidature. C'est bien la
+     * clé étrangère vers `users`, désormais contrainte comme telle.
+     *
+     * @return HasMany<Application, $this>
+     */
+    public function applications(): HasMany
+    {
+        return $this->hasMany(Application::class, 'candidate_id');
     }
 }

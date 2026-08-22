@@ -9,7 +9,9 @@ import { SiteFooter } from '@/Components/SiteFooter';
 const nav = [
   [Gauge, 'Tableau de bord', '/candidate/dashboard'],
   [UserRound, 'Mon profil', '#'],
-  [FileText, 'Ma candidature', '/candidate/application/challenge'],
+  // Point d'entree qui redirige vers la section en cours cote serveur : le
+  // menu n'a pas a connaitre l'identifiant du dossier ni l'etape courante.
+  [FileText, 'Ma candidature', '/candidate/application'],
   [Mail, 'Mes messages', '#'],
   [UsersRound, 'Mes documents', '#'],
   [CircleHelp, 'Assistance', '#'],

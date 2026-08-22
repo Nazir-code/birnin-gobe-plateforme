@@ -148,7 +148,12 @@ final class AuthentificationCandidatTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)->get('/candidate/dashboard')->assertOk();
-        $this->actingAs($user)->get('/candidate/application/challenge')->assertOk();
+
+        // Les ecrans de candidature vivent desormais sous l'identifiant du
+        // dossier ; l'entree de navigation redirige vers celui du candidat, ou
+        // vers le tableau de bord tant qu'aucun dossier n'existe. Le detail du
+        // parcours est couvert par CandidatureCandidatTest.
+        $this->actingAs($user)->get('/candidate/application')->assertRedirect('/candidate/dashboard');
     }
 
     // — Cloisonnement des espaces internes (ADR-003) ————————————————

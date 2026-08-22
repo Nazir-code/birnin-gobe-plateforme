@@ -1,15 +1,19 @@
-import { Head, Link } from '@inertiajs/react';
-import { ArrowRight, CalendarDays, FileText, Mail, UploadCloud } from 'lucide-react';
+import { Head, Link, router } from '@inertiajs/react';
+import { useState } from 'react';
+import { ArrowRight, CalendarDays, FileText, FilePlus2, Mail, UploadCloud } from 'lucide-react';
 import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { useAuthUser } from '@/hooks/useAuth';
-import { Card, Pill, SectionTitle } from '@/Components/Ui';
+import { Button, Card, Pill, SectionTitle } from '@/Components/Ui';
 import { ProgressSteps, type Step } from '@/Components/ProgressSteps';
 import { AnimatedCounter } from '@/Components/AnimatedCounter';
 import { Reveal } from '@/Components/Reveal';
 import { useReveal } from '@/hooks/useReveal';
-import { candidateSteps } from '@/data/demo';
 
-const steps: Step[] = candidateSteps.map((label, i) => ({ label, state: i < 3 ? 'done' : i === 3 ? 'active' : 'pending' }));
+/**
+ * Messages et documents restent des donnees de demonstration : les modules
+ * Notification et Storage ne sont pas developpes. Ils sont isoles ici, hors des
+ * informations de candidature, qui viennent desormais toutes de PostgreSQL.
+ */
 const messages = [
   ['Équipe BIRNIN GOBE', 'Webinaire d’information : préparez votre candidature comme un pro !', '24 mai 2026'],
   ['Équipe BIRNIN GOBE', 'Rappel : date limite de soumission', '20 mai 2026'],
@@ -22,26 +26,115 @@ const docs = [
   ['Lettre de motivation', 'PDF • 450 Ko', 'À ajouter'],
 ];
 
-const COMPLETION_PERCENT = 65;
+type Props = {
+  campaign: { name: string; code: string; closesAt: string | null; daysLeft: number | null } | null;
+  application: {
+    id: number;
+    status: string;
+    statusLabel: string;
+    completionPercent: number;
+    currentStep: { key: string; label: string; position: number } | null;
+    updatedAt: string | null;
+    continueUrl: string | null;
+  } | null;
+  steps: { key: string; label: string; position: number; state: Step['state']; implemented: boolean }[];
+  startUrl: string;
+};
 
-export default function CandidateDashboard() {
+const dateLongue = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const dateCourte = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+
+export default function CandidateDashboard({ campaign, application, steps, startUrl }: Props) {
   const user = useAuthUser();
   const { ref: statsRef, visible: statsVisible } = useReveal<HTMLElement>();
+  const [demarrage, setDemarrage] = useState(false);
+
+  /**
+   * « Commencer ma candidature » ecrit reellement en base.
+   *
+   * Le bouton est verrouille pendant la requete : le serveur est idempotent
+   * — il renverrait le meme brouillon — mais rien ne justifie d'envoyer deux
+   * fois la meme ecriture depuis un reseau souvent lent.
+   */
+  const commencer = () => {
+    if (demarrage) return;
+    setDemarrage(true);
+    router.post(startUrl, {}, { onFinish: () => setDemarrage(false) });
+  };
+
+  const progression = application?.completionPercent ?? 0;
 
   return (
     <CandidateLayout active="Tableau de bord">
       <Head title="Tableau de bord candidat — BIRNIN GOBE" />
       <div className="mx-auto max-w-[1500px] p-5 sm:p-8">
         <div className="mb-6"><h1 className="text-3xl font-black tracking-tight text-slate-950">Bonjour, {user?.name.split(' ')[0] ?? ''} 👋</h1><p className="mt-1 text-sm text-slate-500">Bienvenue dans votre espace candidat BIRNIN GOBE.</p></div>
-        <section ref={statsRef} className={`surface-card reveal ${statsVisible ? 'is-visible' : ''} grid overflow-hidden md:grid-cols-3`}>
-          <div className="p-6 md:border-r md:border-slate-200"><div className="text-sm font-extrabold">Statut de ma candidature</div><div className="mt-4 flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-amber-100 text-amber-600"><FileText /></div><div><div className="text-xs text-slate-500">Statut actuel</div><div className="text-2xl font-black">Brouillon</div><div className="text-xs text-slate-500">Dernière sauvegarde il y a quelques secondes</div></div></div></div>
-          <div className="border-t border-slate-200 p-6 md:border-r md:border-t-0"><div className="text-sm font-extrabold">Complétude du dossier</div><div className="mt-4 text-4xl font-black text-brand-800">{statsVisible ? <AnimatedCounter value={`${COMPLETION_PERCENT}%`} /> : '0%'}</div><div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="animate-width h-full rounded-full bg-brand-800" style={{ width: statsVisible ? `${COMPLETION_PERCENT}%` : '0%' }} /></div><p className="mt-3 text-xs leading-5 text-slate-500">Continuez ainsi : il reste quelques étapes avant la soumission.</p></div>
-          <div className="border-t border-slate-200 p-6 md:border-t-0"><div className="text-sm font-extrabold">Date limite de soumission</div><div className="mt-4 flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-emerald-50 text-brand-800"><CalendarDays /></div><div><div className="text-2xl font-black text-brand-800">30 juin 2026</div><div className="mt-1 text-sm text-slate-600">Il vous reste <strong className="text-gold-600">24 jours</strong></div></div></div></div>
-        </section>
+
+        {application === null ? (
+          <Reveal><Card className="p-6 sm:p-8" data-testid="aucune-candidature">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center">
+              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-800"><FilePlus2 /></div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl font-extrabold tracking-tight text-ink-950">Vous n’avez pas encore de candidature</h2>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  {campaign
+                    ? `Ouvrez votre dossier pour ${campaign.name}. Il est enregistré au fur et à mesure : vous pouvez le reprendre quand vous voulez.`
+                    : 'Les candidatures ne sont pas ouvertes pour le moment. Revenez à l’ouverture de la prochaine campagne.'}
+                </p>
+              </div>
+              {campaign ? (
+                <Button onClick={commencer} disabled={demarrage} className="min-w-56">
+                  {demarrage ? 'Création…' : 'Commencer ma candidature'} <ArrowRight size={16} />
+                </Button>
+              ) : null}
+            </div>
+          </Card></Reveal>
+        ) : (
+          <section ref={statsRef} className={`surface-card reveal ${statsVisible ? 'is-visible' : ''} grid overflow-hidden md:grid-cols-3`} data-testid="candidature-existante">
+            <div className="p-6 md:border-r md:border-slate-200">
+              <div className="text-sm font-extrabold">Statut de ma candidature</div>
+              <div className="mt-4 flex items-center gap-4">
+                <div className="grid h-14 w-14 place-items-center rounded-full bg-amber-100 text-amber-600"><FileText /></div>
+                <div>
+                  <div className="text-xs text-slate-500">Statut actuel</div>
+                  <div className="text-2xl font-black" data-testid="statut-candidature">{application.statusLabel}</div>
+                  <div className="text-xs text-slate-500">
+                    {application.updatedAt ? `Dernière modification le ${dateCourte.format(new Date(application.updatedAt))}` : 'Aucune modification enregistrée'}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-slate-200 p-6 md:border-r md:border-t-0">
+              <div className="text-sm font-extrabold">Complétude du dossier</div>
+              <div className="mt-4 text-4xl font-black text-brand-800" data-testid="progression">{statsVisible ? <AnimatedCounter value={`${progression}%`} /> : '0%'}</div>
+              <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="animate-width h-full rounded-full bg-brand-800" style={{ width: statsVisible ? `${progression}%` : '0%' }} /></div>
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                {application.currentStep ? `Étape en cours : ${application.currentStep.label} (${application.currentStep.position} sur ${steps.length}).` : 'Commencez par la première étape.'}
+              </p>
+            </div>
+            <div className="border-t border-slate-200 p-6 md:border-t-0">
+              <div className="text-sm font-extrabold">Date limite de soumission</div>
+              {campaign?.closesAt ? (
+                <div className="mt-4 flex items-center gap-4">
+                  <div className="grid h-14 w-14 place-items-center rounded-full bg-emerald-50 text-brand-800"><CalendarDays /></div>
+                  <div>
+                    <div className="text-2xl font-black text-brand-800">{dateLongue.format(new Date(campaign.closesAt))}</div>
+                    <div className="mt-1 text-sm text-slate-600">{campaign.daysLeft === 0 ? 'Dernier jour' : <>Il vous reste <strong className="text-gold-600">{campaign.daysLeft} jours</strong></>}</div>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-slate-500">Aucune date de clôture n’est publiée pour le moment.</p>
+              )}
+            </div>
+          </section>
+        )}
 
         <Reveal delay={80}><Card className="mt-5 p-6">
-          <SectionTitle title="Progression de ma candidature (9 étapes)" aside={<Link className="text-xs font-bold text-brand-800" href="/candidate/application/challenge">Continuer <ArrowRight className="inline" size={14}/></Link>} />
-          <ProgressSteps steps={steps} />
+          <SectionTitle
+            title={`Progression de ma candidature (${steps.length} étapes)`}
+            aside={application?.continueUrl ? <Link className="text-xs font-bold text-brand-800" href={application.continueUrl}>Continuer ma candidature <ArrowRight className="inline" size={14}/></Link> : undefined}
+          />
+          <ProgressSteps steps={steps.map(({ label, state }): Step => ({ label, state }))} />
         </Card></Reveal>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-2">

@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Head } from '@inertiajs/react';
-import { Check, ChevronDown, Cloud, Download, Headphones, Lightbulb, Save, UserCircle2 } from 'lucide-react';
+import { Check, ChevronDown, Cloud, CloudOff, Download, Headphones, Lightbulb, LoaderCircle, LockKeyhole, Save, UserCircle2 } from 'lucide-react';
 import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Button, Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
-import { candidateSteps } from '@/data/demo';
+import { useAuthUser } from '@/hooks/useAuth';
+import { useAutosave, type SaveState } from '@/hooks/useAutosave';
 
 const advice = [
   ['Soyez spécifique', 'Décrivez un défi précis, pas un problème trop large.'],
@@ -13,30 +15,131 @@ const advice = [
   ['Restez clair et concis', 'Utilisez un langage simple et direct.'],
 ];
 
-export default function Challenge() {
+/** Champs réellement persistés, dans l’ordre de l’écran. */
+type Answers = {
+  main_challenge: string;
+  affected_people: string;
+  location: string;
+  root_causes: string;
+};
+
+type StepProp = { key: string; label: string; position: number; state: 'done' | 'active' | 'pending'; implemented: boolean };
+
+type Props = {
+  steps: StepProp[];
+  section: { key: string; label: string; position: number; total: number; completedAt: string | null };
+  answers: Record<keyof Answers, string | null>;
+  regions: { value: string; label: string }[];
+  maxLength: number;
+  saveUrl: string;
+};
+
+/**
+ * Etat de sauvegarde affiche au candidat.
+ *
+ * Il decrit une requete HTTP reelle, pas une animation : « Enregistre » ne
+ * s'affiche qu'apres la reponse de Laravel confirmant l'ecriture en base.
+ */
+const saveLabels: Record<SaveState, string | null> = {
+  idle: null,
+  dirty: 'Modifications non enregistrées',
+  saving: 'Enregistrement…',
+  saved: 'Enregistré',
+  error: 'Erreur d’enregistrement',
+};
+
+function heure(iso: string | null): string {
+  if (!iso) return '';
+  return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+}
+
+function SaveIndicator({ state, savedAt }: { state: SaveState; savedAt: string | null }) {
+  const label = saveLabels[state];
+  if (!label) return null;
+
+  const Icon = state === 'saving' ? LoaderCircle : state === 'error' ? CloudOff : Cloud;
+  const tone = state === 'error' ? 'text-red-600' : state === 'dirty' ? 'text-slate-500' : 'text-brand-800';
+
   return (
-    <CandidateLayout active="Ma candidature" topSlot={<div className="hidden items-center gap-2 text-xs text-brand-800 md:flex"><Cloud size={18}/><div><strong>Enregistré automatiquement</strong><br/><span className="text-slate-400">il y a quelques secondes</span></div></div>}>
-      <Head title="Défi — Ma candidature BIRNIN GOBE" />
+    <div className={`flex items-center gap-2 text-xs ${tone}`} role="status" aria-live="polite" data-testid="etat-sauvegarde">
+      <Icon size={18} className={state === 'saving' ? 'animate-spin' : undefined} />
+      <div>
+        <strong>{label}</strong>
+        {state === 'saved' && savedAt ? <><br /><span className="text-slate-400">à {heure(savedAt)}</span></> : null}
+      </div>
+    </div>
+  );
+}
+
+export default function Challenge({ steps, section, answers, regions, maxLength, saveUrl }: Props) {
+  const user = useAuthUser();
+  const [values, setValues] = useState<Answers>({
+    main_challenge: answers.main_challenge ?? '',
+    affected_people: answers.affected_people ?? '',
+    location: answers.location ?? '',
+    root_causes: answers.root_causes ?? '',
+  });
+
+  // `values` vient de `useState` : son identite ne change qu'a la saisie, donc
+  // le minuteur de la sauvegarde automatique n'est relance que sur une vraie
+  // modification, pas a chaque rendu.
+  const { state, savedAt, errors, flush } = useAutosave<Answers>(saveUrl, values);
+
+  const set = (champ: keyof Answers) => (valeur: string) => setValues((v) => ({ ...v, [champ]: valeur }));
+
+  return (
+    <CandidateLayout active="Ma candidature" topSlot={<div className="hidden md:flex"><SaveIndicator state={state} savedAt={savedAt} /></div>}>
+      <Head title={`${section.label} — Ma candidature BIRNIN GOBE`} />
       <div className="grid min-h-[calc(100vh-76px)] lg:grid-cols-[260px_1fr]">
         <aside className="hidden bg-gradient-to-b from-brand-800 to-brand-950 px-6 py-8 text-white lg:block">
           <div className="space-y-1.5">
-            {candidateSteps.map((step, index) => {
-              const done = index < 3; const active = index === 3;
-              return <div key={step} className={`relative flex min-h-12 items-center gap-3 rounded-xl px-3 transition-colors duration-[250ms] ${active ? 'bg-white/10 font-extrabold' : 'text-white/85'}`}><div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border text-xs font-black transition-colors duration-[250ms] ${done ? 'border-white bg-white text-brand-900' : active ? 'border-gold-500 bg-gold-500 text-slate-950' : 'border-white/45'}`}>{done ? <Check size={14}/> : index + 1}</div><span className="text-sm">{step}</span></div>
+            {steps.map((step) => {
+              const active = step.key === section.key;
+              return (
+                <div key={step.key} className={`relative flex min-h-12 items-center gap-3 rounded-xl px-3 transition-colors duration-[250ms] ${active ? 'bg-white/10 font-extrabold' : 'text-white/85'}`}>
+                  <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border text-xs font-black transition-colors duration-[250ms] ${step.state === 'done' ? 'border-white bg-white text-brand-900' : active ? 'border-gold-500 bg-gold-500 text-slate-950' : 'border-white/45'}`}>
+                    {step.state === 'done' ? <Check size={14} /> : step.implemented ? step.position : <LockKeyhole size={13} />}
+                  </div>
+                  <span className="text-sm">{step.label}</span>
+                </div>
+              );
             })}
           </div>
           <div className="mt-10 rounded-2xl border border-white/25 p-4"><div className="flex gap-3"><Headphones size={23}/><div><div className="text-sm font-extrabold">Besoin d’aide ?</div><p className="mt-1 text-xs leading-5 text-white/75">Consultez notre FAQ ou contactez l’assistance.</p></div></div></div>
         </aside>
         <div className="min-w-0 bg-white px-5 py-8 sm:px-8 xl:px-12">
           <div className="mx-auto max-w-[1220px]">
-            <div className="mb-6 flex items-start justify-between gap-4"><div><div className="text-xs font-black uppercase tracking-[.15em] text-brand-800">Étape 4 sur 9</div><h1 className="mt-2 text-4xl font-black tracking-tight text-brand-950">Défi</h1><div className="mt-3 h-1.5 w-14 rounded-full bg-gold-500"/><p className="mt-5 text-slate-600">Décrivez le défi que vous souhaitez adresser à travers votre projet.</p></div><div className="hidden items-center gap-2 text-slate-700 sm:flex"><UserCircle2 size={34} className="text-brand-800"/><span className="text-sm font-semibold">Bonjour, Aïssata</span><ChevronDown size={15}/></div></div>
-            <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs font-black uppercase tracking-[.15em] text-brand-800">Étape {section.position} sur {section.total}</div>
+                <h1 className="mt-2 text-4xl font-black tracking-tight text-brand-950">{section.label}</h1>
+                <div className="mt-3 h-1.5 w-14 rounded-full bg-gold-500"/>
+                <p className="mt-5 text-slate-600">Décrivez le défi que vous souhaitez adresser à travers votre projet.</p>
+              </div>
+              {user ? <div className="hidden items-center gap-2 text-slate-700 sm:flex"><UserCircle2 size={34} className="text-brand-800"/><span className="text-sm font-semibold">Bonjour, {user.name.split(' ')[0]}</span><ChevronDown size={15}/></div> : null}
+            </div>
+            <div className="md:hidden"><SaveIndicator state={state} savedAt={savedAt} /></div>
+            <div className="mt-4 grid gap-6 xl:grid-cols-[1fr_340px]">
               <Reveal><Card className="p-6 sm:p-7">
-                <FormField index="1" label="Quel est le défi principal que vous souhaitez résoudre ?" placeholder="Décrivez clairement le défi en quelques phrases." max="500" />
-                <FormField index="2" label="Qui est le plus affecté par ce défi ?" placeholder="Décrivez les personnes ou communautés concernées." max="500" />
-                <label className="mb-6 block"><span className="mb-2 block text-sm font-extrabold text-slate-800">3. Où ce défi se pose-t-il principalement ? <span className="text-red-500">*</span></span><span className="mb-2 block text-xs text-slate-500">Précisez la région, la ville ou le contexte.</span><div className="flex min-h-12 items-center justify-between rounded-lg border border-slate-300 px-4 text-sm text-slate-400">Sélectionnez une option <ChevronDown size={17}/></div></label>
-                <FormField index="4" label="Quelles sont les causes profondes de ce défi ?" placeholder="Expliquez les facteurs à l’origine de ce défi." max="500" />
-                <div className="mt-2 flex flex-wrap justify-between gap-3"><Button variant="ghost"><Save size={17}/> Enregistrer</Button><Button variant="secondary" className="min-w-44">Suivant <span aria-hidden>→</span></Button></div>
+                <TextField index={1} name="main_challenge" label="Quel est le défi principal que vous souhaitez résoudre ?" placeholder="Décrivez clairement le défi en quelques phrases." max={maxLength} value={values.main_challenge} onChange={set('main_challenge')} onBlur={flush} error={errors.main_challenge} />
+                <TextField index={2} name="affected_people" label="Qui est le plus affecté par ce défi ?" placeholder="Décrivez les personnes ou communautés concernées." max={maxLength} value={values.affected_people} onChange={set('affected_people')} onBlur={flush} error={errors.affected_people} />
+                <label className="mb-6 block" htmlFor="location">
+                  <span className="mb-2 block text-sm font-extrabold text-slate-800">3. Où ce défi se pose-t-il principalement ? <span className="text-red-500">*</span></span>
+                  <span className="mb-2 block text-xs text-slate-500">Précisez la région concernée.</span>
+                  <select id="location" name="location" className="focus-ring min-h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-800" value={values.location} onChange={(e) => { set('location')(e.target.value); }} onBlur={flush}>
+                    <option value="">Sélectionnez une option</option>
+                    {regions.map((region) => <option key={region.value} value={region.value}>{region.label}</option>)}
+                  </select>
+                  {errors.location ? <span className="mt-1 block text-xs font-semibold text-red-600">{errors.location}</span> : null}
+                </label>
+                <TextField index={4} name="root_causes" label="Quelles sont les causes profondes de ce défi ?" placeholder="Expliquez les facteurs à l’origine de ce défi." max={maxLength} value={values.root_causes} onChange={set('root_causes')} onBlur={flush} error={errors.root_causes} />
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                  <Button variant="ghost" type="button" onClick={flush}><Save size={17}/> Enregistrer</Button>
+                  {/* Les sections suivantes ne sont pas encore developpees : un
+                      bouton qui ne mene nulle part vaut moins qu'un bouton qui
+                      dit pourquoi il est inactif. */}
+                  <Button variant="secondary" className="min-w-44" disabled title="Les étapes suivantes seront ouvertes dans une prochaine version.">Suivant <span aria-hidden>→</span></Button>
+                </div>
               </Card></Reveal>
               <Reveal delay={100}><Card className="self-start border-amber-200 bg-[#fffdf5] p-6">
                 <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700"><Lightbulb size={22}/></div><h2 className="text-xl font-black text-brand-950">Conseils</h2></div>
@@ -52,6 +155,24 @@ export default function Challenge() {
   );
 }
 
-function FormField({ index, label, placeholder, max }: { index: string; label: string; placeholder: string; max: string }) {
-  return <label className="mb-6 block"><span className="mb-2 block text-sm font-extrabold text-slate-800">{index}. {label} <span className="text-red-500">*</span></span><textarea className="focus-ring mt-0 min-h-24 w-full resize-y rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-800 transition-shadow placeholder:text-slate-400" placeholder={placeholder}/><span className="mt-1 block text-right text-[11px] text-slate-400">0 / {max}</span></label>;
+function TextField({ index, name, label, placeholder, max, value, onChange, onBlur, error }: { index: number; name: string; label: string; placeholder: string; max: number; value: string; onChange: (v: string) => void; onBlur: () => void; error?: string }) {
+  return (
+    <label className="mb-6 block" htmlFor={name}>
+      <span className="mb-2 block text-sm font-extrabold text-slate-800">{index}. {label} <span className="text-red-500">*</span></span>
+      <textarea
+        id={name}
+        name={name}
+        // `maxLength` epargne une frappe inutile au candidat ; la limite qui
+        // fait foi est celle de la FormRequest, cote serveur.
+        maxLength={max}
+        className={`focus-ring mt-0 min-h-24 w-full resize-y rounded-lg border px-4 py-3 text-sm text-slate-800 transition-shadow placeholder:text-slate-400 ${error ? 'border-red-400' : 'border-slate-300'}`}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+      />
+      <span className="mt-1 block text-right text-[11px] text-slate-400">{value.length} / {max}</span>
+      {error ? <span className="mt-1 block text-xs font-semibold text-red-600">{error}</span> : null}
+    </label>
+  );
 }

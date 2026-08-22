@@ -48,11 +48,12 @@ Application : `http://localhost:8080`
 
 > Le dépôt livré ici est un **starter d'implémentation** : les pages UI sont codées et l'ossature d'architecture est posée. L'authentification réelle, les policies RBAC, le CMS, Filament, l'autosave persistant, les uploads S3/antivirus et les workflows métier complets doivent être branchés dans les prochains incréments verticaux.
 
-## Routes de démonstration
+## Routes
 
 - `/`
-- `/candidate/dashboard`
-- `/candidate/application/challenge`
+- `/candidate/dashboard` — données de candidature lues en base (ADR-005)
+- `/candidate/application` — redirige vers la section en cours du dossier
+- `/candidate/application/{application}/challenge` — section « Défi », persistée
 - `/admin/dashboard`
 - `/evaluator/assignments`
 
@@ -63,6 +64,9 @@ Application : `http://localhost:8080`
 - Use case `SubmitApplication` pour éviter un simple changement arbitraire de statut.
 - Structure d'audit centralisée.
 - Migrations initiales `campaigns`, `applications`, `attachments`, `audit_events`.
+- Candidature persistante rattachée au candidat : `ApplicationPolicy`, unicité
+  candidat/campagne, sauvegarde automatique réelle et `application_sections`
+  (ADR-005).
 - Infrastructure PostgreSQL / Redis / S3-compatible / ClamAV / Caddy.
 
 ## Déploiement / Niger Télécom
