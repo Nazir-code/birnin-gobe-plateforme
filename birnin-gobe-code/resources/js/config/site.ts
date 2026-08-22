@@ -55,6 +55,20 @@ export const publicSiteLink: SiteLink = { key: 'publicSite', href: '/' };
 export const prototypeApplyTarget = '/#candidater';
 
 /**
+ * Entrée candidat depuis le portail public.
+ *
+ * **Contrainte d'architecture non négociable** : l'interface publique et
+ * l'espace candidat n'exposent qu'un seul parcours d'accès, celui du candidat.
+ * Aucun lien, bouton ou sélecteur ne doit mener aux espaces internes
+ * (`/admin`, `/evaluator`, `/jury`) — voir
+ * `docs/decisions/ADR-003-separation-des-espaces.md`.
+ *
+ * Point de vérité unique : quand l'authentification réelle sera branchée, seule
+ * cette constante change (vers `/candidate/login`), pas les composants.
+ */
+export const candidateEntryTarget = '/candidate/dashboard';
+
+/**
  * Logos officiels déjà présents dans le dépôt (aucune copie, aucun logo recréé).
  *
  * `width`/`height` sont les dimensions intrinsèques réelles des fichiers. Elles

@@ -1,54 +1,10 @@
-import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { useEffect, useState, type PropsWithChildren } from 'react';
 import { Link } from '@inertiajs/react';
 import { ChevronDown, Menu, UserRound, X } from 'lucide-react';
 import { BrandLogo } from '@/Components/Brand';
 import { SiteFooter } from '@/Components/SiteFooter';
-import { prototypeApplyTarget, quickLinks } from '@/config/site';
+import { candidateEntryTarget, prototypeApplyTarget, quickLinks } from '@/config/site';
 import { useI18n } from '@/i18n';
-
-// Sélecteur de rôle temporaire : il n'y a pas encore de vraie authentification.
-// À remplacer par un vrai login quand l'auth/RBAC sera branché.
-const demoRoles = [
-  { label: 'Candidat', href: '/candidate/dashboard' },
-  { label: 'Admin', href: '/admin/dashboard' },
-  { label: 'Évaluateur / Jury', href: '/evaluator/assignments' },
-];
-
-function LoginRoleSwitcher() {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClickOutside = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
-  }, [open]);
-
-  return (
-    <div className="relative hidden md:block" ref={rootRef}>
-      <button
-        className="focus-ring flex min-h-11 items-center gap-2 rounded-xl border border-brand-900 px-4 text-sm font-bold text-brand-900"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <UserRound size={17} /> Se connecter <ChevronDown size={15} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open ? (
-        <div className="absolute right-0 top-[calc(100%+8px)] w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-          <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Accès démonstration</div>
-          {demoRoles.map((role) => (
-            <Link key={role.href} href={role.href} onClick={() => setOpen(false)} className="focus-ring flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-900">
-              {role.label}
-            </Link>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 export function PublicLayout({ children }: PropsWithChildren) {
   const t = useI18n();
@@ -83,7 +39,12 @@ export function PublicLayout({ children }: PropsWithChildren) {
           </nav>
           <div className="flex items-center gap-2.5">
             <button className="focus-ring hidden min-h-10 items-center gap-1 rounded-lg px-3 text-sm font-bold text-slate-700 sm:flex">FR <ChevronDown size={15} /></button>
-            <LoginRoleSwitcher />
+            <Link
+              href={candidateEntryTarget}
+              className="focus-ring hidden min-h-11 items-center gap-2 rounded-xl border border-brand-900 px-4 text-sm font-bold text-brand-900 md:flex"
+            >
+              <UserRound size={17} /> Se connecter
+            </Link>
             <a href={prototypeApplyTarget} className="focus-ring inline-flex min-h-11 items-center rounded-xl bg-gold-500 px-5 text-sm font-extrabold text-slate-950 hover:bg-gold-600">{t.footer.ctaApply}</a>
             <button
               type="button"
@@ -119,22 +80,16 @@ export function PublicLayout({ children }: PropsWithChildren) {
               ))}
             </ul>
 
-            {/* Reprend les acces du selecteur de role, masque sous `md`. */}
-            <div className="mt-3 border-t border-slate-100 pt-3">
-              <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Accès démonstration</div>
-              <ul>
-                {demoRoles.map((role) => (
-                  <li key={role.href}>
-                    <Link
-                      href={role.href}
-                      className="focus-ring flex min-h-12 items-center rounded-lg px-3 text-base font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-900"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      {role.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+            {/* Entree candidat uniquement. Le menu public ne doit exposer aucun
+                acces aux espaces internes — voir ADR-003. */}
+            <div className="mt-3 border-t border-slate-100 pt-3 md:hidden">
+              <Link
+                href={candidateEntryTarget}
+                className="focus-ring flex min-h-12 items-center gap-2 rounded-lg px-3 text-base font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-900"
+                onClick={() => setMenuOpen(false)}
+              >
+                <UserRound size={17} /> Se connecter
+              </Link>
             </div>
 
             <button className="focus-ring mt-3 flex min-h-12 items-center gap-1 rounded-lg px-3 text-base font-bold text-slate-700 sm:hidden">
