@@ -63,10 +63,12 @@ export const prototypeApplyTarget = '/#candidater';
  * (`/admin`, `/evaluator`, `/jury`) — voir
  * `docs/decisions/ADR-003-separation-des-espaces.md`.
  *
- * Point de vérité unique : quand l'authentification réelle sera branchée, seule
- * cette constante change (vers `/candidate/login`), pas les composants.
+ * Point de vérité unique pour l'entrée candidat depuis le portail.
  */
-export const candidateEntryTarget = '/candidate/dashboard';
+export const candidateEntryTarget = '/login';
+
+/** Inscription publique — crée exclusivement des comptes candidat. */
+export const candidateSignupTarget = '/register';
 
 /**
  * Logos officiels déjà présents dans le dépôt (aucune copie, aucun logo recréé).

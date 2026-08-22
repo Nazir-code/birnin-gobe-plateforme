@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowRight, CalendarDays, FileText, Mail, UploadCloud } from 'lucide-react';
 import { CandidateLayout } from '@/Layouts/CandidateLayout';
+import { useAuthUser } from '@/hooks/useAuth';
 import { Card, Pill, SectionTitle } from '@/Components/Ui';
 import { ProgressSteps, type Step } from '@/Components/ProgressSteps';
 import { AnimatedCounter } from '@/Components/AnimatedCounter';
@@ -24,13 +25,14 @@ const docs = [
 const COMPLETION_PERCENT = 65;
 
 export default function CandidateDashboard() {
+  const user = useAuthUser();
   const { ref: statsRef, visible: statsVisible } = useReveal<HTMLElement>();
 
   return (
     <CandidateLayout active="Tableau de bord">
       <Head title="Tableau de bord candidat — BIRNIN GOBE" />
       <div className="mx-auto max-w-[1500px] p-5 sm:p-8">
-        <div className="mb-6"><h1 className="text-3xl font-black tracking-tight text-slate-950">Bonjour, Amina 👋</h1><p className="mt-1 text-sm text-slate-500">Bienvenue dans votre espace candidat BIRNIN GOBE.</p></div>
+        <div className="mb-6"><h1 className="text-3xl font-black tracking-tight text-slate-950">Bonjour, {user?.name.split(' ')[0] ?? ''} 👋</h1><p className="mt-1 text-sm text-slate-500">Bienvenue dans votre espace candidat BIRNIN GOBE.</p></div>
         <section ref={statsRef} className={`surface-card reveal ${statsVisible ? 'is-visible' : ''} grid overflow-hidden md:grid-cols-3`}>
           <div className="p-6 md:border-r md:border-slate-200"><div className="text-sm font-extrabold">Statut de ma candidature</div><div className="mt-4 flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-full bg-amber-100 text-amber-600"><FileText /></div><div><div className="text-xs text-slate-500">Statut actuel</div><div className="text-2xl font-black">Brouillon</div><div className="text-xs text-slate-500">Dernière sauvegarde il y a quelques secondes</div></div></div></div>
           <div className="border-t border-slate-200 p-6 md:border-r md:border-t-0"><div className="text-sm font-extrabold">Complétude du dossier</div><div className="mt-4 text-4xl font-black text-brand-800">{statsVisible ? <AnimatedCounter value={`${COMPLETION_PERCENT}%`} /> : '0%'}</div><div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="animate-width h-full rounded-full bg-brand-800" style={{ width: statsVisible ? `${COMPLETION_PERCENT}%` : '0%' }} /></div><p className="mt-3 text-xs leading-5 text-slate-500">Continuez ainsi : il reste quelques étapes avant la soumission.</p></div>

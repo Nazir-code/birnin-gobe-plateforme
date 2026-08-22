@@ -44,9 +44,27 @@ async function liens(page: Page) {
   );
 }
 
+
+/**
+ * Les pages candidat exigent desormais une authentification (Phase 1).
+ * On cree un compte reel : ces tests verifient ce que voit un candidat
+ * connecte, pas ce que voit un visiteur redirige vers la connexion.
+ */
+async function connecterUnCandidat(page: Page) {
+  const email = `separation-e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.test`;
+  await page.goto('/register');
+  await page.getByLabel('Nom complet').fill('Amina Issa');
+  await page.getByLabel('Adresse e-mail').fill(email);
+  await page.getByLabel('Mot de passe', { exact: true }).fill('MotDePasseSolide!2026');
+  await page.getByLabel('Confirmer le mot de passe').fill('MotDePasseSolide!2026');
+  await page.getByRole('button', { name: /créer mon compte/i }).click();
+  await expect(page).toHaveURL(/\/candidate\/dashboard$/);
+}
+
 test.describe('ADR-003 — separation des espaces', () => {
   for (const [nom, url] of PARCOURS_CANDIDAT) {
     test(`${nom} : aucun lien vers un espace interne`, async ({ page }) => {
+      if (url.startsWith('/candidate')) await connecterUnCandidat(page);
       await page.goto(url);
       await expect(page.locator('body')).toBeVisible();
 
@@ -61,6 +79,7 @@ test.describe('ADR-003 — separation des espaces', () => {
     });
 
     test(`${nom} : aucun libelle de bascule de role`, async ({ page }) => {
+      if (url.startsWith('/candidate')) await connecterUnCandidat(page);
       await page.goto(url);
       await expect(page.locator('body')).toBeVisible();
 
@@ -96,6 +115,7 @@ test.describe('ADR-003 — separation des espaces', () => {
   });
 
   test('le pied de page candidat ne mene qu’a des destinations candidat', async ({ page }) => {
+    await connecterUnCandidat(page);
     await page.goto('/candidate/dashboard');
     const pied = page.locator('footer');
     await expect(pied).toBeVisible();
@@ -111,6 +131,7 @@ test.describe('ADR-003 — separation des espaces', () => {
   });
 
   test('la navigation candidat ne contient que des entrees candidat', async ({ page }) => {
+    await connecterUnCandidat(page);
     await page.goto('/candidate/dashboard');
 
     const hrefs = await page.locator('aside a[href], #menu-mobile a[href], nav a[href]').evaluateAll((els) =>

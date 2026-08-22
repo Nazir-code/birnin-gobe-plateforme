@@ -2,6 +2,7 @@ import { useState, type PropsWithChildren, type ReactNode } from 'react';
 import { Link } from '@inertiajs/react';
 import { Bell, CircleHelp, FileText, Gauge, LogOut, Mail, Menu, Settings, UserRound, UsersRound } from 'lucide-react';
 import { BrandLogo } from '@/Components/Brand';
+import { initiales, useAuthUser } from '@/hooks/useAuth';
 import { MobileNavDrawer } from '@/Components/Ui';
 import { SiteFooter } from '@/Components/SiteFooter';
 
@@ -17,6 +18,7 @@ const nav = [
 
 export function CandidateLayout({ children, active = 'Tableau de bord', topSlot }: PropsWithChildren<{ active?: string; topSlot?: ReactNode }>) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const user = useAuthUser();
 
   const navLinks = (onNavigate?: () => void) => (
     <nav className="space-y-1 px-4">
@@ -34,7 +36,7 @@ export function CandidateLayout({ children, active = 'Tableau de bord', topSlot 
         <div className="text-xs font-bold text-gold-500">BIRNIN GOBE</div>
         <p className="mt-2 text-sm font-semibold leading-6">Construisons ensemble l'innovation de demain.</p>
       </div>
-      <button className="mt-3 flex min-h-11 w-full items-center gap-3 rounded-xl px-4 text-sm font-semibold text-red-600 hover:bg-red-50"><LogOut size={17} /> Se déconnecter</button>
+      <Link href="/logout" method="post" as="button" className="mt-3 flex min-h-11 w-full items-center gap-3 rounded-xl px-4 text-sm font-semibold text-red-600 hover:bg-red-50"><LogOut size={17} /> Se déconnecter</Link>
     </div>
   );
 
@@ -61,7 +63,7 @@ export function CandidateLayout({ children, active = 'Tableau de bord', topSlot 
           <div className="ml-auto flex items-center gap-5">
             {topSlot}
             <button className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-slate-50" aria-label="Notifications"><Bell size={20} /><span className="absolute right-1 top-1 grid h-5 min-w-5 place-items-center rounded-full bg-gold-500 px-1 text-[10px] font-extrabold">2</span></button>
-            <div className="hidden items-center gap-3 sm:flex"><div className="grid h-10 w-10 place-items-center rounded-full bg-amber-100 font-extrabold text-amber-700">AI</div><div className="text-sm font-bold">Amina Issa</div></div>
+            {user ? <div className="hidden items-center gap-3 sm:flex"><div className="grid h-10 w-10 place-items-center rounded-full bg-amber-100 font-extrabold text-amber-700">{initiales(user.name)}</div><div className="text-sm font-bold">{user.name}</div></div> : null}
           </div>
         </div>
         <div className="flex-1">{children}</div>

@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -8,20 +10,17 @@ use Inertia\Inertia;
 | Séparation des espaces — contrainte d'architecture non négociable
 |--------------------------------------------------------------------------
 |
-| Trois espaces distincts, chacun avec son propre flux d'accès :
-|
 |   public    → portail, aucune authentification
-|   candidate → espace du candidat, authentification candidat
-|   internal  → administration, évaluation, jury — accès interne séparé
+|   candidate → espace du candidat        : auth + role:candidate
+|   interne   → administration, évaluation, jury : auth + role:<rôle interne>
 |
-| Le portail public et l'espace candidat ne doivent exposer aucun lien vers
-| l'espace interne. Voir docs/decisions/ADR-003-separation-des-espaces.md.
+| Le portail public et l'espace candidat n'exposent aucun lien vers l'espace
+| interne, et la protection n'est plus seulement visuelle : le middleware `role`
+| répond 403. Voir docs/decisions/ADR-003-separation-des-espaces.md.
 |
-| ATTENTION — état actuel : l'authentification n'est pas implémentée. Les
-| groupes ci-dessous portent les responsabilités et la place des middlewares,
-| mais AUCUNE protection n'est active. Toutes ces routes sont publiquement
-| joignables. Ne pas confondre cette structure avec une sécurité effective :
-| masquer un lien n'est pas une autorisation.
+| Reste à faire : vérification d'e-mail et réinitialisation de mot de passe
+| (Phase 1B), puis les policies de ressources et le cadrage par campagne quand
+| les candidatures seront persistées.
 |
 */
 
@@ -31,36 +30,61 @@ use Inertia\Inertia;
 Route::get('/', fn () => Inertia::render('Public/Home'))->name('home');
 
 /*
-| Espace candidat
-|
-| À brancher quand l'authentification existera :
-|   ->middleware(['auth', 'verified', 'role:candidate'])
-| plus le cadrage par campagne et les policies de ressources.
+| Accès candidat — réservé aux visiteurs non connectés
 */
-Route::prefix('candidate')->name('candidate.')->group(function (): void {
-    Route::get('/dashboard', fn () => Inertia::render('Candidate/Dashboard'))->name('dashboard');
-    Route::get('/application/challenge', fn () => Inertia::render('Candidate/Application/Challenge'))->name('application.challenge');
+Route::middleware('guest')->group(function (): void {
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [RegisteredUserController::class, 'store']);
+
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
+    // La limitation est portée par le contrôleur, clé sur e-mail + IP
+    // plutôt que sur la seule adresse : voir AuthenticatedSessionController.
+    Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 });
+
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
+    ->middleware('auth')
+    ->name('logout');
+
+/*
+| Espace candidat
+*/
+Route::middleware(['auth', 'role:candidate'])
+    ->prefix('candidate')
+    ->name('candidate.')
+    ->group(function (): void {
+        Route::get('/dashboard', fn () => Inertia::render('Candidate/Dashboard'))->name('dashboard');
+        Route::get('/application/challenge', fn () => Inertia::render('Candidate/Application/Challenge'))->name('application.challenge');
+    });
 
 /*
 | Espaces internes — administration, évaluation, jury
 |
-| Volontairement séparés de l'espace candidat. Leur existence technique ne doit
-| jamais être annoncée dans l'interface publique ou candidate.
+| Volontairement séparés. Leur existence n'est annoncée nulle part dans
+| l'interface publique ou candidate. Les écrans eux-mêmes ne sont pas encore
+| développés : seule la fondation de contrôle d'accès est posée ici.
 |
-| À brancher quand l'authentification existera :
-|   ->middleware(['auth', 'verified', 'role:admin'])       pour l'administration
-|   ->middleware(['auth', 'verified', 'role:evaluator'])   pour l'évaluation
-|   ->middleware(['auth', 'verified', 'role:jury'])        pour le jury
-|
-| Un candidat qui saisit ces URL manuellement doit alors recevoir un 403.
-| Aujourd'hui il obtient la page : c'est le blocage principal avant toute
-| mise en ligne avec de vraies données.
+| Aucun compte interne n'est créable par l'inscription publique.
 */
-Route::prefix('admin')->name('admin.')->group(function (): void {
-    Route::get('/dashboard', fn () => Inertia::render('Admin/Dashboard'))->name('dashboard');
-});
+Route::middleware(['auth', 'role:admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function (): void {
+        Route::get('/dashboard', fn () => Inertia::render('Admin/Dashboard'))->name('dashboard');
+    });
 
-Route::prefix('evaluator')->name('evaluator.')->group(function (): void {
-    Route::get('/assignments', fn () => Inertia::render('Evaluator/Assignments'))->name('assignments');
-});
+Route::middleware(['auth', 'role:evaluator'])
+    ->prefix('evaluator')
+    ->name('evaluator.')
+    ->group(function (): void {
+        Route::get('/assignments', fn () => Inertia::render('Evaluator/Assignments'))->name('assignments');
+    });
+
+Route::middleware(['auth', 'role:jury'])
+    ->prefix('jury')
+    ->name('jury.')
+    ->group(function (): void {
+        // L'espace jury n'a pas encore d'écran. Le groupe existe pour que la
+        // règle d'accès soit posée dès maintenant et testable.
+        Route::get('/dashboard', fn () => Inertia::render('Evaluator/Assignments'))->name('dashboard');
+    });

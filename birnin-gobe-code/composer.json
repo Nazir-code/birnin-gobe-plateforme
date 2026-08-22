@@ -13,6 +13,7 @@
   },
   "require-dev": {
     "laravel/pint": "^1.0",
+    "mockery/mockery": "^1.6",
     "nunomaduro/collision": "^8.0",
     "phpunit/phpunit": "^12.0"
   },
@@ -23,9 +24,19 @@
       "Database\\Seeders\\": "database/seeders/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
   "scripts": {
-    "test": ["@php artisan test"],
-    "post-autoload-dump": ["Illuminate\\Foundation\\ComposerScripts::postAutoloadDump", "@php artisan package:discover --ansi"]
+    "test": [
+      "@php artisan test"
+    ],
+    "post-autoload-dump": [
+      "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+      "@php artisan package:discover --ansi"
+    ]
   },
   "config": {
     "optimize-autoloader": true,

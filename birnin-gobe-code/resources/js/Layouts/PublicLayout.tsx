@@ -3,7 +3,7 @@ import { Link } from '@inertiajs/react';
 import { ChevronDown, Menu, UserRound, X } from 'lucide-react';
 import { BrandLogo } from '@/Components/Brand';
 import { SiteFooter } from '@/Components/SiteFooter';
-import { candidateEntryTarget, prototypeApplyTarget, quickLinks } from '@/config/site';
+import { candidateEntryTarget, candidateSignupTarget, quickLinks } from '@/config/site';
 import { useI18n } from '@/i18n';
 
 export function PublicLayout({ children }: PropsWithChildren) {
@@ -45,7 +45,7 @@ export function PublicLayout({ children }: PropsWithChildren) {
             >
               <UserRound size={17} /> Se connecter
             </Link>
-            <a href={prototypeApplyTarget} className="focus-ring inline-flex min-h-11 items-center rounded-xl bg-gold-500 px-5 text-sm font-extrabold text-slate-950 hover:bg-gold-600">{t.footer.ctaApply}</a>
+            <Link href={candidateSignupTarget} className="focus-ring inline-flex min-h-11 items-center rounded-xl bg-gold-500 px-5 text-sm font-extrabold text-slate-950 hover:bg-gold-600">{t.footer.ctaApply}</Link>
             <button
               type="button"
               className="focus-ring grid h-11 w-11 place-items-center rounded-xl border border-slate-200 text-brand-900 xl:hidden"

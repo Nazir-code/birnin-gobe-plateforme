@@ -6,14 +6,41 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+
+    # Les tests d'authentification écrivent réellement en base : PostgreSQL est
+    # démarré comme service, pas simulé.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: birnin_gobe_test
+          POSTGRES_USER: birnin_gobe
+          POSTGRES_PASSWORD: secret-de-ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U birnin_gobe -d birnin_gobe_test"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: pdo_pgsql, redis
+          extensions: intl, pdo_pgsql, redis, bcmath
       - uses: ramsey/composer-install@v3
-      - run: php artisan test
+
+      - name: Style de code
+        run: vendor/bin/pint --test app/Domain app/Http app/Models database/factories tests/Feature
+
+      - name: Tests
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: birnin_gobe_test
+          DB_USERNAME: birnin_gobe
+          DB_PASSWORD: secret-de-ci
+        run: vendor/bin/phpunit
 
   frontend:
     runs-on: ubuntu-latest
@@ -23,5 +50,8 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm install
+      # `npm ci` installe exactement le verrou, là où `npm install` peut le
+      # contourner — même exigence que le Dockerfile.
+      - run: npm ci
+      - run: npx tsc --noEmit
       - run: npm run build
