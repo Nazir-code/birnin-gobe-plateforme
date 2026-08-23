@@ -56,13 +56,17 @@ enum ApplicationSection: string
     /**
      * Section effectivement persistée aujourd'hui.
      *
-     * Trois sections sont branchées : « Éligibilité » (étape 1), « Profil »
-     * (étape 2) et « Défi » (étape 4). Ouvrir une autre section, c'est
-     * l'ajouter ici en même temps que son écran et sa validation — pas avant.
+     * Quatre sections sont branchées, et elles se suivent enfin sans trou :
+     * « Éligibilité » (1), « Profil » (2), « Structure / équipe » (3) et
+     * « Défi » (4). Ouvrir une autre section, c'est l'ajouter ici en même temps
+     * que son écran et sa validation — pas avant.
+     *
+     * L'ouverture de l'étape 3 fait mécaniquement rentrer « Défi » dans le
+     * parcours ouvert : c'était le seul obstacle qui l'en tenait à l'écart.
      */
     public function isImplemented(): bool
     {
-        return in_array($this, [self::ELIGIBILITY, self::PROFILE, self::CHALLENGE], strict: true);
+        return in_array($this, [self::ELIGIBILITY, self::PROFILE, self::TEAM, self::CHALLENGE], strict: true);
     }
 
     /**

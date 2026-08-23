@@ -6,7 +6,8 @@
 | Tableau de bord candidat | `/candidate/dashboard` | `resources/js/Pages/Candidate/Dashboard.tsx` |
 | Formulaire — Étape 1 Éligibilité | `/candidate/application/{application}/eligibility` | `resources/js/Pages/Candidate/Application/Eligibility.tsx` |
 | Formulaire — Étape 2 Profil | `/candidate/application/{application}/profile` | `resources/js/Pages/Candidate/Application/Profile.tsx` |
-| Formulaire — Étape 4 Défi (hors parcours ouvert, ADR-009) | `/candidate/application/{application}/challenge` | `resources/js/Pages/Candidate/Application/Challenge.tsx` |
+| Formulaire — Étape 3 Structure / équipe | `/candidate/application/{application}/team` | `resources/js/Pages/Candidate/Application/Team.tsx` |
+| Formulaire — Étape 4 Défi | `/candidate/application/{application}/challenge` | `resources/js/Pages/Candidate/Application/Challenge.tsx` |
 | Entrée « Ma candidature » | `/candidate/application` | redirection serveur vers la section en cours (ADR-005) |
 | Mobile-first | mêmes routes, responsive | layouts + breakpoints Tailwind |
 | Back-office administratif | `/admin/dashboard` | `resources/js/Pages/Admin/Dashboard.tsx` |

@@ -107,11 +107,10 @@ test.describe('Candidature persistante', () => {
     await expect(page.getByTestId('candidature-existante')).toBeVisible();
     await expect(page.getByTestId('statut-candidature')).toHaveText('Brouillon');
 
-    // « Defi » est rempli et conserve, mais hors du parcours ouvert : il ne
-    // fait pas avancer la progression, et l'ecran explique pourquoi plutot que
-    // de laisser le candidat devant un pourcentage immobile.
-    await expect(page.getByTestId('progression')).toContainText('0%');
-    await expect(page.getByTestId('etapes-hors-parcours')).toContainText(/Défi/);
+    // Depuis l'ouverture de l'etape 3 (Phase 1F), le parcours n'a plus de trou :
+    // « Defi » y est revenu et compte pour un neuvieme du dossier.
+    await expect(page.getByTestId('progression')).toContainText('11%');
+    await expect(page.getByTestId('etapes-hors-parcours')).toHaveCount(0);
 
     // La derniere section editee est « Defi » : c'est la que la reprise ramene.
     await page.getByRole('link', { name: /continuer ma candidature/i }).click();

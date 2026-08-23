@@ -55,7 +55,7 @@ final class ApplicationFactory extends Factory
 
             $application->forceFill([
                 'current_step' => $section->value,
-                'completion_percent' => ApplicationProgress::forApplication($application),
+                'completion_percent' => app(ApplicationProgress::class)->percent($application),
             ])->save();
         });
     }

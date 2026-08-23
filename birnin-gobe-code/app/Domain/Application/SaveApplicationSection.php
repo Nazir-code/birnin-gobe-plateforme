@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\DB;
  */
 final readonly class SaveApplicationSection
 {
+    public function __construct(private ApplicationProgress $progress) {}
+
     /**
      * @param  array<string, mixed>  $answers
      */
@@ -39,22 +41,12 @@ final readonly class SaveApplicationSection
 
             $application->forceFill([
                 'current_step' => $section->value,
-                'completion_percent' => $this->progression($application),
+                // Cache rafraîchi à l'écriture ; l'affichage, lui, recalcule
+                // toujours — voir ApplicationProgress.
+                'completion_percent' => $this->progress->percent($application),
             ])->save();
 
             return $application->refresh();
         });
-    }
-
-    /**
-     * Progression, déléguée à `ApplicationProgress`.
-     *
-     * La règle vivait ici. Elle en est sortie quand l'administration a eu
-     * besoin de la même : deux implémentations d'un même pourcentage finissent
-     * toujours par diverger, et un dossier n'a qu'un avancement.
-     */
-    private function progression(Application $application): int
-    {
-        return ApplicationProgress::forApplication($application);
     }
 }

@@ -165,17 +165,20 @@ test.describe('Étape 2 — Profil du candidat', () => {
     await expect(page.getByLabel(/occupation principale/)).toHaveValue(PROFIL.occupation);
   });
 
-  test('le parcours s’arrête honnêtement après l’étape 2', async ({ page }) => {
+  test('le parcours continue vers l’étape 3 et revient sans rien perdre', async ({ page }) => {
     const { nom, email } = compteUnique();
     await sInscrire(page, nom, email);
     await allerAuProfil(page);
 
-    // L'etape 3 n'existe pas : « Suivant » le dit au lieu de sauter vers
-    // « Defi », qui vient plus loin dans l'ordre du concours.
-    await expect(page.getByTestId('suivant')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /suivant/i })).toBeDisabled();
+    // Depuis la Phase 1F, l'etape 3 existe : « Suivant » y mene, dans l'ordre
+    // du concours, sans sauter vers « Defi » qui vient apres.
+    await page.getByTestId('suivant').click();
+    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/team$/);
 
-    // Le retour en arriere, lui, fonctionne sans rien perdre.
+    await page.getByTestId('precedent').click();
+    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/profile$/);
+
+    // Le retour en arriere fonctionne aussi vers l'etape 1.
     await page.getByTestId('precedent').click();
     await expect(page).toHaveURL(/\/candidate\/application\/\d+\/eligibility$/);
   });

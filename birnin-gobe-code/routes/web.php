@@ -12,6 +12,7 @@ use App\Http\Controllers\Candidate\ChallengeSectionController;
 use App\Http\Controllers\Candidate\DashboardController;
 use App\Http\Controllers\Candidate\EligibilitySectionController;
 use App\Http\Controllers\Candidate\ProfileSectionController;
+use App\Http\Controllers\Candidate\TeamSectionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -103,9 +104,18 @@ Route::middleware(['auth', 'role:candidate'])
             ->middleware(['can:update,application', 'eligible'])
             ->name('application.profile.update');
 
-        // Etape 4 — defi. Developpee avant l'etape 3, elle reste accessible aux
-        // brouillons qui s'y trouvent deja mais ne figure pas sur le parcours
-        // propose : voir ApplicationSection::isOnOpenPath() et ADR-009.
+        // Etape 3 — structure / equipe. Son ouverture referme le trou du
+        // parcours : « Defi » (etape 4) rejoint mecaniquement le parcours
+        // ouvert. Voir ApplicationSection::isOnOpenPath() et ADR-011.
+        Route::get('/application/{application}/team', [TeamSectionController::class, 'edit'])
+            ->middleware(['can:view,application', 'eligible'])
+            ->name('application.team');
+
+        Route::patch('/application/{application}/team', [TeamSectionController::class, 'update'])
+            ->middleware(['can:update,application', 'eligible'])
+            ->name('application.team.update');
+
+        // Etape 4 — defi.
         Route::get('/application/{application}/challenge', [ChallengeSectionController::class, 'edit'])
             ->middleware(['can:view,application', 'eligible'])
             ->name('application.challenge');
