@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Domain\Application\EligibilitySection;
+use App\Domain\Application\ProfileSection;
 use App\Domain\Auth\UserRole;
 use App\Domain\Candidate\CandidateType;
 use App\Domain\Eligibility\EligibilityOutcome;
@@ -417,11 +418,24 @@ final class AdministrationEligibiliteTest extends TestCase
         // Et la conséquence visible pour le candidat : la suite du formulaire
         // reste fermée (ADR-007), y compris en tapant l'URL — il est renvoyé sur
         // l'étape 1, où le motif lui est expliqué.
-        $this->actingAs($candidat)
-            ->get("/candidate/application/{$dossier->getKey()}/challenge")
-            ->assertRedirect("/candidate/application/{$dossier->getKey()}/eligibility");
+        //
+        // Les deux sections postérieures développées sont éprouvées : « Profil »,
+        // étape suivante du parcours ouvert, et « Défi », développée mais située
+        // derrière l'étape 3 non développée (ADR-009). La barrière d'éligibilité
+        // ne dépend pas du parcours : elle ferme tout ce qui suit l'étape 1.
+        foreach (['profile', 'challenge'] as $section) {
+            $this->actingAs($candidat)
+                ->get("/candidate/application/{$dossier->getKey()}/{$section}")
+                ->assertRedirect("/candidate/application/{$dossier->getKey()}/eligibility");
+        }
 
-        // Et une sauvegarde forcée sur la section fermée n'écrit rien.
+        // Et une sauvegarde forcée sur une section fermée n'écrit rien.
+        $this->actingAs($candidat)
+            ->patchJson("/candidate/application/{$dossier->getKey()}/profile", [
+                ProfileSection::BIRTH_PLACE => 'Niamey',
+            ])
+            ->assertForbidden();
+
         $this->actingAs($candidat)
             ->patchJson("/candidate/application/{$dossier->getKey()}/challenge", ['main_challenge' => 'Tentative'])
             ->assertForbidden();

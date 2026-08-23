@@ -228,9 +228,10 @@ test.describe('Critères d’éligibilité — de l’administration au candidat
     await expect(candidat.getByTestId('resultat-libelle')).toContainText(/remplissez les conditions/i);
     await expect(candidat.getByTestId('resultat-eligibilite')).not.toContainText(/pas encore publié/i);
 
-    // Rien ne bloque : l'etape suivante s'ouvre.
+    // Rien ne bloque : l'etape suivante du parcours ouvert s'ouvre — « Profil »,
+    // etape 2 (ADR-009), et non « Defi » qui vit derriere l'etape 3 non developpee.
     await candidat.getByTestId('suivant').click();
-    await expect(candidat).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+    await expect(candidat).toHaveURL(/\/candidate\/application\/\d+\/profile$/);
 
     await candidat.context().close();
   });
@@ -256,8 +257,12 @@ test.describe('Critères d’éligibilité — de l’administration au candidat
     // ...et ne s'ouvre pas davantage en tapant l'URL : la barriere est portee
     // par le serveur, pas par l'absence de lien. Le candidat est renvoye sur
     // l'etape 1, ou le motif lui est explique.
-    await candidat.goto(urlEligibilite.replace('/eligibility', '/challenge'));
-    await expect(candidat).toHaveURL(/\/candidate\/application\/\d+\/eligibility$/);
+    // Les deux sections posterieures developpees sont verifiees : « Profil »,
+    // etape suivante du parcours, et « Defi », developpee mais hors parcours.
+    for (const section of ['/profile', '/challenge']) {
+      await candidat.goto(urlEligibilite.replace('/eligibility', section));
+      await expect(candidat).toHaveURL(/\/candidate\/application\/\d+\/eligibility$/);
+    }
 
     await candidat.context().close();
   });
@@ -278,9 +283,9 @@ test.describe('Critères d’éligibilité — de l’administration au candidat
     await expect(candidat.getByTestId('resultat-libelle')).toContainText(/sous réserve/i);
     await expect(candidat.getByTestId('resultat-eligibilite')).toContainText(/pas encore publiées/i);
 
-    // « Sous reserve » n'est pas un refus : le parcours continue.
+    // « Sous reserve » n'est pas un refus : le parcours continue vers l'etape 2.
     await candidat.getByTestId('suivant').click();
-    await expect(candidat).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+    await expect(candidat).toHaveURL(/\/candidate\/application\/\d+\/profile$/);
 
     await candidat.context().close();
   });

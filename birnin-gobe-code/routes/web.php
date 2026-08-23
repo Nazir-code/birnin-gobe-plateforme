@@ -90,7 +90,8 @@ Route::middleware(['auth', 'role:candidate'])
 
         // Sections posterieures a l'eligibilite : fermees tant qu'une regle
         // bloquante est declenchee (cahier des charges 5.2). Declare sur la
-        // route, comme `can:` — voir EnsureApplicationIsEligible.
+        // route, comme `can:` — voir EnsureApplicationIsEligible. Elle vaut pour
+        // les deux sections ci-dessous, « Profil » comme « Défi ».
 
         // Etape 2 — profil du candidat.
         Route::get('/application/{application}/profile', [ProfileSectionController::class, 'edit'])
