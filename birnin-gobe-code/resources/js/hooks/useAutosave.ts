@@ -13,7 +13,7 @@ export type AutosaveResult<T, R> = {
   /** Horodatage ISO renvoye par le serveur a la derniere sauvegarde reussie. */
   savedAt: string | null;
   /** Erreurs de validation renvoyees par Laravel, par champ. */
-  errors: Partial<Record<keyof T & string, string>>;
+  errors: Partial<Record<string, string>>;
   /**
    * Corps de la derniere reponse acceptee.
    *
@@ -22,8 +22,17 @@ export type AutosaveResult<T, R> = {
    * recalculer cote navigateur — ce qui reviendrait a laisser React decider.
    */
   response: R | null;
-  /** Force une sauvegarde immediate (bouton « Enregistrer », sortie de champ). */
+  /** Envoie tout de suite ce qui a change (sortie de champ, navigation). */
   flush: () => void;
+  /**
+   * Envoie, meme si rien n'a change.
+   *
+   * Un clic sur « Enregistrer » est un acte explicite : il doit atteindre le
+   * serveur et produire un retour visible. C'est aussi le seul moyen d'achever
+   * une section qui n'a aucun champ a remplir — l'etape 3 d'une candidature
+   * individuelle, par exemple.
+   */
+  save: () => void;
 };
 
 type Options = {
@@ -58,7 +67,13 @@ function jetonCsrf(): string {
  * La source de verite reste PostgreSQL : ce hook n'ecrit rien en local, et un
  * rechargement repart des props Inertia.
  */
-export function useAutosave<T extends Record<string, string>, R = unknown>(
+/**
+ * `Record<string, unknown>` et non `Record<string, string>` : l'etape 3 envoie
+ * une liste de membres, donc un tableau d'objets. Le hook ne fait que comparer
+ * et serialiser sa charge utile — la nature des valeurs ne le concerne pas. Les
+ * erreurs restent indexees par nom de champ, comme les renvoie Laravel.
+ */
+export function useAutosave<T extends Record<string, unknown>, R = unknown>(
   url: string,
   values: T,
   { delayMs = 900 }: Options = {},
@@ -66,7 +81,7 @@ export function useAutosave<T extends Record<string, string>, R = unknown>(
   const [state, setState] = useState<SaveState>('idle');
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [response, setResponse] = useState<R | null>(null);
-  const [errors, setErrors] = useState<Partial<Record<keyof T & string, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
 
   const valuesRef = useRef(values);
   const monteRef = useRef(true);
@@ -117,7 +132,7 @@ export function useAutosave<T extends Record<string, string>, R = unknown>(
           setErrors(
             Object.fromEntries(
               Object.entries(corps.errors ?? {}).map(([champ, messages]) => [champ, messages[0]]),
-            ) as Partial<Record<keyof T & string, string>>,
+            ),
           );
           setState('error');
         }
@@ -157,6 +172,12 @@ export function useAutosave<T extends Record<string, string>, R = unknown>(
     void envoyer();
   }, [envoyer]);
 
+  const save = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    void envoyer();
+  }, [envoyer]);
+
   useEffect(() => {
     if (JSON.stringify(values) === referenceRef.current) return;
 
@@ -180,5 +201,5 @@ export function useAutosave<T extends Record<string, string>, R = unknown>(
     };
   }, []);
 
-  return { state, savedAt, errors, response, flush };
+  return { state, savedAt, errors, response, flush, save };
 }

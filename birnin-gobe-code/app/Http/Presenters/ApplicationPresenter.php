@@ -2,6 +2,7 @@
 
 namespace App\Http\Presenters;
 
+use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Models\Application;
 use App\Models\ApplicationSectionAnswers;
@@ -25,6 +26,8 @@ use App\Models\Campaign;
  */
 final class ApplicationPresenter
 {
+    public function __construct(private readonly ApplicationProgress $progress) {}
+
     /**
      * Les neuf étapes, avec l'état de chacune pour ce candidat.
      *
@@ -80,7 +83,10 @@ final class ApplicationPresenter
             'id' => $application->getKey(),
             'status' => $application->status->value,
             'statusLabel' => $application->status->label(),
-            'completionPercent' => (int) $application->completion_percent,
+            // Recalculé, jamais lu depuis la colonne : ouvrir une étape change
+            // la règle du parcours pour tous les dossiers, y compris ceux que
+            // personne n'a rouverts depuis. Voir ApplicationProgress.
+            'completionPercent' => $this->progress->percent($application),
             'currentStep' => $courante === null ? null : [
                 'key' => $courante->value,
                 'label' => $courante->label(),
@@ -175,6 +181,7 @@ final class ApplicationPresenter
         return match ($cible) {
             ApplicationSection::ELIGIBILITY => route('candidate.application.eligibility', $application),
             ApplicationSection::PROFILE => route('candidate.application.profile', $application),
+            ApplicationSection::TEAM => route('candidate.application.team', $application),
             ApplicationSection::CHALLENGE => route('candidate.application.challenge', $application),
             default => null,
         };

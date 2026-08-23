@@ -90,31 +90,22 @@ final class ProfilCandidatTest extends TestCase
         $this->assertTrue(ApplicationSection::PROFILE->isOnOpenPath());
     }
 
-    public function test_le_parcours_ouvert_s_arrete_avant_l_etape_non_developpee(): void
+    public function test_le_profil_est_sur_le_parcours_ouvert(): void
     {
-        // « Structure / équipe » (étape 3) n'existe pas : le parcours s'arrête
-        // là, même si « Défi » (étape 4) est développé.
-        $this->assertFalse(ApplicationSection::TEAM->isImplemented());
-        $this->assertTrue(ApplicationSection::CHALLENGE->isImplemented());
-        $this->assertFalse(ApplicationSection::CHALLENGE->isOnOpenPath());
-
-        $this->assertSame(
-            [ApplicationSection::ELIGIBILITY, ApplicationSection::PROFILE],
-            ApplicationSection::openPath(),
-        );
+        // Le trou du parcours a été refermé en Phase 1F : « Structure / équipe »
+        // (étape 3) est développée, et « Défi » y est donc revenu. Le détail de
+        // cette bascule est couvert par StructureEquipeCandidatTest.
+        $this->assertTrue(ApplicationSection::PROFILE->isOnOpenPath());
+        $this->assertContains(ApplicationSection::PROFILE, ApplicationSection::openPath());
     }
 
-    public function test_l_eligibilite_mene_au_profil_et_le_profil_ne_mene_nulle_part(): void
+    public function test_l_eligibilite_mene_au_profil_et_le_profil_a_la_suite(): void
     {
         $this->assertSame(ApplicationSection::PROFILE, ApplicationSection::ELIGIBILITY->nextOnOpenPath());
-        $this->assertNull(ApplicationSection::PROFILE->nextOnOpenPath());
-        $this->assertNull(ApplicationSection::CHALLENGE->nextOnOpenPath());
+        $this->assertSame(ApplicationSection::TEAM, ApplicationSection::PROFILE->nextOnOpenPath());
 
-        // « Précédent » remonte vers une section développée, parcours ouvert ou
-        // non : depuis « Défi », on doit pouvoir revenir au profil.
         $this->assertNull(ApplicationSection::ELIGIBILITY->previousImplemented());
         $this->assertSame(ApplicationSection::ELIGIBILITY, ApplicationSection::PROFILE->previousImplemented());
-        $this->assertSame(ApplicationSection::PROFILE, ApplicationSection::CHALLENGE->previousImplemented());
     }
 
     public function test_l_ecran_annonce_la_navigation_calculee_par_le_serveur(): void
@@ -133,9 +124,8 @@ final class ProfilCandidatTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Candidate/Application/Profile')
                 ->where('previousUrl', url("/candidate/application/{$application->getKey()}/eligibility"))
-                // L'étape 3 n'est pas développée : le parcours s'arrête ici, et
-                // l'écran le dit plutôt que de sauter vers « Défi ».
-                ->where('nextUrl', null));
+                // Depuis la Phase 1F, l'étape 3 existe : le parcours continue.
+                ->where('nextUrl', url("/candidate/application/{$application->getKey()}/team")));
     }
 
     // — Persistance ————————————————————————————————————————————————
@@ -476,13 +466,13 @@ final class ProfilCandidatTest extends TestCase
         $this->assertSame($this->pourcentage(2), (int) $application->fresh()->completion_percent);
     }
 
-    public function test_une_section_hors_parcours_ne_fait_pas_avancer_la_progression(): void
+    public function test_les_quatre_premieres_etapes_sont_sur_le_parcours_ouvert(): void
     {
         $candidat = $this->candidat();
         $application = $this->brouillonDe($candidat, $this->campagne());
 
-        // « Défi » est développé mais l'étape 3 ne l'est pas : le remplir
-        // entièrement ne doit pas faire croire que le parcours avance.
+        // Depuis l'ouverture de l'étape 3, « Défi » compte de nouveau : le
+        // remplir fait avancer la progression.
         $this->actingAs($candidat)->patchJson(
             "/candidate/application/{$application->getKey()}/challenge",
             [
@@ -493,43 +483,29 @@ final class ProfilCandidatTest extends TestCase
             ],
         )->assertOk();
 
-        $this->assertSame(0, (int) $application->fresh()->completion_percent);
-
-        // Les réponses sont bien conservées : c'est la progression qui attend,
-        // pas la saisie qui disparaît.
-        $this->assertNotNull(
-            ApplicationSectionAnswers::query()->where('section', ApplicationSection::CHALLENGE->value)->sole()->completed_at,
-        );
-    }
-
-    public function test_le_tableau_de_bord_signale_les_sections_hors_parcours(): void
-    {
-        $candidat = $this->candidat();
-        $application = $this->brouillonDe($candidat, $this->campagne());
-
-        $this->actingAs($candidat)->patchJson(
-            "/candidate/application/{$application->getKey()}/challenge",
-            [
-                'main_challenge' => 'Un défi.',
-                'affected_people' => 'Des habitants.',
-                'location' => NigerRegion::NIAMEY->value,
-                'root_causes' => 'Des causes.',
-            ],
-        )->assertOk();
+        $unSurNeuf = (int) round(1 / ApplicationSection::total() * 100);
+        $this->assertSame($unSurNeuf, (int) $application->fresh()->completion_percent);
 
         $this->actingAs($candidat)->get('/candidate/dashboard')
             ->assertOk()
             ->assertInertia(function (AssertableInertia $page): void {
                 $etapes = collect($page->toArray()['props']['steps']);
 
-                $defi = $etapes->firstWhere('key', ApplicationSection::CHALLENGE->value);
-                $profil = $etapes->firstWhere('key', ApplicationSection::PROFILE->value);
+                foreach ([
+                    ApplicationSection::ELIGIBILITY,
+                    ApplicationSection::PROFILE,
+                    ApplicationSection::TEAM,
+                    ApplicationSection::CHALLENGE,
+                ] as $section) {
+                    $this->assertTrue(
+                        $etapes->firstWhere('key', $section->value)['onOpenPath'],
+                        "L'étape {$section->value} devrait être sur le parcours ouvert.",
+                    );
+                }
 
-                // L'écran a de quoi expliquer au candidat pourquoi son
-                // pourcentage n'a pas bougé.
-                $this->assertSame('done', $defi['state']);
-                $this->assertFalse($defi['onOpenPath']);
-                $this->assertTrue($profil['onOpenPath']);
+                // L'étape 5 n'est pas développée : le parcours s'arrête là.
+                $this->assertFalse($etapes->firstWhere('key', ApplicationSection::SOLUTION->value)['onOpenPath']);
+                $this->assertSame('done', $etapes->firstWhere('key', ApplicationSection::CHALLENGE->value)['state']);
             });
     }
 
@@ -593,10 +569,10 @@ final class ProfilCandidatTest extends TestCase
             ->get("/candidate/application/{$application->getKey()}/challenge")
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                // Le retour en arrière mène au profil, section développée la
+                // Le retour en arrière mène à l'étape 3, section développée la
                 // plus proche : le candidat rejoint le parcours sans perdre sa
                 // saisie ni se retrouver sur un écran inexistant.
-                ->where('previousUrl', url($this->url($application)))
+                ->where('previousUrl', url("/candidate/application/{$application->getKey()}/team"))
                 ->where('nextUrl', null));
     }
 
