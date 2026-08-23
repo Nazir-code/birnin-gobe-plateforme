@@ -4,6 +4,7 @@
 |---|---|---|
 | Accueil public | `/` | `resources/js/Pages/Public/Home.tsx` |
 | Tableau de bord candidat | `/candidate/dashboard` | `resources/js/Pages/Candidate/Dashboard.tsx` |
+| Formulaire — Étape 1 Éligibilité | `/candidate/application/{application}/eligibility` | `resources/js/Pages/Candidate/Application/Eligibility.tsx` |
 | Formulaire — Étape 4 Défi | `/candidate/application/{application}/challenge` | `resources/js/Pages/Candidate/Application/Challenge.tsx` |
 | Entrée « Ma candidature » | `/candidate/application` | redirection serveur vers la section en cours (ADR-005) |
 | Mobile-first | mêmes routes, responsive | layouts + breakpoints Tailwind |

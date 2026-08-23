@@ -141,3 +141,9 @@ journaux techniques portent cette information.
   `isImplemented()`, écrire son écran et sa validation — la généralisation du
   contrôleur viendra avec la deuxième, quand la forme commune sera connue plutôt
   que devinée.
+
+> **Mis à jour en Phase 1D.** « Éligibilité » est la deuxième section persistée,
+> et devient l'étape 1 : un nouveau brouillon s'ouvre désormais sur
+> `eligibility`. La comparaison des deux implémentations promise ci-dessus a été
+> faite — voir ADR-007, qui conclut à factoriser deux composants React et à ne
+> **pas** généraliser les contrôleurs.

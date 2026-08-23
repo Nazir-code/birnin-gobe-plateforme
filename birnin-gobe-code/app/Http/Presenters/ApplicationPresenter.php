@@ -106,6 +106,7 @@ final class ApplicationPresenter
         $cible = $section?->isImplemented() === true ? $section : ApplicationSection::firstImplemented();
 
         return match ($cible) {
+            ApplicationSection::ELIGIBILITY => route('candidate.application.eligibility', $application),
             ApplicationSection::CHALLENGE => route('candidate.application.challenge', $application),
             default => null,
         };

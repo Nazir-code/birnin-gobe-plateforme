@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Head } from '@inertiajs/react';
-import { Check, ChevronDown, Cloud, CloudOff, Download, Headphones, Lightbulb, LoaderCircle, LockKeyhole, Save, UserCircle2 } from 'lucide-react';
+import { Head, Link } from '@inertiajs/react';
+import { ArrowLeft, Check, ChevronDown, Download, Lightbulb, Save, UserCircle2 } from 'lucide-react';
 import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Button, Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
+import { SaveIndicator } from '@/Components/SaveIndicator';
+import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAside';
 import { useAuthUser } from '@/hooks/useAuth';
-import { useAutosave, type SaveState } from '@/hooks/useAutosave';
+import { useAutosave } from '@/hooks/useAutosave';
 
 const advice = [
   ['Soyez spécifique', 'Décrivez un défi précis, pas un problème trop large.'],
@@ -23,55 +25,17 @@ type Answers = {
   root_causes: string;
 };
 
-type StepProp = { key: string; label: string; position: number; state: 'done' | 'active' | 'pending'; implemented: boolean };
-
 type Props = {
-  steps: StepProp[];
+  steps: SectionStep[];
   section: { key: string; label: string; position: number; total: number; completedAt: string | null };
   answers: Record<keyof Answers, string | null>;
   regions: { value: string; label: string }[];
   maxLength: number;
   saveUrl: string;
+  previousUrl: string | null;
 };
 
-/**
- * Etat de sauvegarde affiche au candidat.
- *
- * Il decrit une requete HTTP reelle, pas une animation : « Enregistre » ne
- * s'affiche qu'apres la reponse de Laravel confirmant l'ecriture en base.
- */
-const saveLabels: Record<SaveState, string | null> = {
-  idle: null,
-  dirty: 'Modifications non enregistrées',
-  saving: 'Enregistrement…',
-  saved: 'Enregistré',
-  error: 'Erreur d’enregistrement',
-};
-
-function heure(iso: string | null): string {
-  if (!iso) return '';
-  return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
-}
-
-function SaveIndicator({ state, savedAt }: { state: SaveState; savedAt: string | null }) {
-  const label = saveLabels[state];
-  if (!label) return null;
-
-  const Icon = state === 'saving' ? LoaderCircle : state === 'error' ? CloudOff : Cloud;
-  const tone = state === 'error' ? 'text-red-600' : state === 'dirty' ? 'text-slate-500' : 'text-brand-800';
-
-  return (
-    <div className={`flex items-center gap-2 text-xs ${tone}`} role="status" aria-live="polite" data-testid="etat-sauvegarde">
-      <Icon size={18} className={state === 'saving' ? 'animate-spin' : undefined} />
-      <div>
-        <strong>{label}</strong>
-        {state === 'saved' && savedAt ? <><br /><span className="text-slate-400">à {heure(savedAt)}</span></> : null}
-      </div>
-    </div>
-  );
-}
-
-export default function Challenge({ steps, section, answers, regions, maxLength, saveUrl }: Props) {
+export default function Challenge({ steps, section, answers, regions, maxLength, saveUrl, previousUrl }: Props) {
   const user = useAuthUser();
   const [values, setValues] = useState<Answers>({
     main_challenge: answers.main_challenge ?? '',
@@ -91,22 +55,7 @@ export default function Challenge({ steps, section, answers, regions, maxLength,
     <CandidateLayout active="Ma candidature" topSlot={<div className="hidden md:flex"><SaveIndicator state={state} savedAt={savedAt} /></div>}>
       <Head title={`${section.label} — Ma candidature BIRNIN GOBE`} />
       <div className="grid min-h-[calc(100vh-76px)] lg:grid-cols-[260px_1fr]">
-        <aside className="hidden bg-gradient-to-b from-brand-800 to-brand-950 px-6 py-8 text-white lg:block">
-          <div className="space-y-1.5">
-            {steps.map((step) => {
-              const active = step.key === section.key;
-              return (
-                <div key={step.key} className={`relative flex min-h-12 items-center gap-3 rounded-xl px-3 transition-colors duration-[250ms] ${active ? 'bg-white/10 font-extrabold' : 'text-white/85'}`}>
-                  <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border text-xs font-black transition-colors duration-[250ms] ${step.state === 'done' ? 'border-white bg-white text-brand-900' : active ? 'border-gold-500 bg-gold-500 text-slate-950' : 'border-white/45'}`}>
-                    {step.state === 'done' ? <Check size={14} /> : step.implemented ? step.position : <LockKeyhole size={13} />}
-                  </div>
-                  <span className="text-sm">{step.label}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-10 rounded-2xl border border-white/25 p-4"><div className="flex gap-3"><Headphones size={23}/><div><div className="text-sm font-extrabold">Besoin d’aide ?</div><p className="mt-1 text-xs leading-5 text-white/75">Consultez notre FAQ ou contactez l’assistance.</p></div></div></div>
-        </aside>
+        <SectionStepsAside steps={steps} activeKey={section.key} />
         <div className="min-w-0 bg-white px-5 py-8 sm:px-8 xl:px-12">
           <div className="mx-auto max-w-[1220px]">
             <div className="mb-6 flex items-start justify-between gap-4">
@@ -134,7 +83,17 @@ export default function Challenge({ steps, section, answers, regions, maxLength,
                 </label>
                 <TextField index={4} name="root_causes" label="Quelles sont les causes profondes de ce défi ?" placeholder="Expliquez les facteurs à l’origine de ce défi." max={maxLength} value={values.root_causes} onChange={set('root_causes')} onBlur={flush} error={errors.root_causes} />
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                  <Button variant="ghost" type="button" onClick={flush}><Save size={17}/> Enregistrer</Button>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Revenir en arriere sans rien perdre : la sauvegarde est
+                        declenchee avant la navigation, et les reponses viennent
+                        de toute facon de la base au retour. */}
+                    {previousUrl ? (
+                      <Link href={previousUrl} onClick={flush} className="focus-ring press-feedback inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-brand-900/35 bg-white px-5 text-sm font-bold text-brand-900 transition-colors hover:bg-brand-50" data-testid="precedent">
+                        <ArrowLeft size={16} /> Précédent
+                      </Link>
+                    ) : null}
+                    <Button variant="ghost" type="button" onClick={flush}><Save size={17}/> Enregistrer</Button>
+                  </div>
                   {/* Les sections suivantes ne sont pas encore developpees : un
                       bouton qui ne mene nulle part vaut moins qu'un bouton qui
                       dit pourquoi il est inactif. */}
