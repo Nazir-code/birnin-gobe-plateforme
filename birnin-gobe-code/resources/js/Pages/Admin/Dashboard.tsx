@@ -1,7 +1,8 @@
-import { Head } from '@inertiajs/react';
-import { AlertTriangle, BarChart3, Bell, ClipboardCheck, FileStack, FolderKanban, Gauge, Layers3, Settings, ShieldCheck, UsersRound } from 'lucide-react';
-import { DarkSidebarLayout, type DarkNavItem } from '@/Layouts/DarkSidebarLayout';
-import { Card, SectionTitle } from '@/Components/Ui';
+import { Head, Link } from '@inertiajs/react';
+import { AlertTriangle, CalendarRange, ClipboardCheck, FolderKanban, Gauge, ShieldCheck } from 'lucide-react';
+import { DarkSidebarLayout } from '@/Layouts/DarkSidebarLayout';
+import { ADMIN_LOGOUT, adminNav } from '@/Layouts/adminNav';
+import { Card, Pill, SectionTitle } from '@/Components/Ui';
 import { StatCard } from '@/Components/StatCard';
 import { Reveal } from '@/Components/Reveal';
 import { NigerRegionsMap } from '@/Components/NigerRegionsMap';
@@ -10,63 +11,109 @@ import { useAuthUser } from '@/hooks/useAuth';
 /**
  * Tableau de bord de l'administration.
  *
- * L'identité affichée est celle de l'utilisateur authentifié, partagée par
- * Inertia — plus de nom de démonstration en dur.
- *
- * Les indicateurs, eux, restent vides et le disent : ils dépendent des modèles
- * `Campaign` et `Application`, qui ne sont pas encore branchés (Admin Phase 2
- * et 3). Afficher les chiffres de la maquette sur un écran authentifié
- * reviendrait à présenter des données inventées comme des données de
- * production ; un état d'attente explicite est la seule chose honnête à
- * montrer tant que la campagne n'est pas configurée.
+ * L'identité et l'état de campagne viennent de la base. Les indicateurs de
+ * candidatures — dossiers, files de vérification, charge des évaluateurs,
+ * répartition géographique — restent en attente : ils dépendent d'Admin Phase 3.
+ * Les brancher sur des requêtes improvisées donnerait l'illusion d'un pilotage
+ * qui n'existe pas.
  */
-const nav: DarkNavItem[] = [
-  { icon: Gauge, label: 'Tableau de bord', href: '/admin/dashboard' },
-  { icon: Layers3, label: 'Files de vérification' },
-  { icon: FolderKanban, label: 'Dossiers' },
-  { icon: UsersRound, label: 'Évaluateurs' },
-  { icon: BarChart3, label: 'Indicateurs' },
-  { icon: Bell, label: 'Alertes' },
-  { icon: Settings, label: 'Paramètres' },
-  { icon: FileStack, label: 'Journal d’audit' },
-];
+type Campagne = {
+  id: number;
+  code: string;
+  name: string;
+  status: string;
+  statusLabel: string;
+  timezone: string;
+  opensAt: string | null;
+  closesAt: string | null;
+  window: 'sans-calendrier' | 'a-venir' | 'en-cours' | 'echue';
+  active: boolean;
+  editUrl: string;
+};
 
-const EN_ATTENTE = 'Données disponibles après configuration de la campagne.';
+const EN_ATTENTE = 'Données disponibles après l’ouverture des candidatures.';
 
-export default function AdminDashboard() {
+function dateLocale(iso: string | null, fuseau: string) {
+  if (!iso) return 'non fixée';
+  return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short', timeZone: fuseau }).format(new Date(iso));
+}
+
+export default function AdminDashboard({
+  campaign,
+  campaignsCount,
+  campaignsUrl,
+}: {
+  campaign: Campagne | null;
+  campaignsCount: number;
+  campaignsUrl: string;
+}) {
   const user = useAuthUser();
 
   return (
     <DarkSidebarLayout
-      items={nav}
+      items={adminNav}
       active="Tableau de bord"
       title="Back-office administratif"
       subtitle="Présélection & admissibilité — PIDUREM / ANSI"
-      logoutHref="/admin/logout"
+      logoutHref={ADMIN_LOGOUT}
     >
       <Head title="Back-office administratif — BIRNIN GOBE" />
       <div className="mx-auto max-w-[1650px] p-5 sm:p-7">
         <Reveal>
           <Card className="p-5">
-            <h2 className="text-lg font-extrabold text-brand-950">
-              Bonjour {user?.name ?? ''}
-            </h2>
-            <p className="mt-1.5 text-sm leading-6 text-slate-600">
-              Aucune campagne n’est encore configurée. Les dossiers, les files de vérification et
-              les indicateurs apparaîtront ici dès qu’une campagne sera ouverte.
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <h2 className="text-lg font-extrabold text-brand-950">Bonjour {user?.name ?? ''}</h2>
+                {campaign ? (
+                  <>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <span className="text-sm font-bold text-slate-800">{campaign.name}</span>
+                      <span className="rounded-lg bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-600">{campaign.code}</span>
+                      <Pill tone={campaign.active ? 'green' : 'gold'}>
+                        {campaign.active ? 'Reçoit les candidatures' : campaign.statusLabel}
+                      </Pill>
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Ouverture le {dateLocale(campaign.opensAt, campaign.timezone)}, clôture le{' '}
+                      {dateLocale(campaign.closesAt, campaign.timezone)} ({campaign.timezone}).
+                    </p>
+                    {!campaign.active ? (
+                      <p className="mt-1.5 flex items-start gap-2 text-sm text-amber-700">
+                        <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                        <span>
+                          Cette campagne est déclarée ouverte, mais la date du jour est hors de sa fenêtre : aucun
+                          candidat ne peut déposer de dossier.
+                        </span>
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="mt-1.5 text-sm leading-6 text-slate-600">
+                    {campaignsCount === 0
+                      ? 'Aucune campagne n’est enregistrée. Tant qu’aucune n’est ouverte, aucun candidat ne peut déposer de dossier.'
+                      : 'Aucune campagne n’est ouverte. Les candidats ne peuvent pas déposer de dossier.'}
+                  </p>
+                )}
+              </div>
+              <Link
+                href={campaignsUrl}
+                className="focus-ring press-feedback inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-brand-800 hover:bg-slate-50"
+              >
+                <CalendarRange size={17} /> Gérer les campagnes
+              </Link>
+            </div>
           </Card>
         </Reveal>
 
-        {/* Les compteurs existent, leur valeur est explicitement inconnue :
-            un tiret se lit sans ambiguïté, là où un « 0 » affirmerait qu'on a
+        {/* Les compteurs existent, leur valeur est explicitement inconnue : un
+            tiret se lit sans ambiguïté, là où un « 0 » affirmerait qu'on a
             compté et trouvé zéro. */}
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <StatCard icon={FolderKanban} value="—" label="Dossiers soumis" hint="Aucune campagne" tone="blue" />
-          <StatCard icon={Gauge} value="—" label="En présélection" hint="Aucune campagne" tone="gold" />
-          <StatCard icon={ClipboardCheck} value="—" label="Admissibles" hint="Aucune campagne" tone="blue" />
-          <StatCard icon={ShieldCheck} value="—" label="Non admissibles" hint="Aucune campagne" tone="green" />
-          <StatCard icon={AlertTriangle} value="—" label="Alertes actives" hint="Aucune campagne" tone="red" />
+          <StatCard icon={FolderKanban} value="—" label="Dossiers soumis" hint="Admin Phase 3" tone="blue" />
+          <StatCard icon={Gauge} value="—" label="En présélection" hint="Admin Phase 3" tone="gold" />
+          <StatCard icon={ClipboardCheck} value="—" label="Admissibles" hint="Admin Phase 3" tone="blue" />
+          <StatCard icon={ShieldCheck} value="—" label="Non admissibles" hint="Admin Phase 3" tone="green" />
+          <StatCard icon={AlertTriangle} value="—" label="Alertes actives" hint="Admin Phase 3" tone="red" />
         </div>
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_1.1fr_1.15fr]">
@@ -79,7 +126,7 @@ export default function AdminDashboard() {
           <Reveal delay={150}>
             <Card className="p-5">
               <SectionTitle title="Charge des évaluateurs" />
-              <EtatVide texte="Aucun évaluateur n’est affecté. La gestion des évaluateurs viendra avec les campagnes." />
+              <EtatVide texte="Aucun évaluateur n’est affecté." />
             </Card>
           </Reveal>
           <Reveal delay={200}>

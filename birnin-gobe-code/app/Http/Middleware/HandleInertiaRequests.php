@@ -25,6 +25,14 @@ final class HandleInertiaRequests extends Middleware
                 ],
             ],
             'locale' => app()->getLocale(),
+            // Message de confirmation d'une écriture, consommé une fois par la
+            // page qui suit la redirection. Partagé ici plutôt que renvoyé en
+            // prop par chaque contrôleur : « enregistré » se dit de la même
+            // façon partout, et un contrat de sauvegarde explicite est une
+            // exigence d'interface du projet (BLUEPRINT-UI-FOUNDATION).
+            'flash' => [
+                'status' => $request->session()->get('status'),
+            ],
         ];
     }
 }

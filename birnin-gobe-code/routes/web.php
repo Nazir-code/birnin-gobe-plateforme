@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminSessionController;
+use App\Http\Controllers\Admin\CampaignController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Candidate\ApplicationController;
@@ -102,7 +104,16 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
     Route::middleware(['auth', 'role:admin'])->group(function (): void {
         Route::post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
 
-        Route::get('/dashboard', fn () => Inertia::render('Admin/Dashboard'))->name('dashboard');
+        Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
+
+        // Administration des campagnes (ADR-007). Pas de route de suppression :
+        // `applications.campaign_id` est en cascade, supprimer une campagne
+        // emporterait les dossiers déposés. L'archivage tient ce rôle.
+        Route::get('/campaigns', [CampaignController::class, 'index'])->name('campaigns.index');
+        Route::get('/campaigns/create', [CampaignController::class, 'create'])->name('campaigns.create');
+        Route::post('/campaigns', [CampaignController::class, 'store'])->name('campaigns.store');
+        Route::get('/campaigns/{campaign}/edit', [CampaignController::class, 'edit'])->name('campaigns.edit');
+        Route::put('/campaigns/{campaign}', [CampaignController::class, 'update'])->name('campaigns.update');
     });
 });
 
