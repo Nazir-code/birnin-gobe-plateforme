@@ -1,9 +1,9 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Save } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ArrowLeft, ListChecks, Save } from 'lucide-react';
 import { DarkSidebarLayout } from '@/Layouts/DarkSidebarLayout';
 import { ADMIN_LOGOUT, adminNav } from '@/Layouts/adminNav';
 import { Button, Card, SectionTitle } from '@/Components/Ui';
+import { Champ, Selecteur, type Option } from '@/Components/Champs';
 
 /**
  * Création et modification d'une campagne.
@@ -15,12 +15,17 @@ import { Button, Card, SectionTitle } from '@/Components/Ui';
  * transitions légales depuis le statut courant. Ce n'est qu'un confort :
  * `SaveCampaign` revalide, un menu réduit n'est jamais une autorisation.
  *
- * Les paramètres prévus par le cahier (§9.2) qui n'ont pas encore de
+ * Les critères d'éligibilité, eux aussi rangés dans `settings`, ont leur propre
+ * écran (ADR-010) : ils s'arbitrent à un autre moment que le nom et les dates,
+ * et une correction de libellé ne doit pas être l'occasion de les republier.
+ * Le lien vers cet écran n'apparaît qu'en modification — les critères se fixent
+ * sur une campagne qui existe.
+ *
+ * Les autres paramètres prévus par le cahier (§9.2) qui n'ont pas encore de
  * consommateur — compte à rebours, période de grâce, domaine, contacts, textes
  * légaux — ne sont volontairement pas exposés : ils vivront dans `settings`
  * quand un écran les lira. Une modification ici ne les efface pas.
  */
-type Champ = { value: string; label: string };
 
 type Campagne = {
   id: number | null;
@@ -30,7 +35,8 @@ type Campagne = {
   timezone: string;
   opensAt: string;
   closesAt: string;
-  statusOptions: Champ[];
+  statusOptions: Option[];
+  eligibilityUrl: string | null;
 };
 
 /** Fuseaux réellement plausibles pour cette compétition, plus celui déjà enregistré. */
@@ -151,6 +157,22 @@ export default function CampaignForm({
             </p>
           </Card>
 
+          {campaign.eligibilityUrl ? (
+            <Card className="mt-4 p-5 sm:p-6">
+              <SectionTitle title="Éligibilité" />
+              <p className="text-xs leading-5 text-slate-600">
+                Âge, lien avec le Niger, zones, formes de candidature et taille d’équipe se règlent sur un écran
+                distinct : ils ne s’enregistrent pas avec ce formulaire, et ce formulaire ne les efface pas.
+              </p>
+              <Link
+                href={campaign.eligibilityUrl}
+                className="focus-ring mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-bold text-brand-800 hover:bg-slate-50"
+              >
+                <ListChecks size={16} /> Critères d’éligibilité de cette campagne
+              </Link>
+            </Card>
+          ) : null}
+
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={processing}>
               <Save size={17} /> {processing ? 'Enregistrement…' : 'Enregistrer'}
@@ -165,97 +187,3 @@ export default function CampaignForm({
   );
 }
 
-function Champ({
-  id,
-  label,
-  value,
-  onChange,
-  erreur,
-  aide,
-  type = 'text',
-  required = true,
-  autoFocus,
-  mono,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  erreur?: string;
-  aide?: ReactNode;
-  type?: string;
-  required?: boolean;
-  autoFocus?: boolean;
-  mono?: boolean;
-}) {
-  const idErreur = `${id}-erreur`;
-  const idAide = `${id}-aide`;
-
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-bold text-slate-700">
-        {label}
-      </label>
-      <input
-        id={id}
-        name={id}
-        type={type}
-        value={value}
-        required={required}
-        autoFocus={autoFocus}
-        aria-invalid={erreur ? true : undefined}
-        aria-describedby={[erreur ? idErreur : null, aide ? idAide : null].filter(Boolean).join(' ') || undefined}
-        onChange={(e) => onChange(e.target.value)}
-        className={`focus-ring mt-1.5 h-12 w-full rounded-xl border px-4 text-sm transition-shadow ${mono ? 'font-mono' : ''} ${erreur ? 'border-red-400' : 'border-slate-300'}`}
-      />
-      {aide ? <p id={idAide} className="mt-1.5 text-[11px] leading-4 text-slate-400">{aide}</p> : null}
-      {erreur ? <p id={idErreur} role="alert" className="mt-1.5 text-xs font-semibold text-red-600">{erreur}</p> : null}
-    </div>
-  );
-}
-
-function Selecteur({
-  id,
-  label,
-  value,
-  onChange,
-  erreur,
-  options,
-  aide,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  erreur?: string;
-  options: Champ[];
-  aide?: ReactNode;
-}) {
-  const idErreur = `${id}-erreur`;
-  const idAide = `${id}-aide`;
-
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-bold text-slate-700">
-        {label}
-      </label>
-      <select
-        id={id}
-        name={id}
-        value={value}
-        aria-invalid={erreur ? true : undefined}
-        aria-describedby={[erreur ? idErreur : null, aide ? idAide : null].filter(Boolean).join(' ') || undefined}
-        onChange={(e) => onChange(e.target.value)}
-        className={`focus-ring mt-1.5 h-12 w-full rounded-xl border bg-white px-4 text-sm transition-shadow ${erreur ? 'border-red-400' : 'border-slate-300'}`}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {aide ? <p id={idAide} className="mt-1.5 text-[11px] leading-4 text-slate-400">{aide}</p> : null}
-      {erreur ? <p id={idErreur} role="alert" className="mt-1.5 text-xs font-semibold text-red-600">{erreur}</p> : null}
-    </div>
-  );
-}

@@ -4,6 +4,8 @@ namespace App\Http\Presenters;
 
 use App\Domain\Campaign\CampaignLifecycle;
 use App\Domain\Campaign\CampaignStatus;
+use App\Domain\Eligibility\CampaignEligibilityRules;
+use App\Domain\Eligibility\EligibilityRule;
 use App\Models\Campaign;
 
 /**
@@ -23,11 +25,14 @@ final readonly class CampaignPresenter
      *     id: int, code: string, name: string,
      *     status: string, statusLabel: string,
      *     timezone: string, opensAt: string|null, closesAt: string|null,
-     *     updatedAt: string|null, window: string, active: bool, editUrl: string
+     *     updatedAt: string|null, window: string, active: bool,
+     *     editUrl: string, eligibilityUrl: string, criteriaPublished: int, criteriaTotal: int
      * }
      */
     public function row(Campaign $campagne, bool $active): array
     {
+        $criteres = CampaignEligibilityRules::forCampaign($campagne);
+
         return [
             'id' => $campagne->getKey(),
             'code' => $campagne->code,
@@ -41,7 +46,26 @@ final readonly class CampaignPresenter
             'window' => $this->fenetre($campagne),
             'active' => $active,
             'editUrl' => route('admin.campaigns.edit', $campagne),
+            'eligibilityUrl' => route('admin.campaigns.eligibility.edit', $campagne),
+            // Combien des cinq règles cette édition a réellement arrêtées. La
+            // liste des campagnes le montre parce qu'une campagne ouverte dont
+            // aucun critère n'est publié n'écarte personne : c'est une
+            // information d'exploitation, pas un détail de configuration.
+            'criteriaPublished' => $this->criteresPublies($criteres),
+            'criteriaTotal' => count(EligibilityRule::cases()),
         ];
+    }
+
+    /** @see EligibilityRule les cinq règles évaluées par le moteur */
+    private function criteresPublies(CampaignEligibilityRules $regles): int
+    {
+        return count(array_filter([
+            $regles->hasAgeRange(),
+            $regles->requiresNigerLink !== null,
+            $regles->regions !== null,
+            $regles->candidateTypes !== null,
+            $regles->hasTeamSizeRange(),
+        ]));
     }
 
     /**
@@ -51,7 +75,8 @@ final readonly class CampaignPresenter
      * @return array{
      *     id: int|null, code: string, name: string, status: string,
      *     timezone: string, opensAt: string, closesAt: string,
-     *     statusOptions: list<array{value: string, label: string}>
+     *     statusOptions: list<array{value: string, label: string}>,
+     *     eligibilityUrl: string|null
      * }
      */
     public function form(?Campaign $campagne): array
@@ -67,6 +92,12 @@ final readonly class CampaignPresenter
             'opensAt' => $this->saisie($campagne, 'opens_at'),
             'closesAt' => $this->saisie($campagne, 'closes_at'),
             'statusOptions' => $this->statutsProposables($campagne),
+            // Absente à la création : les critères se fixent sur une campagne
+            // qui existe, et proposer le lien avant l'enregistrement ferait
+            // perdre la saisie en cours.
+            'eligibilityUrl' => $campagne === null
+                ? null
+                : route('admin.campaigns.eligibility.edit', $campagne),
         ];
     }
 

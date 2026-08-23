@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { AlertTriangle, CalendarRange, CheckCircle2, Pencil, Plus } from 'lucide-react';
+import { AlertTriangle, CalendarRange, CheckCircle2, ListChecks, Pencil, Plus } from 'lucide-react';
 import { DarkSidebarLayout } from '@/Layouts/DarkSidebarLayout';
 import { ADMIN_LOGOUT, adminNav } from '@/Layouts/adminNav';
 import { Card, Pill, SectionTitle } from '@/Components/Ui';
@@ -30,6 +30,9 @@ type Campagne = {
   window: 'sans-calendrier' | 'a-venir' | 'en-cours' | 'echue';
   active: boolean;
   editUrl: string;
+  eligibilityUrl: string;
+  criteriaPublished: number;
+  criteriaTotal: number;
 };
 
 const tonParStatut: Record<string, 'green' | 'gold' | 'neutral' | 'red'> = {
@@ -93,11 +96,27 @@ export default function CampaignsIndex({ campaigns, createUrl }: { campaigns: Ca
             {active ? (
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <span className="text-lg font-extrabold text-brand-950">{active.name}</span>
-                <span className="rounded-lg bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-600">{active.code}</span>
+                <span data-testid="campagne-active-code" className="rounded-lg bg-slate-100 px-2 py-0.5 font-mono text-xs font-bold text-slate-600">{active.code}</span>
                 <Pill tone="green">Reçoit les candidatures</Pill>
                 <span className="text-xs text-slate-500">
                   Clôture le {dateLocale(active.closesAt, active.timezone)} ({active.timezone})
                 </span>
+                {/* Une campagne peut recevoir des dossiers sans qu'aucun critère
+                    ne soit publié : rien ne l'interdit, mais alors l'auto-test
+                    ne peut écarter personne et répond « sous réserve » à tout le
+                    monde. Le dire ici évite de le découvrir en fin de campagne. */}
+                {active.criteriaPublished === 0 ? (
+                  <p className="flex w-full items-start gap-2 text-xs text-amber-700" data-testid="alerte-criteres">
+                    <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+                    <span>
+                      Aucun critère d’éligibilité n’est publié pour cette édition : l’auto-test répond « sous réserve »
+                      à tous les candidats.{' '}
+                      <Link href={active.eligibilityUrl} className="focus-ring rounded font-bold underline">
+                        Publier les critères
+                      </Link>
+                    </span>
+                  </p>
+                ) : null}
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-6 text-sm leading-6 text-slate-600">
@@ -150,6 +169,7 @@ export default function CampaignsIndex({ campaigns, createUrl }: { campaigns: Ca
                       <th scope="col" className="py-2.5 pr-3 font-bold">Statut</th>
                       <th scope="col" className="py-2.5 pr-3 font-bold">Ouverture</th>
                       <th scope="col" className="py-2.5 pr-3 font-bold">Clôture</th>
+                      <th scope="col" className="py-2.5 pr-3 font-bold">Critères</th>
                       <th scope="col" className="py-2.5 pr-3 font-bold">Modifiée</th>
                       <th scope="col" className="py-2.5 font-bold"><span className="sr-only">Actions</span></th>
                     </tr>
@@ -170,15 +190,37 @@ export default function CampaignsIndex({ campaigns, createUrl }: { campaigns: Ca
                         </td>
                         <td className="py-3 pr-3 text-slate-600">{dateLocale(campagne.opensAt, campagne.timezone)}</td>
                         <td className="py-3 pr-3 text-slate-600">{dateLocale(campagne.closesAt, campagne.timezone)}</td>
+                        <td className="py-3 pr-3">
+                          <span
+                            data-testid={`criteres-${campagne.code}`}
+                            className={`text-xs font-bold ${campagne.criteriaPublished === 0 ? 'text-amber-700' : 'text-slate-600'}`}
+                          >
+                            {campagne.criteriaPublished} / {campagne.criteriaTotal}
+                          </span>
+                          <div className="mt-0.5 text-[11px] text-slate-400">
+                            {campagne.criteriaPublished === 0
+                              ? 'Aucun critère publié'
+                              : `critère${campagne.criteriaPublished > 1 ? 's' : ''} publié${campagne.criteriaPublished > 1 ? 's' : ''}`}
+                          </div>
+                        </td>
                         <td className="py-3 pr-3 text-[11px] text-slate-400">{dateCourte(campagne.updatedAt)}</td>
                         <td className="py-3 text-right">
-                          <Link
-                            href={campagne.editUrl}
-                            aria-label={`Modifier la campagne ${campagne.name}`}
-                            className="focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:bg-slate-50"
-                          >
-                            <Pencil size={14} /> Modifier
-                          </Link>
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <Link
+                              href={campagne.eligibilityUrl}
+                              aria-label={`Critères d’éligibilité de la campagne ${campagne.name}`}
+                              className="focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                            >
+                              <ListChecks size={14} /> Éligibilité
+                            </Link>
+                            <Link
+                              href={campagne.editUrl}
+                              aria-label={`Modifier la campagne ${campagne.name}`}
+                              className="focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                            >
+                              <Pencil size={14} /> Modifier
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ))}
