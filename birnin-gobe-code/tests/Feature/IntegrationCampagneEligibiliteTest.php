@@ -30,9 +30,11 @@ use Tests\TestCase;
  * 2027. Un moteur qui interrogerait la campagne active changerait
  * rétroactivement les règles sous les pieds des candidats.
  *
- * L'écriture de `settings.eligibility` se fait ici directement en base :
- * l'écran d'administration ne les expose pas encore (Admin Phase 2B). Le reste
- * du parcours passe par les vraies routes.
+ * L'écriture de `settings.eligibility` se fait ici directement en base, et c'est
+ * délibéré : ce fichier isole le moteur de l'écran qui le configure. Le passage
+ * par l'écran d'administration (ADR-009) est couvert, lui, par
+ * `AdministrationEligibiliteTest`. Le reste du parcours passe par les vraies
+ * routes.
  */
 final class IntegrationCampagneEligibiliteTest extends TestCase
 {

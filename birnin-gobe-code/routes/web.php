@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\CampaignController;
+use App\Http\Controllers\Admin\CampaignEligibilityController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -128,6 +129,14 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::post('/campaigns', [CampaignController::class, 'store'])->name('campaigns.store');
         Route::get('/campaigns/{campaign}/edit', [CampaignController::class, 'edit'])->name('campaigns.edit');
         Route::put('/campaigns/{campaign}', [CampaignController::class, 'update'])->name('campaigns.update');
+
+        // Critères d'éligibilité de la campagne (ADR-009). Écran séparé du
+        // formulaire de campagne : ce que le comité de pilotage arbitre ne se
+        // modifie pas au même moment que le nom et les dates de l'édition.
+        Route::get('/campaigns/{campaign}/eligibility', [CampaignEligibilityController::class, 'edit'])
+            ->name('campaigns.eligibility.edit');
+        Route::put('/campaigns/{campaign}/eligibility', [CampaignEligibilityController::class, 'update'])
+            ->name('campaigns.eligibility.update');
     });
 });
 

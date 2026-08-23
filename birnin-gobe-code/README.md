@@ -56,6 +56,8 @@ Application : `http://localhost:8080`
 - `/candidate/application/{application}/eligibility` — étape 1 « Éligibilité », persistée (ADR-007)
 - `/candidate/application/{application}/challenge` — étape 4 « Défi », persistée
 - `/admin/dashboard`
+- `/admin/campaigns` — administration des éditions (ADR-008)
+- `/admin/campaigns/{campaign}/eligibility` — critères d'éligibilité de l'édition (ADR-009)
 - `/evaluator/assignments`
 
 ## Sécurité / métier déjà préparés
