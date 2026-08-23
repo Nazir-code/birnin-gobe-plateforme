@@ -106,7 +106,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
 
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
 
-        // Administration des campagnes (ADR-007). Pas de route de suppression :
+        // Administration des campagnes (ADR-008). Pas de route de suppression :
         // `applications.campaign_id` est en cascade, supprimer une campagne
         // emporterait les dossiers déposés. L'archivage tient ce rôle.
         Route::get('/campaigns', [CampaignController::class, 'index'])->name('campaigns.index');

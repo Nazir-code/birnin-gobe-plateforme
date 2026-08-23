@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Création et modification d'une campagne par l'administration (ADR-007).
+ * Création et modification d'une campagne par l'administration (ADR-008).
  *
  * Cas d'usage plutôt que méthode de contrôleur, sur le modèle de
  * `StartApplication` : la transaction, le contrôle du cycle de vie, l'invariant
@@ -106,7 +106,7 @@ final readonly class SaveCampaign
     }
 
     /**
-     * Refuse une seconde campagne ouverte (ADR-007).
+     * Refuse une seconde campagne ouverte (ADR-008).
      *
      * Double barrière : ce contrôle rend un message de validation lisible dans
      * le cas courant, l'index partiel `campaigns_une_seule_ouverte` tranche la

@@ -5,7 +5,7 @@ namespace App\Domain\Campaign;
 use DomainException;
 
 /**
- * Transitions légales du statut d'une campagne (ADR-007).
+ * Transitions légales du statut d'une campagne (ADR-008).
  *
  * Le cahier des charges (§9.2) impose un statut administrable ; il ne décrit
  * pas le cycle. Celui-ci est déduit de ce que le statut commande réellement :

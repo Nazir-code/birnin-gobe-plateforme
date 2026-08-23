@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Administration des campagnes, de bout en bout (ADR-007).
+ * Administration des campagnes, de bout en bout (ADR-008).
  *
  * Aucun mock : chaque etape passe par Laravel et PostgreSQL. Ce que ce scenario
  * cherche a prendre en defaut, c'est une interface qui donnerait l'impression

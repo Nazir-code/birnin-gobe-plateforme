@@ -5,7 +5,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Une seule campagne peut porter le statut `OPEN` (ADR-007).
+ * Une seule campagne peut porter le statut `OPEN` (ADR-008).
  *
  * `ActiveCampaign` renvoie **une** campagne. Quand plusieurs sont ouvertes, il
  * en choisit une par tri — un départage arbitraire, invisible, qui décide vers

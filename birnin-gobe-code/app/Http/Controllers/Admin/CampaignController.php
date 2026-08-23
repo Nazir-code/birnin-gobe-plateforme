@@ -12,7 +12,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Administration des campagnes (ADR-007).
+ * Administration des campagnes (ADR-008).
  *
  * Contrôleur mince : il lit, met en forme et redirige. Les règles — transitions
  * de statut, invariant de campagne ouverte, audit — sont dans `SaveCampaign`,
@@ -21,7 +21,7 @@ use Inertia\Response;
  * Pas de `destroy` : `applications.campaign_id` est déclaré `cascadeOnDelete`.
  * Supprimer une campagne emporterait silencieusement toutes ses candidatures,
  * c'est-à-dire des dossiers déposés par des personnes réelles. L'archivage joue
- * ce rôle sans rien détruire — voir ADR-007.
+ * ce rôle sans rien détruire — voir ADR-008.
  */
 final class CampaignController
 {

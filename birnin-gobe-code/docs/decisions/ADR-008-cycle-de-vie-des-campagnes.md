@@ -1,4 +1,4 @@
-# ADR-007 — Cycle de vie et unicité de la campagne ouverte
+# ADR-008 — Cycle de vie et unicité de la campagne ouverte
 
 **Statut :** accepté
 **Date :** 2026-08-23

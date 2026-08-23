@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Administration des campagnes (ADR-007).
+ * Administration des campagnes (ADR-008).
  *
  * Fichier distinct des suites candidat et authentification : le périmètre est
  * séparé, les suites qui le couvrent aussi.
