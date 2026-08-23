@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminSessionController;
+use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CampaignEligibilityController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -152,6 +153,14 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->name('campaigns.eligibility.edit');
         Route::put('/campaigns/{campaign}/eligibility', [CampaignEligibilityController::class, 'update'])
             ->name('campaigns.eligibility.update');
+
+        // Consultation des candidatures (Admin Phase 3). Deux routes, toutes
+        // deux en lecture : tant qu'un dossier n'est pas soumis, le candidat en
+        // reste propriétaire. Aucune route d'écriture ne doit rejoindre ce
+        // groupe sans le workflow d'admissibilité qui la justifierait.
+        Route::get('/applications', [AdminApplicationController::class, 'index'])->name('applications.index');
+        Route::get('/applications/{application}', [AdminApplicationController::class, 'show'])
+            ->name('applications.show');
     });
 });
 

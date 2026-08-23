@@ -42,10 +42,12 @@ export default function AdminDashboard({
   campaign,
   campaignsCount,
   campaignsUrl,
+  applications,
 }: {
   campaign: Campagne | null;
   campaignsCount: number;
   campaignsUrl: string;
+  applications: { total: number; drafts: number; url: string };
 }) {
   const user = useAuthUser();
 
@@ -105,16 +107,41 @@ export default function AdminDashboard({
           </Card>
         </Reveal>
 
-        {/* Les compteurs existent, leur valeur est explicitement inconnue : un
-            tiret se lit sans ambiguïté, là où un « 0 » affirmerait qu'on a
-            compté et trouvé zéro. */}
+        {/* Deux compteurs sont désormais comptés pour de bon : ils viennent de
+            `applications`. Les trois autres gardent leur tiret — un « 0 »
+            affirmerait qu'on a compté et trouvé zéro, alors que le workflow qui
+            produirait ces nombres n'existe pas encore. Un tiret dit « inconnu »,
+            un zéro dit « aucun » : la différence compte pour qui pilote. */}
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <StatCard icon={FolderKanban} value="—" label="Dossiers soumis" hint="Admin Phase 3" tone="blue" />
-          <StatCard icon={Gauge} value="—" label="En présélection" hint="Admin Phase 3" tone="gold" />
-          <StatCard icon={ClipboardCheck} value="—" label="Admissibles" hint="Admin Phase 3" tone="blue" />
-          <StatCard icon={ShieldCheck} value="—" label="Non admissibles" hint="Admin Phase 3" tone="green" />
-          <StatCard icon={AlertTriangle} value="—" label="Alertes actives" hint="Admin Phase 3" tone="red" />
+          <StatCard
+            icon={FolderKanban}
+            value={applications.total}
+            label="Candidatures"
+            hint="Tous statuts, toutes campagnes"
+            tone="blue"
+          />
+          <StatCard
+            icon={Gauge}
+            value={applications.drafts}
+            label="Brouillons en cours"
+            hint="Dossiers commencés, non soumis"
+            tone="gold"
+          />
+          <StatCard icon={ClipboardCheck} value="—" label="Dossiers soumis" hint="Soumission non encore ouverte" tone="blue" />
+          <StatCard icon={ShieldCheck} value="—" label="Admissibles" hint="Admissibilité à venir" tone="green" />
+          <StatCard icon={AlertTriangle} value="—" label="Alertes actives" hint="À venir" tone="red" />
         </div>
+
+        {applications.total > 0 ? (
+          <div className="mt-3">
+            <Link
+              href={applications.url}
+              className="focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg text-sm font-bold text-brand-800 hover:underline"
+            >
+              <FolderKanban size={16} /> Consulter les candidatures
+            </Link>
+          </div>
+        ) : null}
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_1.1fr_1.15fr]">
           <Reveal delay={100}>

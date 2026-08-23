@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Application\ApplicationStatus;
 use App\Domain\Campaign\ActiveCampaign;
 use App\Domain\Campaign\CampaignStatus;
 use App\Http\Presenters\CampaignPresenter;
+use App\Models\Application;
 use App\Models\Campaign;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -13,13 +15,14 @@ use Inertia\Response;
  * Tableau de bord de l'administration.
  *
  * L'écran affichait « aucune campagne » en dur, faute de gestion des campagnes.
- * Il lit désormais la base : c'est la seule information que cette phase peut
- * afficher honnêtement.
+ * Il lit désormais la base.
  *
- * Les indicateurs de candidatures — dossiers soumis, files de vérification,
- * charge des évaluateurs, répartition géographique — restent en état d'attente.
- * Ils dépendent d'Admin Phase 3 ; les brancher sur des requêtes improvisées
- * donnerait l'illusion d'un pilotage qui n'existe pas encore.
+ * Deux indicateurs de candidatures y sont désormais réellement comptés : le
+ * nombre de dossiers et le nombre de brouillons. Les autres — dossiers soumis,
+ * admissibles, alertes, files de vérification, charge des évaluateurs,
+ * répartition géographique — gardent leur tiret, et ce n'est pas un oubli : les
+ * workflows qui les produiraient n'existent pas encore. Un « 0 » se lirait
+ * comme un comptage, un tiret se lit comme « pas encore mesurable ».
  */
 final class DashboardController
 {
@@ -39,6 +42,17 @@ final class DashboardController
             'campaign' => $ouverte === null ? null : $presenter->row($ouverte, $active !== null && $active->is($ouverte)),
             'campaignsCount' => Campaign::query()->count(),
             'campaignsUrl' => route('admin.campaigns.index'),
+            // Les deux seuls indicateurs de candidatures que cette phase peut
+            // annoncer honnêtement : le nombre de dossiers, et combien sont
+            // encore des brouillons. « Soumis », « admissibles » et « alertes »
+            // gardent leur tiret — les workflows qui les produiraient n'existent
+            // pas, et un « 0 » se lirait comme un comptage, pas comme une
+            // absence de fonctionnalité.
+            'applications' => [
+                'total' => Application::query()->count(),
+                'drafts' => Application::query()->where('status', ApplicationStatus::DRAFT->value)->count(),
+                'url' => route('admin.applications.index'),
+            ],
         ]);
     }
 }

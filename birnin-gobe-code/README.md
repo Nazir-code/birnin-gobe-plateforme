@@ -58,6 +58,8 @@ Application : `http://localhost:8080`
 - `/admin/dashboard`
 - `/admin/campaigns` — administration des éditions (ADR-008)
 - `/admin/campaigns/{campaign}/eligibility` — critères d'éligibilité de l'édition (ADR-010)
+- `/admin/applications` — consultation des candidatures, recherche et filtres (lecture seule)
+- `/admin/applications/{application}` — détail d'un dossier, sections et verdict d'éligibilité
 - `/evaluator/assignments`
 
 ## Sécurité / métier déjà préparés
