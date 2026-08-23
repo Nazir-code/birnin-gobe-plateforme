@@ -17,11 +17,14 @@ use Inertia\Response;
 /**
  * Section « Défi » — étape 4 du formulaire.
  *
- * Toujours dédiée à une section plutôt que générique. L'arrivée d'« Éligibilité »
- * a permis de comparer les deux : ce qui se répétait était l'ossature HTTP —
- * quatre lignes — là où la validation, les champs et le contenu des props
- * diffèrent entièrement. Ce qui se répétait vraiment a été extrait côté React.
- * Voir ADR-007.
+ * Toujours dédiée à une section plutôt que générique : la validation, les
+ * champs et les props lui appartiennent. Ce qui se répétait réellement d'un
+ * écran à l'autre a été remonté dans `ApplicationPresenter` à l'arrivée de la
+ * troisième section — voir ADR-009.
+ *
+ * Développée avant l'étape 3, elle vit hors du parcours proposé : elle reste
+ * modifiable pour les brouillons qui s'y trouvent, sans être annoncée comme la
+ * suite de l'étape 2 ni compter dans la progression.
  *
  * L'accès à `$application` est autorisé par la policy déclarée sur la route,
  * et la barrière d'éligibilité par le middleware `eligible` : ce contrôleur ne
@@ -37,13 +40,7 @@ final class ChallengeSectionController
         return Inertia::render('Candidate/Application/Challenge', [
             'application' => $presenter->summary($application),
             'steps' => $presenter->steps($application),
-            'section' => [
-                'key' => $section->value,
-                'label' => $section->label(),
-                'position' => $section->position(),
-                'total' => ApplicationSection::total(),
-                'completedAt' => $reponses?->completed_at?->toIso8601String(),
-            ],
+            'section' => $presenter->section($section, $reponses),
             // Les réponses absentes partent explicitement à `null` : le
             // formulaire React est contrôlé, il lui faut une valeur pour chaque
             // champ dès le premier rendu.
@@ -51,9 +48,10 @@ final class ChallengeSectionController
             'regions' => NigerRegion::options(),
             'maxLength' => ChallengeSection::MAX_LENGTH,
             'saveUrl' => route('candidate.application.challenge.update', $application),
-            // Navigation arriere sans perte : l'etape 1 reste joignable, et
-            // ses reponses viennent de la base au retour.
-            'previousUrl' => $presenter->sectionUrl($application, ApplicationSection::ELIGIBILITY),
+            // Navigation arriere sans perte. « Suivant » vaut `null` ici : la
+            // section est developpee mais hors du parcours ouvert, et rien ne
+            // la suit encore.
+            ...$presenter->navigation($application, $section),
         ]);
     }
 
@@ -76,12 +74,9 @@ final class ChallengeSectionController
         // afficher. Une visite Inertia (bouton « Enregistrer » sans JavaScript
         // asynchrone, rechargement) repart, elle, sur un cycle de navigation.
         if ($request->expectsJson() && ! $request->hasHeader('X-Inertia')) {
-            return response()->json([
-                'savedAt' => $application->updated_at?->toIso8601String(),
-                'application' => $presenter->summary($application),
-                'steps' => $presenter->steps($application),
-                'completed' => ChallengeSection::isComplete($answers),
-            ]);
+            return response()->json(
+                $presenter->savedPayload($application, ChallengeSection::isComplete($answers)),
+            );
         }
 
         return back();

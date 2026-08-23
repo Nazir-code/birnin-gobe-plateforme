@@ -47,18 +47,34 @@ final readonly class SaveApplicationSection
     }
 
     /**
-     * Progression = sections achevées sur les neuf du formulaire.
+     * Progression = sections achevées **du parcours ouvert**, sur les neuf.
      *
-     * Volontairement grossière, et honnête : tant qu'une seule section est
-     * branchée, le maximum atteignable est 1/9. Une pondération par nombre de
-     * champs supposerait connaître les huit sections restantes, ce qui n'est
-     * pas le cas.
+     * Volontairement grossière, et honnête. Deux restrictions, pour deux
+     * raisons différentes :
+     *
+     *  - seules les sections **achevées** comptent : ouvrir un écran n'est pas
+     *    le remplir, et `completed_at` est la seule preuve du contraire ;
+     *  - seules les sections du **parcours ouvert** comptent. « Défi » est
+     *    développé mais se trouve derrière « Structure / équipe », qui ne l'est
+     *    pas : l'annoncer comme un neuvième de dossier fait laisserait croire
+     *    que le parcours avance alors qu'il est encore fermé à l'étape 3.
+     *
+     * Les réponses de « Défi » ne sont ni effacées ni ignorées pour autant :
+     * elles restent en base et reprendront leur place dans le compte le jour où
+     * l'étape 3 ouvrira. L'écran le dit au candidat plutôt que de le laisser
+     * deviner pourquoi son pourcentage ne bouge pas.
      */
     private function progression(Application $application): int
     {
+        $surLeParcours = array_map(
+            static fn (ApplicationSection $section): string => $section->value,
+            ApplicationSection::openPath(),
+        );
+
         $achevees = ApplicationSectionAnswers::query()
             ->where('application_id', $application->getKey())
             ->whereNotNull('completed_at')
+            ->whereIn('section', $surLeParcours)
             ->count();
 
         return (int) round($achevees / ApplicationSection::total() * 100);

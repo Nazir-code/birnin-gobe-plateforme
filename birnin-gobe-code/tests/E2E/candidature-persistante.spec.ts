@@ -60,15 +60,17 @@ async function verifierLesReponses(page: Page) {
 /**
  * Ouvre un brouillon et rejoint la section « Defi ».
  *
- * Depuis la Phase 1D, un brouillon s'ouvre sur l'etape 1 (Eligibilite). On
- * rejoint « Defi » par le vrai bouton « Suivant » : sans reponse d'eligibilite,
- * aucune regle bloquante n'est declenchee, donc la suite reste ouverte —
- * cahier des charges 5.2.
+ * Depuis la Phase 1E, « Defi » (etape 4) ne figure plus sur le parcours
+ * propose : il a ete developpe avant « Structure / equipe » (etape 3), qui ne
+ * l'est pas encore. Le bouton « Suivant » de l'etape 1 mene donc a « Profil ».
+ * On rejoint « Defi » par son URL, exactement comme y arrivent les brouillons
+ * anterieurs qui s'y trouvent deja. Voir ADR-009.
  */
 async function ouvrirLeDefi(page: Page) {
   await page.getByRole('button', { name: /commencer ma candidature/i }).click();
   await expect(page).toHaveURL(/\/candidate\/application\/\d+\/eligibility$/);
-  await page.getByTestId('suivant').click();
+
+  await page.goto(page.url().replace('/eligibility', '/challenge'));
   await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
 }
 
@@ -104,7 +106,12 @@ test.describe('Candidature persistante', () => {
     // — Le tableau de bord retrouve le dossier et propose de le reprendre
     await expect(page.getByTestId('candidature-existante')).toBeVisible();
     await expect(page.getByTestId('statut-candidature')).toHaveText('Brouillon');
-    await expect(page.getByTestId('progression')).toContainText('11%');
+
+    // « Defi » est rempli et conserve, mais hors du parcours ouvert : il ne
+    // fait pas avancer la progression, et l'ecran explique pourquoi plutot que
+    // de laisser le candidat devant un pourcentage immobile.
+    await expect(page.getByTestId('progression')).toContainText('0%');
+    await expect(page.getByTestId('etapes-hors-parcours')).toContainText(/Défi/);
 
     // La derniere section editee est « Defi » : c'est la que la reprise ramene.
     await page.getByRole('link', { name: /continuer ma candidature/i }).click();

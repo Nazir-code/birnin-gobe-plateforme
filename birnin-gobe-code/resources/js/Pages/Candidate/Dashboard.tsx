@@ -37,7 +37,7 @@ type Props = {
     updatedAt: string | null;
     continueUrl: string | null;
   } | null;
-  steps: { key: string; label: string; position: number; state: Step['state']; implemented: boolean }[];
+  steps: { key: string; label: string; position: number; state: Step['state']; implemented: boolean; onOpenPath: boolean }[];
   startUrl: string;
 };
 
@@ -63,6 +63,14 @@ export default function CandidateDashboard({ campaign, application, steps, start
   };
 
   const progression = application?.completionPercent ?? 0;
+
+  /**
+   * Etapes remplies qui ne comptent pas encore dans la progression : elles ont
+   * ete developpees avant une etape qui les precede dans l'ordre du concours.
+   * Sans cette explication, le candidat verrait son pourcentage rester immobile
+   * apres avoir rempli une etape entiere.
+   */
+  const horsParcours = steps.filter((etape) => etape.state === 'done' && !etape.onOpenPath);
 
   return (
     <CandidateLayout active="Tableau de bord">
@@ -128,6 +136,21 @@ export default function CandidateDashboard({ campaign, application, steps, start
             </div>
           </section>
         )}
+
+        {horsParcours.length > 0 ? (
+          <Reveal delay={60}>
+            <Card className="mt-5 border-amber-200 bg-[#fffdf5] p-5" data-testid="etapes-hors-parcours">
+              <p className="text-sm leading-6 text-slate-700">
+                <strong className="font-extrabold text-brand-950">
+                  {horsParcours.map((etape) => `« ${etape.label} »`).join(', ')}
+                </strong>{' '}
+                {horsParcours.length > 1 ? 'sont remplies et conservées' : 'est remplie et conservée'}, mais
+                {horsParcours.length > 1 ? ' ne comptent' : ' ne compte'} pas encore dans votre progression :
+                une étape précédente n’est pas encore ouverte. Rien n’est perdu — vos réponses reprendront leur place dès son ouverture.
+              </p>
+            </Card>
+          </Reveal>
+        ) : null}
 
         <Reveal delay={80}><Card className="mt-5 p-6">
           <SectionTitle

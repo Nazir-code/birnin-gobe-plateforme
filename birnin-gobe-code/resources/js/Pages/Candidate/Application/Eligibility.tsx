@@ -37,6 +37,7 @@ type Props = {
   candidateTypes: { value: string; label: string }[];
   eligibility: Eligibility;
   saveUrl: string;
+  previousUrl: string | null;
   nextUrl: string | null;
 };
 
@@ -56,7 +57,7 @@ const tonesParRegle: Record<RuleStatus, string> = {
   UNANSWERED: 'text-slate-500',
 };
 
-export default function Eligibility({ steps, section, answers, regions, candidateTypes, eligibility, saveUrl, nextUrl }: Props) {
+export default function Eligibility({ steps, section, answers, regions, candidateTypes, eligibility, saveUrl, previousUrl, nextUrl }: Props) {
   const user = useAuthUser();
   const t = useI18n();
   const [values, setValues] = useState<Answers>(answers);

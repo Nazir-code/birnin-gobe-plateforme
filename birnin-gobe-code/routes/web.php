@@ -10,6 +10,7 @@ use App\Http\Controllers\Candidate\ApplicationController;
 use App\Http\Controllers\Candidate\ChallengeSectionController;
 use App\Http\Controllers\Candidate\DashboardController;
 use App\Http\Controllers\Candidate\EligibilitySectionController;
+use App\Http\Controllers\Candidate\ProfileSectionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -90,6 +91,19 @@ Route::middleware(['auth', 'role:candidate'])
         // Sections posterieures a l'eligibilite : fermees tant qu'une regle
         // bloquante est declenchee (cahier des charges 5.2). Declare sur la
         // route, comme `can:` — voir EnsureApplicationIsEligible.
+
+        // Etape 2 — profil du candidat.
+        Route::get('/application/{application}/profile', [ProfileSectionController::class, 'edit'])
+            ->middleware(['can:view,application', 'eligible'])
+            ->name('application.profile');
+
+        Route::patch('/application/{application}/profile', [ProfileSectionController::class, 'update'])
+            ->middleware(['can:update,application', 'eligible'])
+            ->name('application.profile.update');
+
+        // Etape 4 — defi. Developpee avant l'etape 3, elle reste accessible aux
+        // brouillons qui s'y trouvent deja mais ne figure pas sur le parcours
+        // propose : voir ApplicationSection::isOnOpenPath() et ADR-009.
         Route::get('/application/{application}/challenge', [ChallengeSectionController::class, 'edit'])
             ->middleware(['can:view,application', 'eligible'])
             ->name('application.challenge');
