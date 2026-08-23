@@ -33,32 +33,64 @@ supposent le stockage de fichiers, hors périmètre. Les **motifs d'exclusion**
 sont annoncés comme paramétrables sans qu'aucun ne soit énoncé : une règle sans
 contenu ne s'implémente pas, elle s'attend.
 
-### 2. Aucun seuil n'est codé en dur
+### 2. Une règle non configurée ne conclut pas
+
+> **Toute règle d'éligibilité configurable qui n'est pas explicitement
+> configurée pour la campagne produit un résultat indéterminé — « à confirmer » —
+> et jamais une valeur métier implicite.**
 
 Le cahier des charges est explicite à deux endroits : « la tranche d'âge […]
 reste configurable par campagne » (§1.1), et le comité de pilotage « doit
 arrêter […] tranche d'âge et date de référence; zones et quotas; règles
-d'éligibilité » (§18.3). Ces valeurs **n'existent pas encore**.
+d'éligibilité » (§18.3). Le §9.2 range les cinq axes — âge, nationalité/
+résidence, zones, types de candidats, taille d'équipe — parmi les « paramètres
+administrables sans code ». Ces valeurs **n'existent pas encore**.
 
 Écrire `18` et `35` dans le code aurait produit une plateforme qui a l'air de
-fonctionner tout en appliquant un critère que personne n'a décidé. La règle
-d'âge a donc un troisième état, à côté de « satisfaite » et « bloquante » :
+fonctionner tout en appliquant un critère que personne n'a décidé. Les règles
+ont donc un troisième état, à côté de « satisfaite » et « bloquante » :
 
     NOT_CONFIGURED — « La tranche d'âge de cette campagne n'est pas encore
-    publiée : cette condition sera vérifiée lors du contrôle administratif. »
+    publiée. Votre résultat reste indicatif. »
 
-Le candidat poursuit. Le jour où l'administration renseigne la tranche, la règle
-conclut — sans redéploiement, et sans réécrire les réponses déjà données.
+Le candidat poursuit. Le jour où l'administration publie le paramètre, la règle
+conclut — sans redéploiement, et sans réécrire une seule réponse déjà donnée.
 
-Une seule condition est active par défaut : le **lien avec le Niger**. Elle ne
-repose pas sur un seuil mais sur la nature du programme — PIDUREM — Galey Ma
-Zaada mobilise « l'intelligence créative nigérienne » (§1) et la plateforme est
-le point d'entrée *national* de la compétition. La nationalité **ou** la
-résidence suffit : exiger les deux exclurait la diaspora comme les résidents
-étrangers, ce qu'aucune source ne demande. Une campagne peut lever la condition.
+**Ce principe vaut pour les cinq règles, sans exception.** La version initiale
+de cette phase gardait deux conventions implicites, retirées depuis :
 
-Le minimum de deux personnes pour une candidature collective n'est pas non plus
-un seuil : c'est ce qui distingue une équipe d'une candidature individuelle.
+| Convention retirée | Pourquoi elle ne tenait pas |
+|---|---|
+| « lien avec le Niger exigé par défaut » | Le caractère national du programme (§1) la rend *vraisemblable*, pas officielle. Le §9.2 en fait un paramètre : `requires_niger_link` absent ⇒ `NOT_CONFIGURED`. |
+| « une équipe compte au moins 2 personnes » | L'évidence n'est pas une décision. Le §9.2 fait de la taille d'équipe un paramètre : `team_size` absent ⇒ `NOT_CONFIGURED`. |
+| « sans liste de zones, toutes les régions conviennent » | « Toutes les régions » est une décision de couverture, pas un repli technique. `regions` absent ⇒ `NOT_CONFIGURED`. |
+| « les trois formes de candidature sont acceptées » | Le logiciel *connaît* trois formes ; cela ne dit pas lesquelles une édition accepte. `candidate_types` absent ⇒ `NOT_CONFIGURED`. |
+
+Ce qui reste dans le code n'est pas un seuil mais le **sens d'une réponse** :
+une candidature individuelle n'a pas d'effectif à déclarer, quelle que soit la
+configuration. Et lorsque la condition de lien avec le Niger *est* posée par la
+campagne, la nationalité **ou** la résidence suffit : exiger les deux exclurait
+la diaspora comme les résidents étrangers, ce qu'aucune source ne demande.
+
+La conséquence assumée : **sans configuration, aucun dossier n'est `ELIGIBLE`,
+et aucun n'est `INELIGIBLE`.** Tout reste `TO_CONFIRM`. C'est l'état réel du
+projet — le comité de pilotage n'a rien arrêté — et il vaut mieux le dire au
+candidat que lui annoncer une décision que personne n'a prise.
+
+### 2 bis. Validation des données ≠ évaluation des critères
+
+`NOT_CONFIGURED` ne relâche rien sur les données. Les deux couches sont
+indépendantes :
+
+| | Dépend de la campagne | Toujours appliqué |
+|---|---|---|
+| **Validation** (`FormRequest`) — format de date, région du référentiel, type de candidature connu, effectif entier et positif | non | oui |
+| **Évaluation** (`EvaluateEligibility`) — tranche d'âge, zones ouvertes, formes acceptées, bornes d'effectif | oui | seulement si configuré |
+
+Le cas le plus parlant est la région : le référentiel `NigerRegion` garantit que
+la réponse désigne une vraie région du Niger — cela vaut toujours — tandis que
+la liste des zones *ouvertes par la campagne* est un paramètre. Un `team_size`
+de `-15` reste refusé par un 422, configuré ou non.
 
 ### 3. Le verdict est calculé, jamais stocké
 
@@ -170,5 +202,15 @@ qui ne dépende pas du jour où le candidat consulte l'écran.
   section est toujours ouverte — et ne subissent aucune migration de données.
 - Deux sections sur neuf sont persistées : la progression plafonne à 22 %.
 - Sans paramètres de campagne, un dossier complet et cohérent aboutit à
-  `TO_CONFIRM` et non à `ELIGIBLE`. C'est l'état réel du projet, pas une
-  limitation technique : la tranche d'âge n'a pas encore été arrêtée.
+  `TO_CONFIRM`, jamais à `ELIGIBLE` ni à `INELIGIBLE`. C'est l'état réel du
+  projet, pas une limitation technique : le comité de pilotage n'a arrêté aucun
+  des cinq critères.
+- Il en découle que le parcours bloquant ne peut pas être joué de bout en bout
+  tant que la campagne de développement ne publie aucune règle. Il est couvert
+  par les tests d'intégration, qui configurent une campagne à la demande ;
+  les tests de bout en bout vérifient, eux, ce que voit réellement un candidat
+  aujourd'hui — un résultat sous réserve, expliqué, qui ne ferme rien.
+- L'écran d'administration des campagnes devient le seul endroit d'où une règle
+  d'éligibilité peut naître. Tant qu'il n'existe pas, la plateforme n'applique
+  aucun critère de sélection — ce qui est préférable à en appliquer un que
+  personne n'a validé.

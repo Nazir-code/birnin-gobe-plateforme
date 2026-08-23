@@ -4,8 +4,14 @@ import { expect, test, type Page } from '@playwright/test';
  * Etape 1 — Eligibilite guidee, de bout en bout.
  *
  * Aucun mock : chaque etape passe par Laravel et PostgreSQL. Le verdict affiche
- * vient du serveur, jamais d'un calcul cote navigateur — c'est precisement ce
- * que le scenario « non eligible » cherche a prouver.
+ * vient du serveur, jamais d'un calcul cote navigateur.
+ *
+ * La campagne de developpement ne publie aucune regle d'eligibilite. Depuis la
+ * correction « configuration explicite », aucune regle ne peut donc bloquer :
+ * c'est l'etat reel du projet, et c'est ce que ces scenarios verifient dans
+ * l'interface. Le parcours bloquant (redirection, 403, reponses conservees,
+ * reouverture apres correction) est couvert par EligibiliteCandidatTest, qui
+ * peut configurer une campagne sans perturber les autres tests.
  */
 const MOT_DE_PASSE = 'MotDePasseSolide!2026';
 
@@ -119,49 +125,55 @@ test.describe('Étape 1 — Éligibilité', () => {
     await verifierLesReponses(page);
   });
 
-  test('un candidat sans lien avec le Niger est déclaré non éligible', async ({ page }) => {
+  test('un critère non publié est expliqué au candidat sans le bloquer', async ({ page }) => {
     const { nom, email } = compteUnique();
     await sInscrire(page, nom, email);
     await commencerUneCandidature(page);
-    const urlEligibilite = page.url();
 
-    await remplirLEligibilite(page, { nigerien: false, resident: false });
+    // Reponses parfaitement coherentes, et pourtant : la campagne n'a publie
+    // aucune regle, donc le serveur ne declare personne definitivement eligible.
+    await remplirLEligibilite(page);
     await expect(page.getByTestId('etat-sauvegarde').first()).toContainText('Enregistré', { timeout: 15_000 });
 
-    // — Le verdict vient du serveur et s'affiche avec son motif
     const resultat = page.getByTestId('resultat-eligibilite');
-    await expect(page.getByTestId('resultat-libelle')).toContainText(/ne remplissez pas les conditions/i);
-    await expect(resultat).toContainText(/nationalité nigérienne ou résidant au Niger/i);
+    await expect(page.getByTestId('resultat-libelle')).toContainText(/sous réserve/i);
+    await expect(page.getByTestId('resultat-libelle')).not.toContainText(/remplissez les conditions/i);
+
+    // — Le motif est dit en langage candidat
+    await expect(resultat).toContainText(/pas encore publiée/i);
+    await expect(resultat).toContainText(/reste indicatif/i);
     await expect(resultat).toContainText(/ne remplace pas la vérification administrative/i);
 
-    // — La suite est fermée : plus de lien « Suivant » actif
-    await expect(page.getByTestId('suivant')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /suivant/i })).toBeDisabled();
+    // — Et jamais en jargon technique
+    const texte = (await resultat.innerText()).toLowerCase();
+    for (const jargon of ['not_configured', 'settings', 'campaign.', 'null']) {
+      expect(texte, `jargon visible : ${jargon}`).not.toContain(jargon);
+    }
 
-    // — Et l'URL saisie a la main ramene sur l'eligibilite, sans rien effacer
-    const urlDefi = urlEligibilite.replace('/eligibility', '/challenge');
-    await page.goto(urlDefi);
-    await expect(page).toHaveURL(urlEligibilite);
-    await verifierLesReponses(page, { nigerien: false, resident: false });
-
-    // — Corriger rouvre la suite : les donnees n'ont jamais ete perdues
-    await page.getByRole('group', { name: /Résidez-vous/i }).getByRole('radio', { name: 'Oui' }).check();
-    await page.getByRole('group', { name: /Résidez-vous/i }).getByRole('radio', { name: 'Oui' }).blur();
-    await expect(page.getByTestId('etat-sauvegarde').first()).toContainText('Enregistré', { timeout: 15_000 });
+    // — Rien ne bloque : le parcours continue
     await expect(page.getByTestId('suivant')).toBeVisible();
+    await page.getByTestId('suivant').click();
+    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
   });
 
-  test('une équipe d’une seule personne est refusée par le serveur', async ({ page }) => {
+  test('l’effectif reste validé par le serveur même sans règle publiée', async ({ page }) => {
     const { nom, email } = compteUnique();
     await sInscrire(page, nom, email);
     await commencerUneCandidature(page);
 
     await remplirLEligibilite(page);
-    await page.getByLabel(/Combien de personnes/).fill('1');
+    await expect(page.getByTestId('etat-sauvegarde').first()).toContainText('Enregistré', { timeout: 15_000 });
+
+    // « Non configure » ne veut pas dire « tout est accepte » : la validation
+    // technique est independante des regles metier de la campagne.
+    await page.getByLabel(/Combien de personnes/).fill('-15');
     await page.getByLabel(/Combien de personnes/).blur();
 
-    await expect(page.getByTestId('etat-sauvegarde').first()).toContainText('Enregistré', { timeout: 15_000 });
-    await expect(page.getByTestId('resultat-eligibilite')).toContainText(/au moins 2 personnes/i);
-    await expect(page.getByTestId('suivant')).toHaveCount(0);
+    await expect(page.getByTestId('etat-sauvegarde').first()).toContainText('Erreur d’enregistrement', { timeout: 15_000 });
+
+    // La saisie fautive n'est pas enregistree : le rechargement rend la
+    // derniere valeur acceptee par le serveur.
+    await page.reload();
+    await expect(page.getByLabel(/Combien de personnes/)).toHaveValue(REPONSES.effectif);
   });
 });

@@ -10,6 +10,7 @@ use App\Domain\Candidate\CandidateType;
 use App\Domain\Eligibility\EligibilityOutcome;
 use App\Domain\Eligibility\EligibilityRule;
 use App\Domain\Eligibility\EvaluateEligibility;
+use App\Domain\Eligibility\RuleStatus;
 use App\Domain\Reference\NigerRegion;
 use App\Models\Application;
 use App\Models\ApplicationSectionAnswers;
@@ -69,6 +70,45 @@ final class EligibiliteCandidatTest extends TestCase
     private function urlEligibilite(Application $application): string
     {
         return "/candidate/application/{$application->getKey()}/eligibility";
+    }
+
+    /**
+     * Campagne dont les cinq règles sont explicitement configurées.
+     *
+     * Depuis la correction « configuration explicite », aucune règle n'a de
+     * valeur par défaut : c'est le seul état dans lequel un dossier peut
+     * devenir `ELIGIBLE`.
+     *
+     * @param  array<string, mixed>  $remplacements
+     * @return array<string, mixed>
+     */
+    private function reglesCompletes(array $remplacements = []): array
+    {
+        return [
+            'age' => ['min' => 18, 'max' => 35, 'reference_date' => now()->addMonths(2)->format('Y-m-d')],
+            'requires_niger_link' => true,
+            'regions' => array_map(static fn (NigerRegion $r): string => $r->value, NigerRegion::cases()),
+            'candidate_types' => array_map(static fn (CandidateType $t): string => $t->value, CandidateType::cases()),
+            'team_size' => ['min' => 2, 'max' => 10],
+            ...$remplacements,
+        ];
+    }
+
+    /**
+     * Les mêmes règles, moins celles nommées : sert à isoler l'effet d'un seul
+     * paramètre manquant.
+     *
+     * @return array<string, mixed>
+     */
+    private function reglesSauf(string ...$cles): array
+    {
+        $regles = $this->reglesCompletes();
+
+        foreach ($cles as $cle) {
+            unset($regles[$cle]);
+        }
+
+        return $regles;
     }
 
     /**
@@ -270,7 +310,7 @@ final class EligibiliteCandidatTest extends TestCase
     public function test_le_verdict_envoye_par_le_navigateur_est_ignore(): void
     {
         $candidat = $this->candidat();
-        $application = $this->brouillonDe($candidat, $this->campagne());
+        $application = $this->brouillonDe($candidat, $this->campagne($this->reglesCompletes()));
 
         // Requête forgée : le client affirme être éligible tout en répondant
         // qu'il n'a aucun lien avec le Niger.
@@ -292,12 +332,10 @@ final class EligibiliteCandidatTest extends TestCase
 
     // — Calcul du verdict ————————————————————————————————————————
 
-    public function test_un_dossier_conforme_est_eligible_quand_la_campagne_est_parametree(): void
+    public function test_un_dossier_conforme_est_eligible_quand_toutes_les_regles_sont_configurees(): void
     {
         $candidat = $this->candidat();
-        $campagne = $this->campagne([
-            'age' => ['min' => 18, 'max' => 35, 'reference_date' => now()->addMonths(2)->format('Y-m-d')],
-        ]);
+        $campagne = $this->campagne($this->reglesCompletes());
         $application = $this->brouillonDe($candidat, $campagne);
 
         $this->actingAs($candidat)
@@ -305,15 +343,122 @@ final class EligibiliteCandidatTest extends TestCase
             ->assertOk()
             ->assertJsonPath('eligibility.outcome', EligibilityOutcome::ELIGIBLE->value)
             ->assertJsonPath('eligibility.blocksNextSections', false);
+
+        // `ELIGIBLE` n'est atteint que si les cinq règles ont conclu.
+        foreach (EligibilityRule::cases() as $regle) {
+            $this->assertStatutDeRegle($application, $regle, RuleStatus::SATISFIED);
+        }
     }
 
-    public function test_sans_tranche_d_age_publiee_le_dossier_reste_a_confirmer(): void
+    /**
+     * Une campagne peut configurer une règle collective et rester cohérente
+     * pour un candidat individuel : l'effectif ne le concerne pas.
+     */
+    public function test_une_candidature_collective_conforme_est_eligible(): void
+    {
+        $candidat = $this->candidat();
+        $campagne = $this->campagne($this->reglesCompletes());
+        $application = $this->brouillonDe($candidat, $campagne);
+
+        $this->actingAs($candidat)
+            ->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
+                EligibilitySection::CANDIDATE_TYPE => CandidateType::TEAM->value,
+                EligibilitySection::TEAM_SIZE => 4,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('eligibility.outcome', EligibilityOutcome::ELIGIBLE->value);
+    }
+
+    // — Matrice : une règle non configurée ne conclut pas ————————————
+
+    /**
+     * @return array<string, array{string, EligibilityRule}>
+     */
+    public static function criteresNonConfigures(): array
+    {
+        return [
+            'age' => ['age', EligibilityRule::AGE],
+            'lien avec le Niger' => ['requires_niger_link', EligibilityRule::NATIONALITY_RESIDENCE],
+            'zones' => ['regions', EligibilityRule::ZONE],
+            'types de candidature' => ['candidate_types', EligibilityRule::CANDIDATE_TYPE],
+            'taille d equipe' => ['team_size', EligibilityRule::TEAM_SIZE],
+        ];
+    }
+
+    /**
+     * Le cœur de la correction : un critère que le comité de pilotage n'a pas
+     * arrêté ne devient pas une règle du concours parce que le logiciel aurait
+     * une opinion. Il ne conclut pas, et le dossier reste « à confirmer ».
+     */
+    #[DataProvider('criteresNonConfigures')]
+    public function test_un_critere_non_configure_laisse_le_dossier_a_confirmer(string $cleAbsente, EligibilityRule $regle): void
+    {
+        $candidat = $this->candidat();
+        $campagne = $this->campagne($this->reglesSauf($cleAbsente));
+        $application = $this->brouillonDe($candidat, $campagne);
+
+        // Réponses collectives : sans cela, la règle de taille d'équipe ne
+        // s'appliquerait pas et le cas `team_size` ne prouverait rien.
+        $this->actingAs($candidat)
+            ->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
+                EligibilitySection::CANDIDATE_TYPE => CandidateType::TEAM->value,
+                EligibilitySection::TEAM_SIZE => 4,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('eligibility.outcome', EligibilityOutcome::TO_CONFIRM->value)
+            ->assertJsonPath('eligibility.blocksNextSections', false);
+
+        $this->assertStatutDeRegle($application, $regle, RuleStatus::NOT_CONFIGURED);
+    }
+
+    #[DataProvider('criteresNonConfigures')]
+    public function test_un_critere_non_configure_est_explique_sans_jargon(string $cleAbsente, EligibilityRule $regle): void
+    {
+        $candidat = $this->candidat();
+        $campagne = $this->campagne($this->reglesSauf($cleAbsente));
+        $application = $this->brouillonDe($candidat, $campagne);
+
+        $reponse = $this->actingAs($candidat)->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
+            EligibilitySection::CANDIDATE_TYPE => CandidateType::TEAM->value,
+            EligibilitySection::TEAM_SIZE => 4,
+        ]))->assertOk();
+
+        $constat = collect($reponse->json('eligibility.findings'))
+            ->firstWhere('rule', $regle->value);
+
+        $this->assertStringContainsString('pas encore publiée', $constat['message']);
+        $this->assertStringContainsString('reste indicatif', $constat['message']);
+
+        // Aucune fuite de vocabulaire technique vers le candidat.
+        foreach (['NOT_CONFIGURED', 'settings', 'campaign', 'null'] as $jargon) {
+            $this->assertStringNotContainsStringIgnoringCase($jargon, $constat['message']);
+        }
+    }
+
+    public function test_un_seul_critere_manquant_suffit_a_empecher_le_resultat_eligible(): void
+    {
+        $candidat = $this->candidat();
+        // Quatre règles sur cinq configurées et satisfaites : le dossier ne
+        // doit pas pour autant être annoncé comme définitivement éligible.
+        $campagne = $this->campagne($this->reglesSauf('age'));
+        $application = $this->brouillonDe($candidat, $campagne);
+
+        $this->actingAs($candidat)
+            ->patchJson($this->urlEligibilite($application), $this->reponsesConformes())
+            ->assertOk()
+            ->assertJsonPath('eligibility.outcome', EligibilityOutcome::TO_CONFIRM->value);
+
+        $this->assertStatutDeRegle($application, EligibilityRule::NATIONALITY_RESIDENCE, RuleStatus::SATISFIED);
+        $this->assertStatutDeRegle($application, EligibilityRule::ZONE, RuleStatus::SATISFIED);
+        $this->assertStatutDeRegle($application, EligibilityRule::CANDIDATE_TYPE, RuleStatus::SATISFIED);
+        $this->assertStatutDeRegle($application, EligibilityRule::AGE, RuleStatus::NOT_CONFIGURED);
+    }
+
+    public function test_aucune_regle_configuree_ne_donne_jamais_eligible(): void
     {
         $candidat = $this->candidat();
         $application = $this->brouillonDe($candidat, $this->campagne());
 
-        // Le cahier des charges annonce la tranche d'âge comme paramétrable et
-        // non encore arrêtée : le serveur le dit au lieu de deviner un seuil.
         $this->actingAs($candidat)
             ->patchJson($this->urlEligibilite($application), $this->reponsesConformes())
             ->assertOk()
@@ -324,9 +469,9 @@ final class EligibiliteCandidatTest extends TestCase
     public function test_un_age_hors_tranche_rend_ineligible(): void
     {
         $candidat = $this->candidat();
-        $campagne = $this->campagne([
+        $campagne = $this->campagne($this->reglesCompletes([
             'age' => ['min' => 18, 'max' => 35, 'reference_date' => now()->format('Y-m-d')],
-        ]);
+        ]));
         $application = $this->brouillonDe($candidat, $campagne);
 
         $this->actingAs($candidat)
@@ -347,9 +492,9 @@ final class EligibiliteCandidatTest extends TestCase
         // cette dernière qui fait foi, sinon le verdict changerait tout seul
         // d'un jour à l'autre.
         $reference = now()->addMonths(6);
-        $campagne = $this->campagne([
+        $campagne = $this->campagne($this->reglesCompletes([
             'age' => ['min' => 18, 'max' => 35, 'reference_date' => $reference->format('Y-m-d')],
-        ]);
+        ]));
         $application = $this->brouillonDe($candidat, $campagne);
 
         $this->actingAs($candidat)
@@ -365,7 +510,8 @@ final class EligibiliteCandidatTest extends TestCase
     public function test_ni_nationalite_ni_residence_rend_ineligible(): void
     {
         $candidat = $this->candidat();
-        $application = $this->brouillonDe($candidat, $this->campagne());
+        // La condition n'existe que si la campagne l'a posée.
+        $application = $this->brouillonDe($candidat, $this->campagne($this->reglesCompletes()));
 
         $this->actingAs($candidat)
             ->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
@@ -394,7 +540,7 @@ final class EligibiliteCandidatTest extends TestCase
     public function test_la_nationalite_ou_la_residence_suffit(bool $nationalite, bool $residence): void
     {
         $candidat = $this->candidat();
-        $application = $this->brouillonDe($candidat, $this->campagne());
+        $application = $this->brouillonDe($candidat, $this->campagne($this->reglesCompletes()));
 
         $this->actingAs($candidat)
             ->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
@@ -402,13 +548,34 @@ final class EligibiliteCandidatTest extends TestCase
                 EligibilitySection::RESIDES_IN_NIGER => $residence,
             ]))
             ->assertOk()
-            ->assertJsonPath('eligibility.blocksNextSections', false);
+            ->assertJsonPath('eligibility.outcome', EligibilityOutcome::ELIGIBLE->value);
+
+        $this->assertStatutDeRegle($application, EligibilityRule::NATIONALITY_RESIDENCE, RuleStatus::SATISFIED);
+    }
+
+    public function test_une_campagne_peut_lever_la_condition_de_lien_avec_le_niger(): void
+    {
+        $candidat = $this->candidat();
+        $campagne = $this->campagne($this->reglesCompletes(['requires_niger_link' => false]));
+        $application = $this->brouillonDe($candidat, $campagne);
+
+        $this->actingAs($candidat)
+            ->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
+                EligibilitySection::NIGERIEN_NATIONAL => false,
+                EligibilitySection::RESIDES_IN_NIGER => false,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('eligibility.outcome', EligibilityOutcome::ELIGIBLE->value);
+
+        $this->assertStatutDeRegle($application, EligibilityRule::NATIONALITY_RESIDENCE, RuleStatus::SATISFIED);
     }
 
     public function test_une_zone_hors_campagne_rend_ineligible(): void
     {
         $candidat = $this->candidat();
-        $campagne = $this->campagne(['regions' => [NigerRegion::MARADI->value, NigerRegion::ZINDER->value]]);
+        $campagne = $this->campagne($this->reglesCompletes([
+            'regions' => [NigerRegion::MARADI->value, NigerRegion::ZINDER->value],
+        ]));
         $application = $this->brouillonDe($candidat, $campagne);
 
         $this->actingAs($candidat)
@@ -421,23 +588,47 @@ final class EligibiliteCandidatTest extends TestCase
         $this->assertBloquePar($application, EligibilityRule::ZONE);
     }
 
-    public function test_sans_liste_de_zones_toutes_les_regions_conviennent(): void
+    public function test_une_zone_ouverte_par_la_campagne_satisfait_la_regle(): void
     {
         $candidat = $this->candidat();
-        $application = $this->brouillonDe($candidat, $this->campagne());
+        $campagne = $this->campagne($this->reglesCompletes([
+            'regions' => [NigerRegion::DIFFA->value, NigerRegion::NIAMEY->value],
+        ]));
+        $application = $this->brouillonDe($candidat, $campagne);
 
         $this->actingAs($candidat)
             ->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
                 EligibilitySection::INTERVENTION_REGION => NigerRegion::DIFFA->value,
             ]))
             ->assertOk()
-            ->assertJsonPath('eligibility.blocksNextSections', false);
+            ->assertJsonPath('eligibility.outcome', EligibilityOutcome::ELIGIBLE->value);
+
+        $this->assertStatutDeRegle($application, EligibilityRule::ZONE, RuleStatus::SATISFIED);
+    }
+
+    /**
+     * Le référentiel des régions reste une règle de **validation** : il
+     * s'applique que la campagne ait publié ses zones ou non. Ne pas confondre
+     * « ce code désigne-t-il une région du Niger » et « cette campagne
+     * couvre-t-elle cette région ».
+     */
+    public function test_le_referentiel_des_regions_s_applique_meme_sans_zones_configurees(): void
+    {
+        $candidat = $this->candidat();
+        $application = $this->brouillonDe($candidat, $this->campagne());
+
+        $this->actingAs($candidat)
+            ->patchJson($this->urlEligibilite($application), [EligibilitySection::INTERVENTION_REGION => 'FR-75'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(EligibilitySection::INTERVENTION_REGION);
     }
 
     public function test_un_type_de_candidature_ecarte_par_la_campagne_rend_ineligible(): void
     {
         $candidat = $this->candidat();
-        $campagne = $this->campagne(['candidate_types' => [CandidateType::STARTUP->value]]);
+        $campagne = $this->campagne($this->reglesCompletes([
+            'candidate_types' => [CandidateType::STARTUP->value],
+        ]));
         $application = $this->brouillonDe($candidat, $campagne);
 
         $this->actingAs($candidat)
@@ -448,10 +639,27 @@ final class EligibiliteCandidatTest extends TestCase
         $this->assertBloquePar($application, EligibilityRule::CANDIDATE_TYPE);
     }
 
-    public function test_une_equipe_d_une_seule_personne_rend_ineligible(): void
+    public function test_un_type_de_candidature_accepte_par_la_campagne_satisfait_la_regle(): void
     {
         $candidat = $this->candidat();
-        $application = $this->brouillonDe($candidat, $this->campagne());
+        $campagne = $this->campagne($this->reglesCompletes([
+            'candidate_types' => [CandidateType::INDIVIDUAL->value],
+        ]));
+        $application = $this->brouillonDe($candidat, $campagne);
+
+        $this->actingAs($candidat)
+            ->patchJson($this->urlEligibilite($application), $this->reponsesConformes())
+            ->assertOk()
+            ->assertJsonPath('eligibility.outcome', EligibilityOutcome::ELIGIBLE->value);
+
+        $this->assertStatutDeRegle($application, EligibilityRule::CANDIDATE_TYPE, RuleStatus::SATISFIED);
+    }
+
+    public function test_un_effectif_sous_le_minimum_configure_rend_ineligible(): void
+    {
+        $candidat = $this->candidat();
+        $campagne = $this->campagne($this->reglesCompletes(['team_size' => ['min' => 2, 'max' => 10]]));
+        $application = $this->brouillonDe($candidat, $campagne);
 
         $this->actingAs($candidat)
             ->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
@@ -462,6 +670,65 @@ final class EligibiliteCandidatTest extends TestCase
             ->assertJsonPath('eligibility.outcome', EligibilityOutcome::INELIGIBLE->value);
 
         $this->assertBloquePar($application, EligibilityRule::TEAM_SIZE);
+    }
+
+    public function test_un_effectif_au_dessus_du_maximum_configure_rend_ineligible(): void
+    {
+        $candidat = $this->candidat();
+        $campagne = $this->campagne($this->reglesCompletes(['team_size' => ['min' => 2, 'max' => 5]]));
+        $application = $this->brouillonDe($candidat, $campagne);
+
+        $this->actingAs($candidat)
+            ->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
+                EligibilitySection::CANDIDATE_TYPE => CandidateType::TEAM->value,
+                EligibilitySection::TEAM_SIZE => 9,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('eligibility.outcome', EligibilityOutcome::INELIGIBLE->value);
+
+        $this->assertBloquePar($application, EligibilityRule::TEAM_SIZE);
+    }
+
+    /**
+     * Sans borne publiée, une équipe d'une seule personne n'est pas déclarée
+     * inéligible : « au moins deux » est une évidence, pas une décision du
+     * comité de pilotage. C'est précisément ce que cette correction interdit
+     * d'inventer.
+     */
+    public function test_une_equipe_d_une_personne_n_est_pas_bloquee_sans_regle_publiee(): void
+    {
+        $candidat = $this->candidat();
+        $application = $this->brouillonDe($candidat, $this->campagne($this->reglesSauf('team_size')));
+
+        $this->actingAs($candidat)
+            ->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
+                EligibilitySection::CANDIDATE_TYPE => CandidateType::TEAM->value,
+                EligibilitySection::TEAM_SIZE => 1,
+            ]))
+            ->assertOk()
+            ->assertJsonPath('eligibility.outcome', EligibilityOutcome::TO_CONFIRM->value)
+            ->assertJsonPath('eligibility.blocksNextSections', false);
+
+        $this->assertStatutDeRegle($application, EligibilityRule::TEAM_SIZE, RuleStatus::NOT_CONFIGURED);
+    }
+
+    /**
+     * « Non configuré » ne veut pas dire « tout est accepté » : la validation
+     * technique reste entière, indépendamment des règles métier.
+     */
+    public function test_un_effectif_incoherent_reste_refuse_meme_sans_regle_publiee(): void
+    {
+        $candidat = $this->candidat();
+        $application = $this->brouillonDe($candidat, $this->campagne($this->reglesSauf('team_size')));
+
+        foreach ([-15, 0, 1000] as $effectif) {
+            $this->actingAs($candidat)
+                ->patchJson($this->urlEligibilite($application), [EligibilitySection::TEAM_SIZE => $effectif])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors(EligibilitySection::TEAM_SIZE);
+        }
+
+        $this->assertSame(0, ApplicationSectionAnswers::query()->count());
     }
 
     public function test_une_candidature_individuelle_n_a_pas_d_effectif_a_declarer(): void
@@ -478,9 +745,9 @@ final class EligibiliteCandidatTest extends TestCase
     public function test_le_verdict_est_reproductible_a_partir_de_la_base(): void
     {
         $candidat = $this->candidat();
-        $campagne = $this->campagne([
+        $campagne = $this->campagne($this->reglesCompletes([
             'age' => ['min' => 18, 'max' => 35, 'reference_date' => now()->format('Y-m-d')],
-        ]);
+        ]));
         $application = $this->brouillonDe($candidat, $campagne);
 
         $this->actingAs($candidat)
@@ -509,10 +776,12 @@ final class EligibiliteCandidatTest extends TestCase
             ->assertOk()
             ->assertJsonPath('eligibility.blocksNextSections', false);
 
-        // Le comité restreint ensuite les zones : le verdict change sans qu'une
+        // Le comité publie ensuite les zones : le verdict change sans qu'une
         // seule réponse du candidat soit modifiée. C'est précisément ce qu'un
         // verdict figé en base ne saurait pas faire.
-        $campagne->forceFill(['settings' => ['eligibility' => ['regions' => [NigerRegion::NIAMEY->value]]]])->save();
+        $campagne->forceFill([
+            'settings' => ['eligibility' => $this->reglesCompletes(['regions' => [NigerRegion::NIAMEY->value]])],
+        ])->save();
 
         $this->actingAs($candidat)->get($this->urlEligibilite($application))
             ->assertOk()
@@ -525,7 +794,7 @@ final class EligibiliteCandidatTest extends TestCase
     public function test_un_candidat_non_eligible_conserve_ses_reponses(): void
     {
         $candidat = $this->candidat();
-        $application = $this->brouillonDe($candidat, $this->campagne());
+        $application = $this->brouillonDe($candidat, $this->campagne($this->reglesCompletes()));
         $reponses = $this->reponsesConformes([
             EligibilitySection::NIGERIEN_NATIONAL => false,
             EligibilitySection::RESIDES_IN_NIGER => false,
@@ -548,7 +817,7 @@ final class EligibiliteCandidatTest extends TestCase
     public function test_un_candidat_non_eligible_n_atteint_pas_la_section_suivante(): void
     {
         $candidat = $this->candidat();
-        $application = $this->brouillonDe($candidat, $this->campagne());
+        $application = $this->brouillonDe($candidat, $this->campagne($this->reglesCompletes()));
 
         $this->actingAs($candidat)->patchJson($this->urlEligibilite($application), $this->reponsesConformes([
             EligibilitySection::NIGERIEN_NATIONAL => false,
@@ -573,7 +842,7 @@ final class EligibiliteCandidatTest extends TestCase
     public function test_corriger_ses_reponses_rouvre_la_section_suivante(): void
     {
         $candidat = $this->candidat();
-        $application = $this->brouillonDe($candidat, $this->campagne());
+        $application = $this->brouillonDe($candidat, $this->campagne($this->reglesCompletes()));
         $url = $this->urlEligibilite($application);
 
         $this->actingAs($candidat)->patchJson($url, $this->reponsesConformes([
@@ -744,13 +1013,26 @@ final class EligibiliteCandidatTest extends TestCase
 
     private function assertBloquePar(Application $application, EligibilityRule $regle): void
     {
+        $this->assertStatutDeRegle($application, $regle, RuleStatus::BLOCKING);
+    }
+
+    /** Verdict d'une règle précise, recalculé depuis la base. */
+    private function assertStatutDeRegle(Application $application, EligibilityRule $regle, RuleStatus $attendu): void
+    {
         $verdict = app(EvaluateEligibility::class)->forApplication($application->fresh());
 
-        $bloquantes = array_map(
-            static fn ($constat): string => $constat->rule->value,
-            $verdict->blocking(),
-        );
+        foreach ($verdict->findings as $constat) {
+            if ($constat->rule === $regle) {
+                $this->assertSame(
+                    $attendu,
+                    $constat->status,
+                    "Règle {$regle->value} : {$constat->status->value} au lieu de {$attendu->value} — {$constat->message}",
+                );
 
-        $this->assertContains($regle->value, $bloquantes);
+                return;
+            }
+        }
+
+        $this->fail("Aucun verdict rendu pour la règle {$regle->value}.");
     }
 }

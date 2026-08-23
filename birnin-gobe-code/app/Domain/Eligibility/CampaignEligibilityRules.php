@@ -14,8 +14,13 @@ use DateTimeImmutable;
  * code** (§9.2 « Éligibilité : Âge et date de référence, nationalité/résidence,
  * zones, types de candidats, taille d'équipe, restrictions et motifs
  * d'exclusion ») et le comité de pilotage ne les a **pas encore arrêtées**
- * (§1.1, §18.3). Aucune tranche d'âge n'est donc codée ici : elle serait
- * inventée, et une valeur inventée finit par être prise pour une décision.
+ * (§1.1, §18.3).
+ *
+ * D'où la règle qui gouverne toute cette classe : **aucun paramètre absent n'a
+ * de valeur par défaut**. Chaque accesseur renvoie `null` — « non configuré » —
+ * et jamais une convention qui deviendrait, en pratique, une décision du
+ * comité prise par le logiciel. Ni tranche d'âge, ni liste de zones, ni
+ * effectif minimal d'équipe : voir ADR-007.
  *
  * Cette classe ne fait que **lire** la colonne `settings`, déjà castée en
  * tableau par le modèle `Campaign`. Elle ne modifie ni le modèle, ni la
@@ -41,11 +46,13 @@ final readonly class CampaignEligibilityRules
         public ?int $ageMin,
         public ?int $ageMax,
         public ?DateTimeImmutable $ageReferenceDate,
-        public bool $requiresNigerLink,
-        /** @var list<NigerRegion>|null Zones ouvertes ; `null` = aucune restriction. */
+        /** `null` = la campagne ne s'est pas prononcée sur le lien avec le Niger. */
+        public ?bool $requiresNigerLink,
+        /** @var list<NigerRegion>|null Zones ouvertes ; `null` = non configuré. */
         public ?array $regions,
-        /** @var list<CandidateType>|null Types acceptés ; `null` = les trois. */
+        /** @var list<CandidateType>|null Types acceptés ; `null` = non configuré. */
         public ?array $candidateTypes,
+        public ?int $teamSizeMin,
         public ?int $teamSizeMax,
     ) {}
 
@@ -61,14 +68,14 @@ final readonly class CampaignEligibilityRules
             ageMin: self::entier($age['min'] ?? null),
             ageMax: self::entier($age['max'] ?? null),
             ageReferenceDate: self::dateReference($age['reference_date'] ?? null, $campaign),
-            // Le lien avec le Niger est la seule condition que les sources
-            // affirment sans réserve : PIDUREM — Galey Ma Zaada mobilise
-            // « l'intelligence créative nigérienne » (§1) et la plateforme est
-            // le point d'entrée national de la compétition. Une campagne peut
-            // la lever explicitement ; elle est active par défaut.
-            requiresNigerLink: (bool) ($eligibility['requires_niger_link'] ?? true),
+            // Le caractère national du programme (§1) rend la condition de lien
+            // avec le Niger vraisemblable — pas officielle. Le §9.2 la range
+            // parmi les paramètres administrables : tant que la campagne ne
+            // l'a pas posée, la règle ne conclut pas.
+            requiresNigerLink: self::booleen($eligibility['requires_niger_link'] ?? null),
             regions: self::regions($eligibility['regions'] ?? null),
             candidateTypes: self::types($eligibility['candidate_types'] ?? null),
+            teamSizeMin: self::entier($taille['min'] ?? null),
             teamSizeMax: self::entier($taille['max'] ?? null),
         );
     }
@@ -80,19 +87,26 @@ final readonly class CampaignEligibilityRules
     }
 
     /**
-     * Effectif minimal d'une candidature collective.
+     * La règle d'effectif ne peut conclure que si la campagne a fixé une borne.
      *
-     * Deux personnes : ce n'est pas un seuil arbitraire mais la définition
-     * même d'une équipe. Une campagne peut exiger davantage, jamais moins.
+     * « Une équipe compte au moins deux personnes » paraît aller de soi. Le
+     * §9.2 range pourtant la taille d'équipe parmi les paramètres de campagne :
+     * l'écrire en dur en ferait un critère officiel que personne n'a arrêté.
      */
-    public function teamSizeMin(): int
+    public function hasTeamSizeRange(): bool
     {
-        return 2;
+        return $this->teamSizeMin !== null || $this->teamSizeMax !== null;
     }
 
     private static function entier(mixed $valeur): ?int
     {
         return is_int($valeur) || (is_string($valeur) && ctype_digit($valeur)) ? (int) $valeur : null;
+    }
+
+    /** Seul un booléen explicite compte : tout le reste vaut « non configuré ». */
+    private static function booleen(mixed $valeur): ?bool
+    {
+        return is_bool($valeur) ? $valeur : null;
     }
 
     /**
