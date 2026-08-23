@@ -4,6 +4,7 @@ namespace App\Http\Presenters;
 
 use App\Domain\Application\ApplicationSection;
 use App\Models\Application;
+use App\Models\ApplicationSectionAnswers;
 use App\Models\Campaign;
 
 /**
@@ -15,6 +16,12 @@ use App\Models\Campaign;
  *
  * Les dates partent en ISO 8601 et les libellés de statut viennent des enums :
  * le formatage local est fait par le navigateur, dans la langue du candidat.
+ *
+ * Y vivent aussi les trois briques que les écrans de section partageaient mot
+ * pour mot — `section()`, `navigation()` et `savedPayload()`. Elles ont été
+ * remontées ici à l'arrivée de la troisième section : ce sont les seules parties
+ * réellement identiques d'un écran à l'autre. Les champs, la validation et les
+ * règles métier restent dans leur section. Voir ADR-009.
  */
 final class ApplicationPresenter
 {
@@ -46,6 +53,9 @@ final class ApplicationPresenter
                     default => 'pending',
                 },
                 'implemented' => $section->isImplemented(),
+                // Distingue « développée » de « atteignable sans sauter
+                // d'étape » : l'écran doit pouvoir le signaler au candidat.
+                'onOpenPath' => $section->isOnOpenPath(),
             ],
             ApplicationSection::cases(),
         );
@@ -82,6 +92,63 @@ final class ApplicationPresenter
     }
 
     /**
+     * Entête d'un écran de section : ce que les trois écrans affichent à
+     * l'identique, au-dessus du formulaire.
+     *
+     * @return array{key: string, label: string, position: int, total: int, completedAt: string|null}
+     */
+    public function section(ApplicationSection $section, ?ApplicationSectionAnswers $reponses): array
+    {
+        return [
+            'key' => $section->value,
+            'label' => $section->label(),
+            'position' => $section->position(),
+            'total' => ApplicationSection::total(),
+            'completedAt' => $reponses?->completed_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Boutons « Précédent » et « Suivant » d'une section.
+     *
+     * Calculés au même endroit pour les trois écrans : c'est la seule façon
+     * d'être sûr que le parcours annoncé au candidat est le même partout.
+     * `nextUrl` vaut `null` quand le parcours s'arrête — l'écran le dit alors,
+     * plutôt que de proposer un lien vers une étape qui n'existe pas.
+     *
+     * @return array{previousUrl: string|null, nextUrl: string|null}
+     */
+    public function navigation(Application $application, ApplicationSection $section): array
+    {
+        $precedente = $section->previousImplemented();
+        $suivante = $section->nextOnOpenPath();
+
+        return [
+            'previousUrl' => $precedente === null ? null : $this->sectionUrl($application, $precedente),
+            'nextUrl' => $suivante === null ? null : $this->sectionUrl($application, $suivante),
+        ];
+    }
+
+    /**
+     * Corps de réponse d'une sauvegarde automatique.
+     *
+     * Identique pour les trois sections : l'horodatage confirmé par le serveur,
+     * l'état du dossier et l'avancement recalculé. Une section qui a davantage
+     * à dire — l'éligibilité y joint son verdict — complète ce tableau.
+     *
+     * @return array{savedAt: string|null, application: array<string, mixed>, steps: array<int, mixed>, completed: bool}
+     */
+    public function savedPayload(Application $application, bool $completed): array
+    {
+        return [
+            'savedAt' => $application->updated_at?->toIso8601String(),
+            'application' => $this->summary($application),
+            'steps' => $this->steps($application),
+            'completed' => $completed,
+        ];
+    }
+
+    /**
      * @return array{name: string, code: string, closesAt: string|null, daysLeft: int|null}
      */
     public function campaign(Campaign $campaign): array
@@ -107,6 +174,7 @@ final class ApplicationPresenter
 
         return match ($cible) {
             ApplicationSection::ELIGIBILITY => route('candidate.application.eligibility', $application),
+            ApplicationSection::PROFILE => route('candidate.application.profile', $application),
             ApplicationSection::CHALLENGE => route('candidate.application.challenge', $application),
             default => null,
         };

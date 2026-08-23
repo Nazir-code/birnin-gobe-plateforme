@@ -43,19 +43,13 @@ final class EligibilitySectionController
         return Inertia::render('Candidate/Application/Eligibility', [
             'application' => $presenter->summary($application),
             'steps' => $presenter->steps($application),
-            'section' => [
-                'key' => $section->value,
-                'label' => $section->label(),
-                'position' => $section->position(),
-                'total' => ApplicationSection::total(),
-                'completedAt' => $reponses?->completed_at?->toIso8601String(),
-            ],
+            'section' => $presenter->section($section, $reponses),
             'answers' => $this->reponses($reponses?->answers ?? []),
             'regions' => NigerRegion::options(),
             'candidateTypes' => CandidateType::options(),
             'eligibility' => $evaluer->forApplication($application)->toArray(),
             'saveUrl' => route('candidate.application.eligibility.update', $application),
-            'nextUrl' => $presenter->sectionUrl($application, ApplicationSection::CHALLENGE),
+            ...$presenter->navigation($application, $section),
         ]);
     }
 
@@ -80,10 +74,7 @@ final class EligibilitySectionController
         // repart, elle, sur un cycle de navigation.
         if ($request->expectsJson() && ! $request->hasHeader('X-Inertia')) {
             return response()->json([
-                'savedAt' => $application->updated_at?->toIso8601String(),
-                'application' => $presenter->summary($application),
-                'steps' => $presenter->steps($application),
-                'completed' => EligibilitySection::isComplete($answers),
+                ...$presenter->savedPayload($application, EligibilitySection::isComplete($answers)),
                 // Recalculé à partir de ce qui vient d'être écrit : le verdict
                 // affiché correspond toujours à l'état réel de la base.
                 'eligibility' => $evaluer->forApplication($application)->toArray(),

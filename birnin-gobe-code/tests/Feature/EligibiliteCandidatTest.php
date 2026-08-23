@@ -881,6 +881,10 @@ final class EligibiliteCandidatTest extends TestCase
         $uneSurNeuf = (int) round(1 / ApplicationSection::total() * 100);
         $this->assertSame($uneSurNeuf, (int) $application->fresh()->completion_percent);
 
+        // Remplir « Défi » ne fait plus avancer la progression depuis la
+        // Phase 1E : la section est développée mais se trouve derrière l'étape 3,
+        // qui ne l'est pas. Les réponses sont conservées et reprendront leur
+        // place à son ouverture — voir ProfilCandidatTest.
         $this->actingAs($candidat)->patchJson("/candidate/application/{$application->getKey()}/challenge", [
             'main_challenge' => 'L’accès à l’eau potable en périphérie.',
             'affected_people' => 'Les ménages non raccordés au réseau.',
@@ -888,8 +892,7 @@ final class EligibiliteCandidatTest extends TestCase
             'root_causes' => 'Une extension urbaine plus rapide que le réseau.',
         ])->assertOk();
 
-        $deuxSurNeuf = (int) round(2 / ApplicationSection::total() * 100);
-        $this->assertSame($deuxSurNeuf, (int) $application->fresh()->completion_percent);
+        $this->assertSame($uneSurNeuf, (int) $application->fresh()->completion_percent);
     }
 
     public function test_une_section_ouverte_mais_incomplete_ne_compte_pas(): void

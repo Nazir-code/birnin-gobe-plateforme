@@ -33,9 +33,10 @@ type Props = {
   maxLength: number;
   saveUrl: string;
   previousUrl: string | null;
+  nextUrl: string | null;
 };
 
-export default function Challenge({ steps, section, answers, regions, maxLength, saveUrl, previousUrl }: Props) {
+export default function Challenge({ steps, section, answers, regions, maxLength, saveUrl, previousUrl, nextUrl }: Props) {
   const user = useAuthUser();
   const [values, setValues] = useState<Answers>({
     main_challenge: answers.main_challenge ?? '',
@@ -94,10 +95,17 @@ export default function Challenge({ steps, section, answers, regions, maxLength,
                     ) : null}
                     <Button variant="ghost" type="button" onClick={flush}><Save size={17}/> Enregistrer</Button>
                   </div>
-                  {/* Les sections suivantes ne sont pas encore developpees : un
+                  {/* Cette section a ete developpee avant l'etape 3 : elle vit
+                      hors du parcours propose, et rien ne la suit encore. Un
                       bouton qui ne mene nulle part vaut moins qu'un bouton qui
                       dit pourquoi il est inactif. */}
-                  <Button variant="secondary" className="min-w-44" disabled title="Les étapes suivantes seront ouvertes dans une prochaine version.">Suivant <span aria-hidden>→</span></Button>
+                  {nextUrl ? (
+                    <Link href={nextUrl} onClick={flush} className="focus-ring press-feedback inline-flex min-h-11 min-w-44 items-center justify-center gap-2 rounded-xl bg-gold-500 px-5 text-sm font-bold text-ink-950 transition-colors hover:bg-gold-600" data-testid="suivant">
+                      Suivant <span aria-hidden>→</span>
+                    </Link>
+                  ) : (
+                    <Button variant="secondary" className="min-w-44" disabled title="L’étape suivante n’est pas encore ouverte.">Suivant <span aria-hidden>→</span></Button>
+                  )}
                 </div>
               </Card></Reveal>
               <Reveal delay={100}><Card className="self-start border-amber-200 bg-[#fffdf5] p-6">

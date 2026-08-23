@@ -371,11 +371,17 @@ final class CandidatureCandidatTest extends TestCase
             ->patchJson("/candidate/application/{$application->getKey()}/challenge", $this->reponsesCompletes())
             ->assertOk();
 
-        // Une section sur neuf. Pas 65 % : la valeur affichée doit être celle
-        // que le backend sait démontrer.
-        $attendu = (int) round(1 / ApplicationSection::total() * 100);
+        // Depuis la Phase 1E, « Défi » se trouve derrière une étape non encore
+        // développée : la section est enregistrée et achevée, mais elle ne fait
+        // pas avancer un parcours qui reste fermé à l'étape 3. Ni 65 %, ni un
+        // neuvième : la valeur affichée est celle que le backend sait démontrer.
+        // Le détail de cette règle est couvert par ProfilCandidatTest.
+        $this->assertSame(0, (int) $application->fresh()->completion_percent);
 
-        $this->assertSame($attendu, (int) $application->fresh()->completion_percent);
+        $this->assertNotNull(
+            ApplicationSectionAnswers::query()->sole()->completed_at,
+            'La section reste achevée : c’est la progression qui attend, pas la saisie qui disparaît.',
+        );
     }
 
     public function test_current_step_persiste_apres_sauvegarde(): void

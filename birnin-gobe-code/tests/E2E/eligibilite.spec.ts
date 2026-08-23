@@ -116,8 +116,9 @@ test.describe('Étape 1 — Éligibilité', () => {
     await remplirLEligibilite(page);
     await expect(page.getByTestId('etat-sauvegarde').first()).toContainText('Enregistré', { timeout: 15_000 });
 
+    // L'etape suivante dans l'ordre du concours est « Profil » (etape 2).
     await page.getByTestId('suivant').click();
-    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/profile$/);
 
     // Et l'on revient en arriere sans rien perdre.
     await page.getByTestId('precedent').click();
@@ -153,7 +154,7 @@ test.describe('Étape 1 — Éligibilité', () => {
     // — Rien ne bloque : le parcours continue
     await expect(page.getByTestId('suivant')).toBeVisible();
     await page.getByTestId('suivant').click();
-    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/profile$/);
   });
 
   test('l’effectif reste validé par le serveur même sans règle publiée', async ({ page }) => {
