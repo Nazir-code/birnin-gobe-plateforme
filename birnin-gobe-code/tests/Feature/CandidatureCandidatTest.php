@@ -142,7 +142,10 @@ final class CandidatureCandidatTest extends TestCase
         $premiere = $this->campagneOuverte();
         $this->brouillonDe($candidat, $premiere);
 
-        $seconde = Campaign::factory()->create();
+        // En préparation, et non ouverte : une seule campagne peut porter le
+        // statut OPEN (ADR-008). Ce que ce test vérifie — un même candidat peut
+        // avoir un dossier dans deux campagnes — n'en dépend pas.
+        $seconde = Campaign::factory()->draft()->create();
         Application::factory()->create([
             'candidate_id' => $candidat->getKey(),
             'campaign_id' => $seconde->getKey(),
