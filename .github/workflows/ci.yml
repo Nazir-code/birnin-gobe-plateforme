@@ -3,6 +3,14 @@ on:
   push:
   pull_request:
 
+# Le workflow doit vivre a la racine Git pour que GitHub le detecte, mais
+# l'application, elle, est dans birnin-gobe-code/. `defaults` ne s'applique
+# qu'aux etapes `run:` — les actions `uses:` qui touchent au systeme de
+# fichiers recoivent leur chemin explicitement, plus bas.
+defaults:
+  run:
+    working-directory: birnin-gobe-code
+
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -28,9 +36,29 @@ jobs:
           php-version: '8.4'
           extensions: intl, pdo_pgsql, redis, bcmath
       - uses: ramsey/composer-install@v3
+        with:
+          working-directory: birnin-gobe-code
+
+      # Les vues rendues par les tests passent par `@vite`, qui lit le
+      # manifeste produit par la construction. Sans lui, toute reponse Inertia
+      # leve « Vite manifest not found » — le job backend construit donc les
+      # assets dont ses propres tests dependent.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: birnin-gobe-code/package-lock.json
+      - name: Assets attendus par les vues
+        run: npm ci && npm run build
 
       - name: Style de code
         run: vendor/bin/pint --test app/Console app/Domain app/Http app/Models app/Policies app/Providers database/factories database/seeders tests/Feature
+
+      # Aucun `.env` n'est versionne, et `phpunit.xml` ne porte pas de cle :
+      # sans APP_KEY, le chiffrement de session fait echouer toute la suite.
+      # Une cle jetable, propre au run, plutot qu'une valeur en dur au depot.
+      - name: Cle applicative du run
+        run: php -r "echo 'APP_KEY=base64:'.base64_encode(random_bytes(32)).PHP_EOL;" >> "$GITHUB_ENV"
 
       - name: Tests
         env:
@@ -50,6 +78,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+          cache-dependency-path: birnin-gobe-code/package-lock.json
       # `npm ci` installe exactement le verrou, là où `npm install` peut le
       # contourner — même exigence que le Dockerfile.
       - run: npm ci
