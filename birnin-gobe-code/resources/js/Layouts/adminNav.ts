@@ -16,7 +16,7 @@ export const adminNav: DarkNavItem[] = [
   { icon: Gauge, label: 'Tableau de bord', href: '/admin/dashboard' },
   { icon: CalendarRange, label: 'Campagnes', href: '/admin/campaigns' },
   { icon: Layers3, label: 'Files de vérification' },
-  { icon: FolderKanban, label: 'Dossiers' },
+  { icon: FolderKanban, label: 'Candidatures', href: '/admin/applications' },
   { icon: UsersRound, label: 'Évaluateurs' },
   { icon: BarChart3, label: 'Indicateurs' },
   { icon: Bell, label: 'Alertes' },

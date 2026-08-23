@@ -13,6 +13,8 @@
 | Campagnes — liste | `/admin/campaigns` | `resources/js/Pages/Admin/Campaigns/Index.tsx` (ADR-008) |
 | Campagnes — identité et calendrier | `/admin/campaigns/{campaign}/edit` | `resources/js/Pages/Admin/Campaigns/Form.tsx` (ADR-008) |
 | Campagnes — critères d'éligibilité | `/admin/campaigns/{campaign}/eligibility` | `resources/js/Pages/Admin/Campaigns/Eligibility.tsx` (ADR-010) |
+| Candidatures — liste | `/admin/applications` | `resources/js/Pages/Admin/Applications/Index.tsx` |
+| Candidatures — détail (lecture seule) | `/admin/applications/{application}` | `resources/js/Pages/Admin/Applications/Show.tsx` |
 | Évaluation / jury | `/evaluator/assignments` | `resources/js/Pages/Evaluator/Assignments.tsx` |
 
 ## Règle de fidélité
