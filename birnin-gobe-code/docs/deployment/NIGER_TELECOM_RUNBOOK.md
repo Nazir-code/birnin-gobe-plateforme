@@ -52,6 +52,30 @@ docker compose up -d
 docker compose ps
 ```
 
+### Premier compte administrateur
+
+Le back-office est protégé par `auth` + `role:admin`, et **aucun formulaire
+public ne crée de compte interne** : sans cette étape, `/admin` reste
+inatteignable. Le seul chemin est la ligne de commande (ADR-006) :
+
+```bash
+docker compose run --rm app php artisan admin:create
+# invites : nom complet, adresse e-mail, mot de passe masqué + confirmation
+```
+
+Le mot de passe ne doit **jamais** être passé en argument : il finirait dans
+l'historique du shell et dans la table des processus de la machine. Pour un
+provisionnement scripté, le lire sur l'entrée standard :
+
+```bash
+printf '%s' "$MDP_ADMIN" | docker compose run --rm -T app \
+  php artisan admin:create --name="…" --email="…" --password-stdin
+```
+
+La connexion interne est ensuite sur `/admin/login`, volontairement absente de
+toute navigation publique ou candidate (ADR-003). Les rôles évaluateur et jury
+n'ont pas encore de provisionnement.
+
 Vérifier ensuite les points de contrôle du §6.
 
 ### Exposition réseau
@@ -109,7 +133,7 @@ par messagerie.**
 
 | Variable | Défaut du code | Recommandation |
 |---|---|---|
-| `SESSION_DRIVER` | `file` | `redis` — voir handoff §6 |
+| `SESSION_DRIVER` | `database`, et **présent** dans `.env.example` depuis ADR-004 | convient en l’état ; `redis` reste une option, un simple changement de valeur |
 | `SESSION_SECURE_COOKIE` | non défini | `true` dès que HTTPS est en place |
 | `SESSION_LIFETIME` | `120` | selon besoin |
 | `SESSION_COOKIE` | `birnin_gobe_session` | |
@@ -218,8 +242,9 @@ Survivent à `docker compose down` et au redémarrage du serveur :
 `postgres_data`, `redis_data`, `minio_data`, `clamav_data`, `caddy_data`,
 `caddy_config`.
 
-**Ne survivent pas** : `storage/` de l'application — logs Laravel et sessions
-(`SESSION_DRIVER=file`). Voir handoff §10, actions 3 et 5.
+**Ne survivent pas** : `storage/` de l'application — logs Laravel. Les sessions
+n'y sont plus depuis ADR-004 : avec `SESSION_DRIVER=database` elles vivent dans
+la table `sessions` de PostgreSQL, donc persistées avec la base.
 
 > **`docker compose down -v` détruit tous les volumes, base de données
 > comprise.** Ne jamais l'utiliser sur un environnement contenant des données à
