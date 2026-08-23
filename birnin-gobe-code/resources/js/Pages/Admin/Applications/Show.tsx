@@ -35,6 +35,31 @@ type Section = {
   completedAt: string | null;
   answeredCount: number;
   fields: Champ[];
+  members: Membre[] | null;
+  team: SyntheseEquipe | null;
+};
+
+/** Fiche d'un membre d'equipe, en lecture seule. */
+type Membre = {
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
+  skills: string;
+  availability: string;
+  founder: boolean;
+  consent: boolean;
+};
+
+/** Verdict de l'etape 3, rendu par le domaine — jamais recalcule ici. */
+type SyntheseEquipe = {
+  complete: boolean;
+  type: string | null;
+  typeLabel: string | null;
+  declaredSize: number | null;
+  describedSize: number;
+  sizeMismatch: boolean;
+  missing: string[];
 };
 
 type Props = {
@@ -210,13 +235,15 @@ export default function ApplicationShow({ application, backUrl }: Props) {
                   </span>
                 </div>
 
+                {section.team ? <Equipe synthese={section.team} membres={section.members ?? []} /> : null}
+
                 {section.fields.length > 0 ? (
                   <dl className="mt-3 grid gap-3 sm:grid-cols-2">
                     {section.fields.map((champ) => (
                       <Donnee key={champ.label} libelle={champ.label} valeur={champ.value} />
                     ))}
                   </dl>
-                ) : (
+                ) : section.team ? null : (
                   <p className="mt-1.5 text-xs leading-5 text-slate-500">
                     {section.answeredCount > 0
                       ? `${section.answeredCount} réponse${section.answeredCount > 1 ? 's' : ''} enregistrée${section.answeredCount > 1 ? 's' : ''}.`
@@ -238,6 +265,77 @@ export default function ApplicationShow({ application, backUrl }: Props) {
         </Card>
       </div>
     </DarkSidebarLayout>
+  );
+}
+
+/**
+ * L'etape 3 vue par l'administration : forme de candidature, effectifs, membres.
+ *
+ * Tout vient du serveur — `TeamSectionAssessment` pour la synthese, les
+ * reponses pour les fiches. Rien n'est recalcule ici, et rien n'est modifiable.
+ *
+ * Une candidature individuelle n'a ni structure ni membres : l'ecran le dit
+ * plutot que d'afficher une equipe vide qui se lirait comme une donnee
+ * manquante.
+ */
+function Equipe({ synthese, membres }: { synthese: SyntheseEquipe; membres: Membre[] }) {
+  return (
+    <div className="mt-3" data-testid="structure-equipe">
+      <dl className="grid gap-3 sm:grid-cols-3">
+        <Donnee libelle="Forme de candidature" valeur={synthese.typeLabel ?? '—'} />
+        <Donnee
+          libelle="Effectif déclaré (étape 1)"
+          valeur={synthese.declaredSize === null ? '—' : `${synthese.declaredSize}`}
+        />
+        <Donnee libelle="Effectif décrit ici" valeur={`${synthese.describedSize}`} />
+      </dl>
+
+      {synthese.sizeMismatch ? (
+        <p className="mt-2 text-xs font-semibold text-amber-700" data-testid="ecart-effectif">
+          L’effectif déclaré à l’étape 1 et le nombre de membres décrits ici ne coïncident pas.
+        </p>
+      ) : null}
+
+      {membres.length > 0 ? (
+        <ul className="mt-3 grid gap-2" data-testid="membres-equipe">
+          {membres.map((membre, index) => (
+            <li key={`${membre.name}-${index}`} className="rounded-xl border border-slate-200 bg-white p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-bold text-slate-800">{membre.name || '—'}</span>
+                {membre.role ? <span className="text-xs text-slate-500">{membre.role}</span> : null}
+                {membre.founder ? <Pill tone="gold">Fondateur</Pill> : null}
+                <Pill tone={membre.consent ? 'green' : 'red'}>
+                  {membre.consent ? 'Consentement donné' : 'Consentement manquant'}
+                </Pill>
+              </div>
+              <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+                {membre.email ? <Donnee libelle="Adresse e-mail" valeur={membre.email} /> : null}
+                {membre.phone ? <Donnee libelle="Téléphone" valeur={membre.phone} /> : null}
+                {membre.skills ? <Donnee libelle="Compétences" valeur={membre.skills} /> : null}
+                {membre.availability ? <Donnee libelle="Disponibilité" valeur={membre.availability} /> : null}
+              </dl>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs leading-5 text-slate-500" data-testid="aucun-membre">
+          {synthese.type === 'INDIVIDUAL'
+            ? 'Candidature individuelle : aucun membre à déclarer.'
+            : 'Aucun membre décrit pour l’instant.'}
+        </p>
+      )}
+
+      {synthese.missing.length > 0 ? (
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3" data-testid="manques-equipe">
+          <p className="text-xs font-bold text-amber-800">Ce qui manque à cette étape</p>
+          <ul className="mt-1 list-disc pl-5 text-xs leading-5 text-amber-900">
+            {synthese.missing.map((motif) => (
+              <li key={motif}>{motif}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

@@ -588,7 +588,14 @@ final class AdministrationCandidaturesTest extends TestCase
                 ->where('application.sections.0.state', 'complete')
                 ->where('application.sections.1.key', ApplicationSection::PROFILE->value)
                 ->where('application.sections.1.state', 'incomplete')
-                ->where('application.sections.2.state', 'non-implementee'));
+                // L'etape 3 est developpee depuis l'ouverture de « Structure /
+                // equipe » : ce dossier ne l'a simplement pas commencee.
+                ->where('application.sections.2.key', ApplicationSection::TEAM->value)
+                ->where('application.sections.2.state', 'non-commencee')
+                ->where('application.sections.2.implemented', true)
+                // La premiere etape encore fermee est desormais la cinquieme.
+                ->where('application.sections.4.key', ApplicationSection::SOLUTION->value)
+                ->where('application.sections.4.state', 'non-implementee'));
     }
 
     /** Les réponses sortent en couples lisibles, jamais en JSON brut. */
@@ -696,7 +703,7 @@ final class AdministrationCandidaturesTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        $attendu = ApplicationProgress::forApplication($dossier->fresh());
+        $attendu = app(ApplicationProgress::class)->percent($dossier->fresh());
 
         $this->actingAs($this->admin())
             ->get('/admin/applications')
@@ -713,18 +720,26 @@ final class AdministrationCandidaturesTest extends TestCase
     }
 
     /**
-     * Une section développée mais hors du parcours ouvert ne gonfle pas le
-     * pourcentage — côté administration comme côté candidat (ADR-009).
+     * Une section hors du parcours ouvert ne gonfle pas le pourcentage — côté
+     * administration comme côté candidat (ADR-009).
+     *
+     * L'exemple a changé de section, et cela dit l'essentiel de cette
+     * intégration : « Défi » servait de contre-exemple tant que l'étape 3
+     * n'existait pas. Depuis qu'elle existe, « Défi » est **dans** le parcours
+     * et compte. Le contre-exemple est donc désormais une étape encore fermée —
+     * « Solution », la cinquième — dont des réponses ne doivent rien ajouter.
      */
     public function test_une_section_hors_parcours_ne_gonfle_pas_la_progression(): void
     {
         $campagne = $this->campagne(ouverte: true);
         $dossier = Application::factory()->for($campagne)->for(User::factory(), 'candidate')->create();
         $dossier->sections()->create([
-            'section' => ApplicationSection::CHALLENGE->value,
-            'answers' => ['main_challenge' => 'Accès à l’eau'],
+            'section' => ApplicationSection::SOLUTION->value,
+            'answers' => ['esquisse' => 'Forage solaire'],
             'completed_at' => now(),
         ]);
+
+        $this->assertFalse(ApplicationSection::SOLUTION->isOnOpenPath());
 
         $this->actingAs($this->admin())
             ->get('/admin/applications')

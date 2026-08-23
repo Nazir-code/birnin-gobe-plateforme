@@ -54,6 +54,8 @@ Application : `http://localhost:8080`
 - `/candidate/dashboard` — données de candidature lues en base (ADR-005)
 - `/candidate/application` — redirige vers la section en cours du dossier
 - `/candidate/application/{application}/eligibility` — étape 1 « Éligibilité », persistée (ADR-007)
+- `/candidate/application/{application}/profile` — étape 2 « Profil », persistée
+- `/candidate/application/{application}/team` — étape 3 « Structure / équipe », persistée (ADR-011)
 - `/candidate/application/{application}/challenge` — étape 4 « Défi », persistée
 - `/admin/dashboard`
 - `/admin/campaigns` — administration des éditions (ADR-008)

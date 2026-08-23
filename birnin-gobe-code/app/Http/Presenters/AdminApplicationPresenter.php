@@ -7,6 +7,8 @@ use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ChallengeSection;
 use App\Domain\Application\EligibilitySection;
 use App\Domain\Application\ProfileSection;
+use App\Domain\Application\TeamSection;
+use App\Domain\Application\TeamSectionAssessment;
 use App\Domain\Candidate\CandidateType;
 use App\Domain\Candidate\EducationLevel;
 use App\Domain\Candidate\Gender;
@@ -164,10 +166,10 @@ final class AdminApplicationPresenter
     /**
      * Les neuf sections, dans l'ordre du concours, avec l'état de chacune.
      *
-     * La boucle porte sur `ApplicationSection::cases()` : la section que
-     * « Structure / équipe » ajoutera apparaîtra ici sans que rien ne change,
-     * avec son état et son nombre de réponses. Ses libellés de champs, eux,
-     * viendront avec elle — on ne les devine pas.
+     * La boucle porte sur `ApplicationSection::cases()` : « Structure / équipe »
+     * y est apparue d'elle-même à l'ouverture de l'étape 3, avec son état et son
+     * nombre de réponses. Seuls ses libellés de champs ont dû être ajoutés — ils
+     * ne se devinent pas, ils viennent avec la section.
      *
      * @return list<array<string, mixed>>
      */
@@ -191,6 +193,12 @@ final class AdminApplicationPresenter
                 'completedAt' => $ligne?->completed_at?->toIso8601String(),
                 'answeredCount' => $renseignees,
                 'fields' => $this->champs($section, $reponses),
+                // Deux clés propres à « Structure / équipe » : les membres se
+                // présentent en fiches, pas en couples libellé/valeur, et la
+                // synthèse vient du domaine — l'administration ne réévalue pas
+                // la complétude de cette section.
+                'members' => $section === ApplicationSection::TEAM ? $this->membres($reponses) : null,
+                'team' => $section === ApplicationSection::TEAM ? $this->syntheseEquipe($application, $reponses) : null,
             ];
         }, ApplicationSection::cases());
     }
@@ -229,6 +237,7 @@ final class AdminApplicationPresenter
             ApplicationSection::ELIGIBILITY => $this->champsEligibilite($reponses),
             ApplicationSection::PROFILE => $this->champsProfil($reponses),
             ApplicationSection::CHALLENGE => $this->champsDefi($reponses),
+            ApplicationSection::TEAM => $this->champsStructure($reponses),
             // Section ajoutée par une phase ultérieure : son état et son nombre
             // de réponses sont dits, ses champs attendent leurs libellés.
             default => [],
@@ -275,6 +284,86 @@ final class AdminApplicationPresenter
             ['label' => 'Spécialité', 'value' => $this->texte($r[ProfileSection::SPECIALTY] ?? null)],
             ['label' => 'Besoin d’accessibilité', 'value' => $this->texte($r[ProfileSection::ACCESSIBILITY_NEED] ?? null)],
         ];
+    }
+
+    /**
+     * Identité de la structure, pour une candidature « Startup ».
+     *
+     * Les clés sont celles de `TeamSection`, pas des noms reconstitués : les
+     * inventer aurait produit des libellés qui ne correspondent à rien.
+     * « Équipe » et « Candidature individuelle » n'ont pas de structure —
+     * `champs()` rend alors une liste vide et l'écran ne montre pas de cadre
+     * juridique fantôme.
+     *
+     * @param  array<string, mixed>  $r
+     * @return list<array{label: string, value: string}>
+     */
+    private function champsStructure(array $r): array
+    {
+        return [
+            ['label' => 'Dénomination', 'value' => $this->texte($r[TeamSection::STRUCTURE_NAME] ?? null)],
+            ['label' => 'Sigle', 'value' => $this->texte($r[TeamSection::STRUCTURE_ACRONYM] ?? null)],
+            ['label' => 'Année de création', 'value' => $this->texte($r[TeamSection::STRUCTURE_FOUNDED_YEAR] ?? null)],
+            ['label' => 'Secteur d’activité', 'value' => $this->texte($r[TeamSection::STRUCTURE_SECTOR] ?? null)],
+            ['label' => 'Adresse', 'value' => $this->texte($r[TeamSection::STRUCTURE_ADDRESS] ?? null)],
+            ['label' => 'RCCM', 'value' => $this->texte($r[TeamSection::STRUCTURE_RCCM] ?? null)],
+            ['label' => 'NIF', 'value' => $this->texte($r[TeamSection::STRUCTURE_NIF] ?? null)],
+            ['label' => 'Site web', 'value' => $this->texte($r[TeamSection::STRUCTURE_WEBSITE] ?? null)],
+            ['label' => 'Réseaux sociaux', 'value' => $this->texte($r[TeamSection::STRUCTURE_SOCIAL] ?? null)],
+        ];
+    }
+
+    /**
+     * Les membres de l'équipe, en fiches plutôt qu'en couples.
+     *
+     * Une candidature individuelle n'en a aucun : la liste ressort vide, et
+     * l'écran n'affiche pas d'équipe fictive. Le porteur principal n'y figure
+     * pas non plus — son identité vit dans le compte et dans « Profil », et le
+     * répéter ici en ferait un second exemplaire à maintenir.
+     *
+     * @param  array<string, mixed>  $r
+     * @return list<array<string, mixed>>
+     */
+    private function membres(array $r): array
+    {
+        $membres = is_array($r[TeamSection::MEMBERS] ?? null) ? array_values($r[TeamSection::MEMBERS]) : [];
+
+        return array_values(array_map(function (mixed $membre): array {
+            $membre = is_array($membre) ? $membre : [];
+
+            return [
+                'name' => $this->texte($membre[TeamSection::MEMBER_NAME] ?? null),
+                'role' => $this->texte($membre[TeamSection::MEMBER_ROLE] ?? null),
+                'email' => $this->texte($membre[TeamSection::MEMBER_EMAIL] ?? null),
+                'phone' => $this->texte($membre[TeamSection::MEMBER_PHONE] ?? null),
+                'skills' => $this->texte($membre[TeamSection::MEMBER_SKILLS] ?? null),
+                'availability' => $this->texte($membre[TeamSection::MEMBER_AVAILABILITY] ?? null),
+                'founder' => ($membre[TeamSection::MEMBER_IS_FOUNDER] ?? false) === true,
+                // Le consentement est une exigence du §6.2 : il est montré tel
+                // qu'il a été donné, jamais supposé acquis.
+                'consent' => ($membre[TeamSection::MEMBER_CONSENT] ?? false) === true,
+            ];
+        }, $membres));
+    }
+
+    /**
+     * Synthèse de l'étape 3, rendue par le domaine.
+     *
+     * `TeamSectionAssessment` est la règle du candidat : l'administration lui
+     * demande le verdict au lieu d'en réécrire une seconde version. Elle est
+     * appelée sur les réponses **déjà chargées** — `evaluer()` et non
+     * `forApplication()` — pour ne pas ajouter deux requêtes à l'écran.
+     *
+     * L'effectif y apparaît deux fois, et c'est voulu : « déclaré » vient de
+     * l'étape 1, « décrit » du nombre de membres réellement renseignés ici. Les
+     * confondre masquerait justement l'écart que l'administration doit voir.
+     *
+     * @param  array<string, mixed>  $reponses
+     * @return array<string, mixed>
+     */
+    private function syntheseEquipe(Application $application, array $reponses): array
+    {
+        return TeamSectionAssessment::evaluer($reponses, $this->reponsesEligibilite($application))->toArray();
     }
 
     /**
