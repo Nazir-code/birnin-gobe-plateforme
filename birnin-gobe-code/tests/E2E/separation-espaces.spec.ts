@@ -72,13 +72,13 @@ async function ouvrirLeTableauDeBord(page: Page) {
 }
 
 /**
- * Ouvre un vrai brouillon et atterrit sur sa section : la candidature n'est
- * plus un ecran statique, elle appartient a un dossier en base.
+ * Ouvre un vrai brouillon et atterrit sur sa premiere section : la candidature
+ * n'est plus un ecran statique, elle appartient a un dossier en base.
  */
 async function ouvrirLaCandidature(page: Page) {
   await connecterUnCandidat(page);
   await page.getByRole('button', { name: /commencer ma candidature/i }).click();
-  await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+  await expect(page).toHaveURL(/\/candidate\/application\/\d+\/eligibility$/);
 }
 
 test.describe('ADR-003 — separation des espaces', () => {

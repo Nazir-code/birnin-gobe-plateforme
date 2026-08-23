@@ -69,7 +69,10 @@ final class CandidatureCandidatTest extends TestCase
 
         $application = Application::query()->sole();
 
-        $reponse->assertRedirect("/candidate/application/{$application->getKey()}/challenge");
+        // Depuis la Phase 1D, un brouillon s'ouvre sur l'etape 1 (Eligibilite)
+        // et non plus sur « Defi » : l'ordre metier prime sur l'ordre dans
+        // lequel les sections ont ete developpees.
+        $reponse->assertRedirect("/candidate/application/{$application->getKey()}/eligibility");
 
         // Les quatre invariants de la phase, lus en base et non dans la réponse.
         $this->assertDatabaseHas('applications', [
@@ -227,8 +230,8 @@ final class CandidatureCandidatTest extends TestCase
                 ->component('Candidate/Dashboard')
                 ->where('application.id', $application->getKey())
                 ->where('application.status', ApplicationStatus::DRAFT->value)
-                ->where('application.currentStep.key', ApplicationSection::CHALLENGE->value)
-                ->where('application.continueUrl', url("/candidate/application/{$application->getKey()}/challenge")));
+                ->where('application.currentStep.key', ApplicationSection::ELIGIBILITY->value)
+                ->where('application.continueUrl', url("/candidate/application/{$application->getKey()}/eligibility")));
     }
 
     public function test_le_tableau_de_bord_ne_montre_pas_le_brouillon_d_un_autre(): void
@@ -260,7 +263,7 @@ final class CandidatureCandidatTest extends TestCase
         $application = $this->brouillonDe($candidat, $campagne);
 
         $this->actingAs($candidat)->get('/candidate/application')
-            ->assertRedirect("/candidate/application/{$application->getKey()}/challenge");
+            ->assertRedirect("/candidate/application/{$application->getKey()}/eligibility");
     }
 
     // — Section « Défi » : lecture et sauvegarde ————————————————————

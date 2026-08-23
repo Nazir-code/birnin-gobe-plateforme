@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Candidate\ApplicationController;
 use App\Http\Controllers\Candidate\ChallengeSectionController;
 use App\Http\Controllers\Candidate\DashboardController;
+use App\Http\Controllers\Candidate\EligibilitySectionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -75,12 +76,25 @@ Route::middleware(['auth', 'role:candidate'])
         // Entrée « Ma candidature » de la navigation : redirige, n'écrit rien.
         Route::get('/application', [ApplicationController::class, 'show'])->name('application.entry');
 
-        Route::get('/application/{application}/challenge', [ChallengeSectionController::class, 'edit'])
+        // Etape 1 — l'auto-test d'eligibilite. Aucune barriere d'eligibilite
+        // sur ses propres routes : c'est ici qu'on corrige ses reponses.
+        Route::get('/application/{application}/eligibility', [EligibilitySectionController::class, 'edit'])
             ->middleware('can:view,application')
+            ->name('application.eligibility');
+
+        Route::patch('/application/{application}/eligibility', [EligibilitySectionController::class, 'update'])
+            ->middleware('can:update,application')
+            ->name('application.eligibility.update');
+
+        // Sections posterieures a l'eligibilite : fermees tant qu'une regle
+        // bloquante est declenchee (cahier des charges 5.2). Declare sur la
+        // route, comme `can:` — voir EnsureApplicationIsEligible.
+        Route::get('/application/{application}/challenge', [ChallengeSectionController::class, 'edit'])
+            ->middleware(['can:view,application', 'eligible'])
             ->name('application.challenge');
 
         Route::patch('/application/{application}/challenge', [ChallengeSectionController::class, 'update'])
-            ->middleware('can:update,application')
+            ->middleware(['can:update,application', 'eligible'])
             ->name('application.challenge.update');
     });
 

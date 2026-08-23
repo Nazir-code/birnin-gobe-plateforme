@@ -7,13 +7,21 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  */
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
-export type AutosaveResult<T> = {
+export type AutosaveResult<T, R> = {
   /** Etat a afficher au candidat. Jamais simule : il suit la requete reelle. */
   state: SaveState;
   /** Horodatage ISO renvoye par le serveur a la derniere sauvegarde reussie. */
   savedAt: string | null;
   /** Erreurs de validation renvoyees par Laravel, par champ. */
   errors: Partial<Record<keyof T & string, string>>;
+  /**
+   * Corps de la derniere reponse acceptee.
+   *
+   * Certaines sections renvoient plus qu'un horodatage : l'eligibilite y joint
+   * le verdict recalcule par le serveur. Le lire ici evite d'avoir a le
+   * recalculer cote navigateur — ce qui reviendrait a laisser React decider.
+   */
+  response: R | null;
   /** Force une sauvegarde immediate (bouton « Enregistrer », sortie de champ). */
   flush: () => void;
 };
@@ -50,13 +58,14 @@ function jetonCsrf(): string {
  * La source de verite reste PostgreSQL : ce hook n'ecrit rien en local, et un
  * rechargement repart des props Inertia.
  */
-export function useAutosave<T extends Record<string, string>>(
+export function useAutosave<T extends Record<string, string>, R = unknown>(
   url: string,
   values: T,
   { delayMs = 900 }: Options = {},
-): AutosaveResult<T> {
+): AutosaveResult<T, R> {
   const [state, setState] = useState<SaveState>('idle');
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [response, setResponse] = useState<R | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof T & string, string>>>({});
 
   const valuesRef = useRef(values);
@@ -117,13 +126,14 @@ export function useAutosave<T extends Record<string, string>>(
 
       if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
 
-      const corps = (await reponse.json()) as { savedAt?: string | null };
+      const corps = (await reponse.json()) as R & { savedAt?: string | null };
 
       if (!obsolete && monteRef.current) {
         dernierAppliqueRef.current = seq;
         referenceRef.current = empreinte;
         setErrors({});
         setSavedAt(corps.savedAt ?? null);
+        setResponse(corps);
         setState('saved');
       }
     } catch {
@@ -170,5 +180,5 @@ export function useAutosave<T extends Record<string, string>>(
     };
   }, []);
 
-  return { state, savedAt, errors, flush };
+  return { state, savedAt, errors, response, flush };
 }

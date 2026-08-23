@@ -15,15 +15,17 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Section « Défi » — la première section réellement persistée.
+ * Section « Défi » — étape 4 du formulaire.
  *
- * Explicitement dédiée à une section plutôt que générique : les huit autres
- * n'ont ni écran, ni champs, ni validation. Une fabrique paramétrée par section
- * n'aurait aujourd'hui qu'une entrée et masquerait ce fait. Elle viendra avec
- * la deuxième section, quand la forme commune sera connue plutôt que devinée.
+ * Toujours dédiée à une section plutôt que générique. L'arrivée d'« Éligibilité »
+ * a permis de comparer les deux : ce qui se répétait était l'ossature HTTP —
+ * quatre lignes — là où la validation, les champs et le contenu des props
+ * diffèrent entièrement. Ce qui se répétait vraiment a été extrait côté React.
+ * Voir ADR-007.
  *
- * L'accès à `$application` est autorisé par la policy déclarée sur la route :
- * ce contrôleur ne compare aucun identifiant.
+ * L'accès à `$application` est autorisé par la policy déclarée sur la route,
+ * et la barrière d'éligibilité par le middleware `eligible` : ce contrôleur ne
+ * compare aucun identifiant et n'évalue aucune règle.
  */
 final class ChallengeSectionController
 {
@@ -49,6 +51,9 @@ final class ChallengeSectionController
             'regions' => NigerRegion::options(),
             'maxLength' => ChallengeSection::MAX_LENGTH,
             'saveUrl' => route('candidate.application.challenge.update', $application),
+            // Navigation arriere sans perte : l'etape 1 reste joignable, et
+            // ses reponses viennent de la base au retour.
+            'previousUrl' => $presenter->sectionUrl($application, ApplicationSection::ELIGIBILITY),
         ]);
     }
 

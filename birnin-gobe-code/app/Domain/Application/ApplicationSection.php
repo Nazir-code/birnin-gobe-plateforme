@@ -44,12 +44,29 @@ enum ApplicationSection: string
     /**
      * Section effectivement persistée aujourd'hui.
      *
-     * Phase 1C ne branche que « Défi ». Ouvrir une autre section, c'est basculer
-     * sa valeur ici en même temps que son écran et sa validation — pas avant.
+     * Deux sections sont branchees : « Eligibilite » (etape 1) et « Defi »
+     * (etape 4). Ouvrir une autre section, c'est l'ajouter ici en meme temps
+     * que son ecran et sa validation — pas avant.
      */
     public function isImplemented(): bool
     {
-        return $this === self::CHALLENGE;
+        return in_array($this, [self::ELIGIBILITY, self::CHALLENGE], strict: true);
+    }
+
+    /**
+     * Section ouverte suivante, dans l'ordre metier.
+     *
+     * Sert au bouton « Suivant » : il ne doit mener qu'a un ecran qui existe.
+     * Les sections non developpees sont sautees, pas simulees.
+     */
+    public function nextImplemented(): ?self
+    {
+        $suivantes = array_filter(
+            self::cases(),
+            fn (self $section): bool => $section->position() > $this->position() && $section->isImplemented(),
+        );
+
+        return $suivantes === [] ? null : reset($suivantes);
     }
 
     /** Rang affiché au candidat, de 1 à 9. */

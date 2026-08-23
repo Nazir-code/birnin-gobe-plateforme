@@ -57,6 +57,21 @@ async function verifierLesReponses(page: Page) {
   await expect(page.getByLabel(/Quelles sont les causes profondes/)).toHaveValue(REPONSES.causes);
 }
 
+/**
+ * Ouvre un brouillon et rejoint la section « Defi ».
+ *
+ * Depuis la Phase 1D, un brouillon s'ouvre sur l'etape 1 (Eligibilite). On
+ * rejoint « Defi » par le vrai bouton « Suivant » : sans reponse d'eligibilite,
+ * aucune regle bloquante n'est declenchee, donc la suite reste ouverte —
+ * cahier des charges 5.2.
+ */
+async function ouvrirLeDefi(page: Page) {
+  await page.getByRole('button', { name: /commencer ma candidature/i }).click();
+  await expect(page).toHaveURL(/\/candidate\/application\/\d+\/eligibility$/);
+  await page.getByTestId('suivant').click();
+  await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+}
+
 test.describe('Candidature persistante', () => {
   test('brouillon, saisie, rechargement, reconnexion', async ({ page }) => {
     const { nom, email } = compteUnique();
@@ -65,10 +80,8 @@ test.describe('Candidature persistante', () => {
     // — Aucune candidature : le tableau de bord propose d'en ouvrir une
     await expect(page.getByTestId('aucune-candidature')).toBeVisible();
 
-    await page.getByRole('button', { name: /commencer ma candidature/i }).click();
-
-    // — Laravel a cree le brouillon et redirige vers sa section, avec son id
-    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+    // — Laravel cree le brouillon, puis on rejoint « Defi » depuis l'etape 1
+    await ouvrirLeDefi(page);
     const urlCandidature = page.url();
 
     // — Saisie des quatre champs
@@ -93,6 +106,7 @@ test.describe('Candidature persistante', () => {
     await expect(page.getByTestId('statut-candidature')).toHaveText('Brouillon');
     await expect(page.getByTestId('progression')).toContainText('11%');
 
+    // La derniere section editee est « Defi » : c'est la que la reprise ramene.
     await page.getByRole('link', { name: /continuer ma candidature/i }).click();
     await expect(page).toHaveURL(urlCandidature);
 
@@ -103,8 +117,7 @@ test.describe('Candidature persistante', () => {
   test('un candidat ne peut pas ouvrir la candidature d’un autre', async ({ page }) => {
     const proprietaire = compteUnique();
     await sInscrire(page, proprietaire.nom, proprietaire.email);
-    await page.getByRole('button', { name: /commencer ma candidature/i }).click();
-    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+    await ouvrirLeDefi(page);
     const urlDuProprietaire = page.url();
 
     await seDeconnecter(page);
@@ -122,7 +135,9 @@ test.describe('Candidature persistante', () => {
     await sInscrire(page, nom, email);
 
     await page.getByRole('button', { name: /commencer ma candidature/i }).click();
-    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/challenge$/);
+    // Un brouillon neuf s'ouvre sur l'etape 1 : c'est aussi la que « Continuer »
+    // doit ramener tant qu'aucune autre section n'a ete editee.
+    await expect(page).toHaveURL(/\/candidate\/application\/\d+\/eligibility$/);
     const premiere = page.url();
 
     // Retour au tableau de bord : le dossier existe deja, l'ecran doit proposer

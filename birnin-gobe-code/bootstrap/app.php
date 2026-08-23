@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureApplicationIsEligible;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -18,7 +19,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [HandleInertiaRequests::class]);
 
         // Contrôle d'accès par espace (ADR-003) : `->middleware('role:candidate')`.
-        $middleware->alias(['role' => EnsureUserHasRole::class]);
+        // Barrière d'éligibilité (ADR-007) : `->middleware('eligible')` sur les
+        // sections postérieures à l'étape 1.
+        $middleware->alias([
+            'role' => EnsureUserHasRole::class,
+            'eligible' => EnsureApplicationIsEligible::class,
+        ]);
 
         // Un visiteur anonyme est renvoyé vers l'écran de connexion de l'espace
         // qu'il visait : le portail public n'expose que la connexion candidat,
