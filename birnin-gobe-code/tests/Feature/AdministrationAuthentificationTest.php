@@ -65,12 +65,8 @@ final class AdministrationAuthentificationTest extends TestCase
     {
         $this->actingAs($this->admin())
             ->get('/admin/dashboard')
-            // Second argument 'false' : le dépôt ne publie pas config/inertia.php,
-            // donc 'inertia.testing.page_paths' est vide et le view-finder ne
-            // trouverait aucun fichier. On vérifie le composant et les props, ce
-            // que la suite E2E complète en rendant réellement la page.
             ->assertInertia(fn ($page) => $page
-                ->component('Admin/Dashboard', false)
+                ->component('Admin/Dashboard')
                 ->where('auth.user.name', 'Aïcha Diallo')
                 ->where('auth.user.role', 'admin'));
     }
@@ -191,7 +187,7 @@ final class AdministrationAuthentificationTest extends TestCase
     {
         $this->get('/admin/login')
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('Admin/Login', false));
+            ->assertInertia(fn ($page) => $page->component('Admin/Login'));
     }
 
     // — Utilisateur déjà connecté ————————————————————————————————————
