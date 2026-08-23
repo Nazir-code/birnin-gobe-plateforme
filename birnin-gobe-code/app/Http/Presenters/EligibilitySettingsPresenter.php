@@ -12,7 +12,7 @@ use DateTimeZone;
 
 /**
  * Met les paramètres d'éligibilité d'une campagne en forme pour l'écran
- * d'administration (ADR-009).
+ * d'administration (ADR-010).
  *
  * Deux jeux de données, et il faut les deux :
  *

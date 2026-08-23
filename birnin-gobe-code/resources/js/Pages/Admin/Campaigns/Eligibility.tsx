@@ -6,7 +6,7 @@ import { Button, Card, SectionTitle } from '@/Components/Ui';
 import { CasesACocher, Champ, Selecteur, type Option } from '@/Components/Champs';
 
 /**
- * Critères d'éligibilité d'une campagne (ADR-009).
+ * Critères d'éligibilité d'une campagne (ADR-010).
  *
  * Cet écran est la contrepartie administrable de l'auto-test candidat : ce qui
  * est saisi ici décide, pour tous les dossiers de cette édition, de ce que le

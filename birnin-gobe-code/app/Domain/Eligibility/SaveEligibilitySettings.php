@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Enregistre les paramètres d'éligibilité d'une campagne (ADR-009).
+ * Enregistre les paramètres d'éligibilité d'une campagne (ADR-010).
  *
  * Cas d'usage plutôt que méthode de contrôleur, comme `SaveCampaign` : la
  * fusion avec les autres clés de `settings`, la transaction et l'écriture

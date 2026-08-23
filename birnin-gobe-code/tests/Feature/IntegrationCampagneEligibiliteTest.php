@@ -32,7 +32,7 @@ use Tests\TestCase;
  *
  * L'écriture de `settings.eligibility` se fait ici directement en base, et c'est
  * délibéré : ce fichier isole le moteur de l'écran qui le configure. Le passage
- * par l'écran d'administration (ADR-009) est couvert, lui, par
+ * par l'écran d'administration (ADR-010) est couvert, lui, par
  * `AdministrationEligibiliteTest`. Le reste du parcours passe par les vraies
  * routes.
  */

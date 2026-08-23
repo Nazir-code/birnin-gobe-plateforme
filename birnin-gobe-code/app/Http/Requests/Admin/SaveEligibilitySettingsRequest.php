@@ -10,7 +10,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * Validation serveur des paramètres d'éligibilité (ADR-009).
+ * Validation serveur des paramètres d'éligibilité (ADR-010).
  *
  * L'écran propose des cases à cocher et des listes fermées ; rien de cela
  * n'engage, la requête peut être forgée. Ce qui entre dans `settings` est ce

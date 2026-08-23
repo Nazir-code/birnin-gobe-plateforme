@@ -130,7 +130,7 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/campaigns/{campaign}/edit', [CampaignController::class, 'edit'])->name('campaigns.edit');
         Route::put('/campaigns/{campaign}', [CampaignController::class, 'update'])->name('campaigns.update');
 
-        // Critères d'éligibilité de la campagne (ADR-009). Écran séparé du
+        // Critères d'éligibilité de la campagne (ADR-010). Écran séparé du
         // formulaire de campagne : ce que le comité de pilotage arbitre ne se
         // modifie pas au même moment que le nom et les dates de l'édition.
         Route::get('/campaigns/{campaign}/eligibility', [CampaignEligibilityController::class, 'edit'])

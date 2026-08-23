@@ -8,7 +8,7 @@ use App\Models\Campaign;
 use DateTimeImmutable;
 
 /**
- * Paramètres d'éligibilité d'une campagne, côté **écriture** (ADR-009).
+ * Paramètres d'éligibilité d'une campagne, côté **écriture** (ADR-010).
  *
  * `CampaignEligibilityRules` lit `campaigns.settings.eligibility` pour le
  * moteur ; cette classe produit ce même bloc depuis l'écran d'administration.

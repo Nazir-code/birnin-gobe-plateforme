@@ -17,7 +17,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
- * Administration des critères d'éligibilité par campagne (ADR-009).
+ * Administration des critères d'éligibilité par campagne (ADR-010).
  *
  * Ce que cette suite protège tient en trois invariants, dans cet ordre
  * d'importance :

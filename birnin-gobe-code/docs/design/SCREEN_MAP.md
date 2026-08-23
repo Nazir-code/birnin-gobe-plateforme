@@ -11,7 +11,7 @@
 | Back-office administratif | `/admin/dashboard` | `resources/js/Pages/Admin/Dashboard.tsx` |
 | Campagnes — liste | `/admin/campaigns` | `resources/js/Pages/Admin/Campaigns/Index.tsx` (ADR-008) |
 | Campagnes — identité et calendrier | `/admin/campaigns/{campaign}/edit` | `resources/js/Pages/Admin/Campaigns/Form.tsx` (ADR-008) |
-| Campagnes — critères d'éligibilité | `/admin/campaigns/{campaign}/eligibility` | `resources/js/Pages/Admin/Campaigns/Eligibility.tsx` (ADR-009) |
+| Campagnes — critères d'éligibilité | `/admin/campaigns/{campaign}/eligibility` | `resources/js/Pages/Admin/Campaigns/Eligibility.tsx` (ADR-010) |
 | Évaluation / jury | `/evaluator/assignments` | `resources/js/Pages/Evaluator/Assignments.tsx` |
 
 ## Règle de fidélité

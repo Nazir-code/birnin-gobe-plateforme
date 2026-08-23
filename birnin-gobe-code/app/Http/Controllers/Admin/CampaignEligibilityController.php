@@ -11,7 +11,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Paramètres d'éligibilité d'une campagne (ADR-009).
+ * Paramètres d'éligibilité d'une campagne (ADR-010).
  *
  * Écran distinct de `CampaignController` alors que les deux écrivent la même
  * ligne : le formulaire de campagne porte l'identité et le calendrier —

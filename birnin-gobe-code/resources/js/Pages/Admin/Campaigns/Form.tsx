@@ -16,7 +16,7 @@ import { Champ, Selecteur, type Option } from '@/Components/Champs';
  * `SaveCampaign` revalide, un menu réduit n'est jamais une autorisation.
  *
  * Les critères d'éligibilité, eux aussi rangés dans `settings`, ont leur propre
- * écran (ADR-009) : ils s'arbitrent à un autre moment que le nom et les dates,
+ * écran (ADR-010) : ils s'arbitrent à un autre moment que le nom et les dates,
  * et une correction de libellé ne doit pas être l'occasion de les republier.
  * Le lien vers cet écran n'apparaît qu'en modification — les critères se fixent
  * sur une campagne qui existe.
