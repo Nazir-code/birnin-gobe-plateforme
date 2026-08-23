@@ -171,7 +171,7 @@ export default function ApplicationShow({ application, backUrl }: Props) {
             <Donnee
               libelle="Numéro de dossier"
               valeur={a.submissionNumber ?? '—'}
-              aide={a.submissionNumber === null ? 'Attribué à la soumission, qui n’est pas encore ouverte.' : undefined}
+              aide={a.submissionNumber === null ? 'Attribué au dépôt du dossier.' : undefined}
             />
             <Donnee
               libelle="Soumise le"

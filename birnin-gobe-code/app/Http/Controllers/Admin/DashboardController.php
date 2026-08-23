@@ -42,15 +42,17 @@ final class DashboardController
             'campaign' => $ouverte === null ? null : $presenter->row($ouverte, $active !== null && $active->is($ouverte)),
             'campaignsCount' => Campaign::query()->count(),
             'campaignsUrl' => route('admin.campaigns.index'),
-            // Les deux seuls indicateurs de candidatures que cette phase peut
-            // annoncer honnêtement : le nombre de dossiers, et combien sont
-            // encore des brouillons. « Soumis », « admissibles » et « alertes »
-            // gardent leur tiret — les workflows qui les produiraient n'existent
-            // pas, et un « 0 » se lirait comme un comptage, pas comme une
-            // absence de fonctionnalité.
+            // Les trois indicateurs que cette phase peut annoncer honnêtement :
+            // le nombre de dossiers, combien sont encore des brouillons, et
+            // combien ont été déposés. « Soumis » a rejoint les deux autres avec
+            // le workflow de dépôt — son zéro est désormais un vrai comptage.
+            // « Admissibles » et « alertes » gardent leur tiret : les workflows
+            // qui les produiraient n'existent pas, et un « 0 » s'y lirait comme
+            // un comptage, pas comme une absence de fonctionnalité.
             'applications' => [
                 'total' => Application::query()->count(),
                 'drafts' => Application::query()->where('status', ApplicationStatus::DRAFT->value)->count(),
+                'submitted' => Application::query()->where('status', ApplicationStatus::SUBMITTED->value)->count(),
                 'url' => route('admin.applications.index'),
             ],
         ]);

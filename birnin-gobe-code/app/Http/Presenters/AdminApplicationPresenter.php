@@ -76,7 +76,8 @@ final class AdminApplicationPresenter
      *     candidateType: string|null, candidateTypeLabel: string|null,
      *     region: string|null, regionLabel: string|null,
      *     eligibility: array{outcome: string, label: string},
-     *     submissionNumber: string|null, updatedAt: string|null, showUrl: string
+     *     submissionNumber: string|null, submittedAt: string|null,
+     *     updatedAt: string|null, showUrl: string
      * }
      */
     public function row(Application $application): array
@@ -111,7 +112,12 @@ final class AdminApplicationPresenter
             'region' => $zone?->value,
             'regionLabel' => $zone?->label(),
             'eligibility' => ['outcome' => $verdict->outcome->value, 'label' => $verdict->outcome->label()],
+            // Numéro et date de dépôt restent `null` tant que le dossier est un
+            // brouillon : l'écran les rend alors par un tiret. Un « — » se lit
+            // comme « pas déposé » ; une date par défaut se lirait comme un
+            // dépôt qui n'a pas eu lieu.
             'submissionNumber' => $application->submission_number,
+            'submittedAt' => $application->submitted_at?->toIso8601String(),
             'updatedAt' => $application->updated_at?->toIso8601String(),
             'showUrl' => route('admin.applications.show', $application),
         ];

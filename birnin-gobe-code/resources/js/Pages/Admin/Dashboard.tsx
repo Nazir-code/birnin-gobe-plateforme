@@ -47,7 +47,7 @@ export default function AdminDashboard({
   campaign: Campagne | null;
   campaignsCount: number;
   campaignsUrl: string;
-  applications: { total: number; drafts: number; url: string };
+  applications: { total: number; drafts: number; submitted: number; url: string };
 }) {
   const user = useAuthUser();
 
@@ -107,11 +107,14 @@ export default function AdminDashboard({
           </Card>
         </Reveal>
 
-        {/* Deux compteurs sont désormais comptés pour de bon : ils viennent de
-            `applications`. Les trois autres gardent leur tiret — un « 0 »
-            affirmerait qu'on a compté et trouvé zéro, alors que le workflow qui
-            produirait ces nombres n'existe pas encore. Un tiret dit « inconnu »,
-            un zéro dit « aucun » : la différence compte pour qui pilote. */}
+        {/* Trois compteurs sont comptés pour de bon : ils viennent de
+            `applications`. « Dossiers soumis » a rejoint les deux premiers avec
+            le workflow de dépôt — son zéro est désormais un vrai comptage, et
+            non l'aveu d'une fonctionnalité absente. Les deux derniers gardent
+            leur tiret : un « 0 » affirmerait qu'on a compté et trouvé zéro,
+            alors que le workflow qui produirait ces nombres n'existe pas encore.
+            Un tiret dit « inconnu », un zéro dit « aucun » : la différence
+            compte pour qui pilote. */}
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard
             icon={FolderKanban}
@@ -127,7 +130,13 @@ export default function AdminDashboard({
             hint="Dossiers commencés, non soumis"
             tone="gold"
           />
-          <StatCard icon={ClipboardCheck} value="—" label="Dossiers soumis" hint="Soumission non encore ouverte" tone="blue" />
+          <StatCard
+            icon={ClipboardCheck}
+            value={applications.submitted}
+            label="Dossiers soumis"
+            hint="Dossiers déposés, numéro attribué"
+            tone="blue"
+          />
           <StatCard icon={ShieldCheck} value="—" label="Admissibles" hint="Admissibilité à venir" tone="green" />
           <StatCard icon={AlertTriangle} value="—" label="Alertes actives" hint="À venir" tone="red" />
         </div>

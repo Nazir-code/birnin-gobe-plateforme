@@ -57,15 +57,21 @@ class Application extends Model
         return $this->status === ApplicationStatus::DRAFT;
     }
 
-    public function isCompleteForActiveCampaign(): bool
+    public function isSubmitted(): bool
     {
-        // Placeholder: replace with Campaign-configured validation engine.
-        return true;
+        return $this->status === ApplicationStatus::SUBMITTED;
     }
 
-    public function buildSubmissionSnapshot(): array
-    {
-        // Snapshot must include resolved form/rules/answers/version references at submission time.
-        return ['application_id' => $this->getKey(), 'version' => 1];
-    }
+    /*
+     * Deux méthodes ont disparu d'ici : `isCompleteForActiveCampaign()`, qui
+     * rendait `true` sans rien vérifier, et `buildSubmissionSnapshot()`, qui
+     * rendait un identifiant et un numéro de version. C'étaient des ébauches, et
+     * la première aurait autorisé le dépôt d'un dossier vide le jour où la route
+     * de soumission serait branchée.
+     *
+     * Leur remplacement n'appartient pas au modèle : décider qu'un dossier est
+     * déposable met en jeu la campagne, l'éligibilité et les sections exigées —
+     * voir `SubmissionReadiness`. Copier ce qui a été déposé met en jeu les trois
+     * mêmes plus le verdict du moment — voir `SubmissionSnapshot`.
+     */
 }
