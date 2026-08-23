@@ -30,7 +30,7 @@ jobs:
       - uses: ramsey/composer-install@v3
 
       - name: Style de code
-        run: vendor/bin/pint --test app/Domain app/Http app/Models app/Policies app/Providers database/factories database/seeders tests/Feature
+        run: vendor/bin/pint --test app/Console app/Domain app/Http app/Models app/Policies app/Providers database/factories database/seeders tests/Feature
 
       - name: Tests
         env:

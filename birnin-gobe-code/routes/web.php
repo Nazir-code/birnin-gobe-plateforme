@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Candidate\ApplicationController;
@@ -85,17 +86,25 @@ Route::middleware(['auth', 'role:candidate'])
 | Espaces internes — administration, évaluation, jury
 |
 | Volontairement séparés. Leur existence n'est annoncée nulle part dans
-| l'interface publique ou candidate. Les écrans eux-mêmes ne sont pas encore
-| développés : seule la fondation de contrôle d'accès est posée ici.
+| l'interface publique ou candidate — /admin/login compris : la page est
+| joignable, jamais liée depuis un écran public ou candidat.
 |
-| Aucun compte interne n'est créable par l'inscription publique.
+| Aucun compte interne n'est créable par l'inscription publique : le seul
+| chemin de création est `php artisan admin:create` (ADR-006). Évaluation et
+| jury n'ont pas encore d'accès interne, seule leur règle d'accès est posée.
 */
-Route::middleware(['auth', 'role:admin'])
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function (): void {
+Route::prefix('admin')->name('admin.')->group(function (): void {
+    // Accès interne. Aucune inscription : les comptes internes sont
+    // provisionnés par `php artisan admin:create` (ADR-006).
+    Route::get('/login', [AdminSessionController::class, 'create'])->name('login');
+    Route::post('/login', [AdminSessionController::class, 'store']);
+
+    Route::middleware(['auth', 'role:admin'])->group(function (): void {
+        Route::post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
+
         Route::get('/dashboard', fn () => Inertia::render('Admin/Dashboard'))->name('dashboard');
     });
+});
 
 Route::middleware(['auth', 'role:evaluator'])
     ->prefix('evaluator')

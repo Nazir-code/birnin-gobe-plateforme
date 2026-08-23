@@ -1,15 +1,45 @@
 import { useState, type PropsWithChildren, type ReactNode } from 'react';
 import { Link } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { Bell, Menu } from 'lucide-react';
+import { Bell, LogOut, Menu } from 'lucide-react';
 import { BrandLogo } from '@/Components/Brand';
 import { MobileNavDrawer } from '@/Components/Ui';
 import { SiteFooter } from '@/Components/SiteFooter';
+import { initiales, useAuthUser } from '@/hooks/useAuth';
 
 export type DarkNavItem = { icon: LucideIcon; label: string; href?: string };
 
-export function DarkSidebarLayout({ children, items, active, title, subtitle, user, headerActions }: PropsWithChildren<{ items: DarkNavItem[]; active: string; title: string; subtitle?: string; user: string; headerActions?: ReactNode }>) {
+export function DarkSidebarLayout({
+  children,
+  items,
+  active,
+  title,
+  subtitle,
+  user,
+  logoutHref,
+  notifications,
+  headerActions,
+}: PropsWithChildren<{
+  items: DarkNavItem[];
+  active: string;
+  title: string;
+  subtitle?: string;
+  /**
+   * Identité affichée. À omettre : elle vient alors de l'utilisateur
+   * authentifié partagé par Inertia, qui est la seule source réelle.
+   * Le paramètre ne subsiste que pour les écrans encore non authentifiés.
+   */
+  user?: string;
+  /** Rend le bouton de déconnexion, qui poste vers cette URL. */
+  logoutHref?: string;
+  /** Compteur du badge de notifications. Omis = pas de badge, plutôt qu'un
+   *  nombre inventé sur un écran de production. */
+  notifications?: number;
+  headerActions?: ReactNode;
+}>) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const authUser = useAuthUser();
+  const nom = user ?? authUser?.name ?? null;
 
   const navLinks = (onNavigate?: () => void) => (
     <nav className="space-y-1.5">
@@ -20,9 +50,16 @@ export function DarkSidebarLayout({ children, items, active, title, subtitle, us
   );
 
   const bottomCard = (
-    <div className="mt-auto rounded-2xl border border-white/10 bg-black/10 p-5">
-      <div className="text-sm font-extrabold text-gold-500">PIDUREM / ANSI</div>
-      <p className="mt-1 text-xs leading-5 text-white/75">Un pilotage transparent, sécurisé et responsable.</p>
+    <div className="mt-auto">
+      <div className="rounded-2xl border border-white/10 bg-black/10 p-5">
+        <div className="text-sm font-extrabold text-gold-500">PIDUREM / ANSI</div>
+        <p className="mt-1 text-xs leading-5 text-white/75">Un pilotage transparent, sécurisé et responsable.</p>
+      </div>
+      {logoutHref ? (
+        <Link href={logoutHref} method="post" as="button" className="focus-ring mt-3 flex min-h-11 w-full items-center gap-3 rounded-xl px-4 text-sm font-semibold text-white/80 transition hover:bg-white/10 hover:text-white">
+          <LogOut size={17} /> Se déconnecter
+        </Link>
+      ) : null}
     </div>
   );
 
@@ -50,7 +87,19 @@ export function DarkSidebarLayout({ children, items, active, title, subtitle, us
             <h1 className="text-xl font-extrabold text-brand-950 sm:text-2xl">{title}</h1>
             {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
           </div>
-          <div className="ml-auto flex items-center gap-4">{headerActions}<button className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-slate-50"><Bell size={20} /><span className="absolute right-1 top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-gold-500 px-1 text-[10px] font-bold">3</span></button><div className="hidden text-right sm:block"><div className="text-sm font-bold text-slate-800">{user}</div><div className="text-[11px] text-slate-500">Connecté</div></div></div>
+          <div className="ml-auto flex items-center gap-4">
+            {headerActions}
+            <button className="focus-ring relative grid h-10 w-10 place-items-center rounded-full hover:bg-slate-50" aria-label="Notifications">
+              <Bell size={20} />
+              {notifications ? <span className="absolute right-1 top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-gold-500 px-1 text-[10px] font-bold">{notifications}</span> : null}
+            </button>
+            {nom ? (
+              <div className="hidden items-center gap-3 sm:flex">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-extrabold text-brand-900">{initiales(nom)}</div>
+                <div className="text-right"><div className="text-sm font-bold text-slate-800">{nom}</div><div className="text-[11px] text-slate-500">Connecté</div></div>
+              </div>
+            ) : null}
+          </div>
         </header>
         <div className="flex-1">{children}</div>
         <SiteFooter variant="compact" />

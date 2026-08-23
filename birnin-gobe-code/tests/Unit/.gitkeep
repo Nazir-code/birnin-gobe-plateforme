@@ -1,0 +1,3 @@
+Répertoire déclaré comme suite dans phpunit.xml : sans lui, `vendor/bin/phpunit`
+s'arrête sur « Test directory "tests/Unit" not found » et aucun test ne tourne,
+y compris en CI. Git ne versionne pas les dossiers vides, d'où ce fichier.
