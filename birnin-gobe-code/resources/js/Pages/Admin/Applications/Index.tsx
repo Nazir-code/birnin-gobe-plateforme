@@ -43,7 +43,9 @@ type Candidature = {
   region: string | null;
   regionLabel: string | null;
   eligibility: { outcome: string; label: string };
+  /** Null tant que le dossier est un brouillon — l'ecran rend alors un tiret. */
   submissionNumber: string | null;
+  submittedAt: string | null;
   updatedAt: string | null;
   showUrl: string;
 };
@@ -250,6 +252,8 @@ export default function ApplicationsIndex({
                       <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
                         <Donnee libelle="Campagne" valeur={candidature.campaignCode} />
                         <Donnee libelle="Statut" valeur={candidature.statusLabel} />
+                        <Donnee libelle="N° de dépôt" valeur={candidature.submissionNumber ?? '—'} />
+                        <Donnee libelle="Déposée" valeur={candidature.submittedAt === null ? '—' : dateCourte(candidature.submittedAt)} />
                         <Donnee libelle="Forme" valeur={candidature.candidateTypeLabel ?? '—'} />
                         <Donnee libelle="Zone" valeur={candidature.regionLabel ?? '—'} />
                         <Donnee
@@ -298,6 +302,14 @@ export default function ApplicationsIndex({
                         </td>
                         <td className="py-3 pr-3">
                           <Pill tone="neutral">{candidature.statusLabel}</Pill>
+                          {/* Un brouillon n'a ni numero ni date : le tiret le dit,
+                              plutot qu'une ligne vide qui se lirait comme un bug. */}
+                          <div className="mt-1 font-mono text-[11px] text-slate-500" data-testid="numero-depot">
+                            {candidature.submissionNumber ?? '—'}
+                          </div>
+                          <div className="text-[11px] text-slate-400">
+                            {candidature.submittedAt === null ? '—' : dateCourte(candidature.submittedAt)}
+                          </div>
                         </td>
                         <td className="py-3 pr-3">
                           <div className="flex items-center gap-2">

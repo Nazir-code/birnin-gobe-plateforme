@@ -15,6 +15,7 @@ use App\Http\Controllers\Candidate\ImpactSectionController;
 use App\Http\Controllers\Candidate\ImplementationSectionController;
 use App\Http\Controllers\Candidate\ProfileSectionController;
 use App\Http\Controllers\Candidate\SolutionSectionController;
+use App\Http\Controllers\Candidate\SubmitApplicationController;
 use App\Http\Controllers\Candidate\TeamSectionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -157,6 +158,18 @@ Route::middleware(['auth', 'role:candidate'])
         Route::patch('/application/{application}/implementation', [ImplementationSectionController::class, 'update'])
             ->middleware(['can:update,application', 'eligible'])
             ->name('application.implementation.update');
+
+        // Depot officiel. `can:update` porte deja les deux gardes qui comptent :
+        // le dossier est le sien, et il est encore un brouillon — un second
+        // envoi tombe donc en 403 sans jamais atteindre le domaine.
+        //
+        // Pas de middleware `eligible` ici, a dessein : il redirige vers l'etape
+        // 1, ce qui convient a une navigation mais pas a un depot. Le refus doit
+        // nommer son motif, et `SubmitApplication` le fait — eligibilite
+        // comprise. Voir SubmissionReadiness.
+        Route::post('/application/{application}/submit', SubmitApplicationController::class)
+            ->middleware('can:update,application')
+            ->name('application.submit');
     });
 
 /*
