@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\EligibilitySection;
@@ -38,13 +39,17 @@ use Tests\TestCase;
  * 4. **Ce qui est déposé ne bouge plus.** Ni par le candidat, ni par l'effet de
  *    bord d'une donnée modifiée ailleurs.
  *
- * Une remarque sur la fabrication des dossiers : les étapes 5 à 8 n'ont pas
- * encore d'écran, donc aucun candidat ne peut aujourd'hui remplir un dossier
- * déposable par les vraies routes. Les tests écrivent donc directement les
- * lignes de ces sections. Ce n'est pas un contournement de la règle — c'est
- * précisément ce que la règle attend : `SubmissionReadiness` ne regarde que les
- * `completed_at`, et le jour où ces écrans existeront, le même dossier passera
- * par eux sans qu'une ligne d'ici ne change.
+ * Une remarque sur la fabrication des dossiers : l'étape 8 « Pièces /
+ * déclarations » n'a pas encore d'écran, donc aucun candidat ne peut aujourd'hui
+ * remplir un dossier déposable par les vraies routes. Les tests écrivent donc
+ * directement la ligne de cette section. Ce n'est pas un contournement de la
+ * règle — c'est précisément ce que la règle attend : `SubmissionReadiness` ne
+ * regarde que les `completed_at`, et le jour où cet écran existera, le même
+ * dossier passera par lui sans qu'une ligne d'ici ne change.
+ *
+ * Les étapes 5 à 7 en sont la démonstration : elles étaient dans ce même cas à
+ * l'écriture de ce fichier, elles ont depuis leur écran, et pas une ligne de
+ * `SubmissionReadiness` n'a bougé.
  */
 final class SoumissionCandidatureTest extends TestCase
 {
@@ -126,6 +131,12 @@ final class SoumissionCandidatureTest extends TestCase
         }
 
         return $fabrique->create();
+    }
+
+    /** Le pourcentage qu'un nombre de sections achevées vaut, sur les neuf. */
+    private function pourcentage(int $sections): int
+    {
+        return (int) round($sections / ApplicationSection::total() * 100);
     }
 
     private function deposer(User $candidat, Application $dossier): TestResponse
@@ -229,12 +240,29 @@ final class SoumissionCandidatureTest extends TestCase
         $this->assertSame(ApplicationStatus::DRAFT, $dossier->fresh()->status);
     }
 
-    /** Le refus nomme les étapes qui manquent, il ne se contente pas de refuser. */
+    /**
+     * Le refus nomme les étapes qui manquent, il ne se contente pas de refuser.
+     *
+     * **Ce test mesure la distance entre le parcours ouvert et le dossier
+     * final**, et c'est sa raison d'être. Il nommait quatre sections quand les
+     * étapes 5 à 7 n'existaient pas ; il n'en nomme plus qu'une depuis leur
+     * livraison, sans qu'une ligne de `SubmissionReadiness` ait changé. Le jour
+     * où l'étape 8 arrivera, la liste se videra de la même façon.
+     *
+     * Ce que cela prouve : la recevabilité ne se déduit pas d'`openPath()`. Un
+     * dossier peut être complet sur tout ce que le produit propose et rester
+     * non déposable, parce qu'il manque une pièce que le concours exige.
+     */
     public function test_le_refus_nomme_les_sections_manquantes(): void
     {
         $campagne = $this->campagne($this->reglesCompletes());
         $candidat = User::factory()->create();
         $dossier = $this->dossierDuParcoursOuvert($campagne, $candidat);
+
+        // Le parcours ouvert va jusqu'à l'étape 7 : le dossier est complet de
+        // tout ce que le candidat peut remplir aujourd'hui.
+        $this->assertCount(7, ApplicationSection::openPath());
+        $this->assertSame(7, app(ApplicationProgress::class)->completedOnOpenPath($dossier));
 
         $verdict = SubmissionReadiness::for($dossier, app(EvaluateEligibility::class));
 
@@ -243,15 +271,39 @@ final class SoumissionCandidatureTest extends TestCase
             $verdict->missingSections,
         );
 
-        $this->assertSame(
-            [
-                ApplicationSection::SOLUTION->value,
-                ApplicationSection::IMPACT->value,
-                ApplicationSection::IMPLEMENTATION->value,
-                ApplicationSection::ATTACHMENTS->value,
-            ],
-            $manquantes,
-        );
+        // Et il n'est pourtant pas déposable : « Pièces / déclarations » manque.
+        $this->assertSame([ApplicationSection::ATTACHMENTS->value], $manquantes);
+        $this->assertFalse($verdict->ready);
+        $this->assertSame([SubmissionBlocker::SECTIONS_INCOMPLETE], $verdict->blockers);
+    }
+
+    /**
+     * Sept étapes sur neuf ne déposent pas un dossier.
+     *
+     * Le garde-fou de la vague A, éprouvé par la route elle-même : un candidat
+     * qui a rempli tout ce que la plateforme lui propose reçoit un refus motivé,
+     * pas un numéro de dépôt.
+     */
+    public function test_un_dossier_a_sept_neuviemes_n_est_pas_deposable(): void
+    {
+        $campagne = $this->campagne($this->reglesCompletes());
+        $candidat = User::factory()->create();
+        $dossier = $this->dossierDuParcoursOuvert($campagne, $candidat);
+
+        $this->assertSame($this->pourcentage(7), (int) $dossier->fresh()->completion_percent);
+
+        $this->deposer($candidat, $dossier)
+            ->assertStatus(422)
+            ->assertJsonPath('submission.ready', false)
+            ->assertJsonPath('submission.blockers.0.code', SubmissionBlocker::SECTIONS_INCOMPLETE->value)
+            ->assertJsonPath('submission.missingSections.0.key', ApplicationSection::ATTACHMENTS->value);
+
+        $depose = $dossier->fresh();
+
+        $this->assertSame(ApplicationStatus::DRAFT, $depose->status);
+        $this->assertNull($depose->submission_number);
+        $this->assertNull($depose->submitted_at);
+        $this->assertNull($depose->submitted_snapshot);
     }
 
     /**

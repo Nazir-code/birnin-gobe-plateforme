@@ -17,6 +17,7 @@ use App\Http\Controllers\Candidate\ProfileSectionController;
 use App\Http\Controllers\Candidate\SolutionSectionController;
 use App\Http\Controllers\Candidate\SubmitApplicationController;
 use App\Http\Controllers\Candidate\TeamSectionController;
+use App\Http\Controllers\Public\HomeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -42,7 +43,7 @@ use Inertia\Inertia;
 /*
 | Espace public
 */
-Route::get('/', fn () => Inertia::render('Public/Home'))->name('home');
+Route::get('/', HomeController::class)->name('home');
 
 /*
 | Accès candidat — réservé aux visiteurs non connectés

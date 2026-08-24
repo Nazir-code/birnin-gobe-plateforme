@@ -25,12 +25,26 @@ return Application::configure(basePath: dirname(__DIR__))
         // `$request->ip()` identique pour tout le monde, et une limitation des
         // tentatives de connexion qui compterait le proxy au lieu du visiteur.
         //
-        // Le réseau Docker de la pile n'est pas routable depuis l'extérieur :
-        // seul Caddy peut atteindre PHP-FPM, et faire confiance à ses en-têtes
-        // ne crée donc pas de porte dérobée. `TRUSTED_PROXIES` reste réglable
-        // au cas où un répartiteur de charge s'intercalerait un jour.
+        // La confiance s'arrête aux réseaux privés — pas `*`.
+        //
+        // `*` revient à croire quiconque parvient à parler à PHP-FPM. Tant que
+        // seul Caddy y parvient, cela ne change rien ; le jour où un port est
+        // publié par erreur, ou qu'un conteneur de dépannage est lancé sur le
+        // réseau, n'importe qui peut alors forger `X-Forwarded-For` et se
+        // présenter sous l'adresse de son choix. Ce n'est pas théorique ici : la
+        // limitation des tentatives de connexion et celle des inscriptions sont
+        // toutes deux clées sur `$request->ip()`. Les contourner suffirait à
+        // verrouiller le compte d'un administrateur, ou à créer des comptes en
+        // masse sans jamais être décompté.
+        //
+        // Les plages ci-dessous couvrent les réseaux Docker (172.16/12 par
+        // défaut), un répartiteur de charge sur réseau privé et la boucle
+        // locale. Caddy s'y trouve : HTTPS et l'adresse cliente restent donc
+        // correctement détectés. `TRUSTED_PROXIES` demeure réglable si
+        // l'infrastructure change — y compris pour revenir à `*`, mais alors en
+        // connaissance de cause.
         $middleware->trustProxies(
-            at: env('TRUSTED_PROXIES', '*'),
+            at: env('TRUSTED_PROXIES', '10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1,::1,fc00::/7'),
             headers: Request::HEADER_X_FORWARDED_FOR
                 | Request::HEADER_X_FORWARDED_HOST
                 | Request::HEADER_X_FORWARDED_PORT

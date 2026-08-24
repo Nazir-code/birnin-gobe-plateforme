@@ -12,6 +12,13 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
  * La base E2E est partagee et contient les dossiers laisses par les autres
  * scenarios : chaque test cree donc son propre candidat, avec un nom unique, et
  * se sert de la recherche pour le retrouver — jamais de la premiere ligne.
+ *
+ * Ce fichier ne suppose en revanche **rien** de ce que les autres scenarios ont
+ * laisse. Il a longtemps dependu, sans le dire, d'une edition ouverte creee par
+ * `admin-campagnes.spec.ts` : sur une base fraiche, le candidat n'avait aucune
+ * candidature a commencer et le scenario echouait — un echec qui ne disait rien
+ * du code teste, seulement de l'ordre des fichiers. `beforeAll` etablit
+ * desormais cette condition lui-meme.
  */
 const ARTISAN = process.env.E2E_ARTISAN ?? 'docker compose exec -T app php artisan';
 const MOT_DE_PASSE = 'MotDePasseSolide!2026';
@@ -85,7 +92,67 @@ async function allerAuxCandidatures(page: Page) {
   await expect(page).toHaveURL(/\/admin\/applications$/);
 }
 
+/** Format attendu par un champ `datetime-local`. */
+function saisieDate(decalageJours: number): string {
+  const date = new Date(Date.now() + decalageJours * 86_400_000);
+  const deuxChiffres = (n: number) => String(n).padStart(2, '0');
+
+  return `${date.getFullYear()}-${deuxChiffres(date.getMonth() + 1)}-${deuxChiffres(date.getDate())}`
+    + `T${deuxChiffres(date.getHours())}:${deuxChiffres(date.getMinutes())}`;
+}
+
+/**
+ * Garantit qu'une edition recoit les candidatures.
+ *
+ * Idempotente, et il le faut : l'invariant d'ADR-008 n'admet qu'une seule
+ * edition ouverte a la fois, et ce fichier s'execute sous deux profils
+ * Playwright contre la meme base. On regarde donc d'abord si une edition active
+ * existe — `campagne-active-code` n'est rendu que dans ce cas — et on n'en cree
+ * une que s'il n'y en a pas.
+ *
+ * Tout passe par les vrais ecrans d'administration : creation puis ouverture.
+ * Une insertion directe en base irait plus vite mais testerait autre chose que
+ * ce que fait un administrateur.
+ */
+async function garantirUneEditionOuverte(page: Page) {
+  await page.goto('/admin/campaigns');
+
+  if ((await page.getByTestId('campagne-active-code').count()) > 0) {
+    return;
+  }
+
+  const suffixe = jeton();
+  const nom = `Edition candidatures ${suffixe}`;
+
+  await page.goto('/admin/campaigns/create');
+  await page.getByLabel('Nom de la campagne').fill(nom);
+  await page.getByLabel('Code de l’édition').fill(`E2E-CAND-${suffixe}`);
+  await page.getByLabel('Ouverture des candidatures').fill(saisieDate(-1));
+  await page.getByLabel('Clôture des candidatures').fill(saisieDate(60));
+  await page.getByRole('button', { name: /^enregistrer$/i }).click();
+  await expect(page).toHaveURL(/\/admin\/campaigns$/);
+
+  // Creee en preparation : il faut encore l'ouvrir pour qu'elle recoive.
+  await page.getByRole('link', { name: `Modifier la campagne ${nom}` }).click();
+  await page.getByLabel('Statut').selectOption({ label: 'Candidatures ouvertes' });
+  await page.getByRole('button', { name: /^enregistrer$/i }).click();
+
+  await expect(page).toHaveURL(/\/admin\/campaigns$/);
+  await expect(page.getByTestId('campagne-active-code')).toBeVisible();
+}
+
 test.describe('Administration — consultation des candidatures', () => {
+  // La condition dont tout ce fichier depend, etablie explicitement.
+  test.beforeAll(async ({ browser }) => {
+    const contexte = await browser.newContext({ baseURL: BASE_URL });
+    const page = await contexte.newPage();
+
+    await seConnecterAdmin(page);
+    await garantirUneEditionOuverte(page);
+
+    await contexte.close();
+  });
+
   test('la barre laterale mene a la liste, qui se filtre, se cherche et s’ouvre', async ({ page, browser }) => {
     const nom = `Hadiza Souley ${jeton()}`;
     const { email } = await candidatQuiDepose(browser, nom);

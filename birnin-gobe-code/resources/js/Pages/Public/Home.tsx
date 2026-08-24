@@ -1,11 +1,12 @@
-import { Head } from '@inertiajs/react';
-import { ArrowRight, CalendarDays, CheckCircle2, GraduationCap, Handshake, Leaf, Lightbulb, MapPinned, PlayCircle, UsersRound } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Head, Link } from '@inertiajs/react';
+import { ArrowRight, CalendarDays, CheckCircle2, GraduationCap, Leaf, Lightbulb, MapPinned, PlayCircle, UsersRound } from 'lucide-react';
 import { PublicLayout } from '@/Layouts/PublicLayout';
 import { Button, Card, SectionTitle } from '@/Components/Ui';
 import { AnimatedCounter } from '@/Components/AnimatedCounter';
 import { Reveal } from '@/Components/Reveal';
 import { HeroCarousel, type HeroImage } from '@/Components/HeroCarousel';
-import { demoCampaign, themes } from '@/data/demo';
+import { themes } from '@/data/demo';
 
 const themeIcons = [Leaf, Lightbulb, MapPinned, GraduationCap, UsersRound];
 const countdownLabels: Record<string, string> = { days: 'jours', hours: 'heures', minutes: 'minutes', seconds: 'secondes' };
@@ -57,7 +58,71 @@ const heroImages: HeroImage[] = [
   },
 ];
 
-export default function Home() {
+/** Ce que la page publique sait de l'edition en cours. Rien de plus. */
+type Campagne = {
+  name: string;
+  code: string;
+  closesAt: string | null;
+  timezone: string;
+};
+
+type Restant = { days: number; hours: number; minutes: number; seconds: number };
+
+function restantDepuis(closesAt: string): Restant | null {
+  const ecart = new Date(closesAt).getTime() - Date.now();
+
+  if (!Number.isFinite(ecart) || ecart <= 0) return null;
+
+  const secondes = Math.floor(ecart / 1000);
+
+  return {
+    days: Math.floor(secondes / 86400),
+    hours: Math.floor((secondes % 86400) / 3600),
+    minutes: Math.floor((secondes % 3600) / 60),
+    seconds: secondes % 60,
+  };
+}
+
+/**
+ * Le temps qu'il reste, recalcule chaque seconde depuis la vraie cloture.
+ *
+ * Rend `null` quand il n'y a pas de date, ou quand elle est passee pendant que
+ * la page etait ouverte : l'ecran doit alors dire que c'est fini, pas afficher
+ * un decompte negatif.
+ */
+function useCompteARebours(closesAt: string | null): Restant | null {
+  const [restant, setRestant] = useState<Restant | null>(() => (closesAt ? restantDepuis(closesAt) : null));
+
+  useEffect(() => {
+    if (!closesAt) {
+      setRestant(null);
+      return;
+    }
+
+    setRestant(restantDepuis(closesAt));
+    const minuterie = window.setInterval(() => setRestant(restantDepuis(closesAt)), 1000);
+
+    return () => window.clearInterval(minuterie);
+  }, [closesAt]);
+
+  return restant;
+}
+
+/** La cloture telle que le concours l'annonce : dans le fuseau de l'edition. */
+function clotureLisible(closesAt: string, timezone: string): string {
+  const date = new Intl.DateTimeFormat('fr-FR', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+    timeZone: timezone,
+  }).format(new Date(closesAt));
+
+  return `${date} (${timezone})`;
+}
+
+export default function Home({ campaign }: { campaign: Campagne | null }) {
+  const restant = useCompteARebours(campaign?.closesAt ?? null);
+  const depotOuvert = campaign !== null && restant !== null;
+
   return (
     <PublicLayout>
       <Head title="BIRNIN GOBE — Compétition nationale d'innovation" />
@@ -69,10 +134,25 @@ export default function Home() {
               La plateforme nationale qui propulse les jeunes <span className="text-gold-600">innovateurs du Niger.</span>
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">BIRNIN GOBE accompagne les jeunes talents et leurs idées innovantes pour bâtir un Niger créatif, inclusif et durable.</p>
-            <div className="mt-8 flex flex-wrap gap-3" id="candidater">
-              <Button className="min-w-44">Candidater <ArrowRight size={17} /></Button>
+            <div className="mt-8 flex flex-wrap items-center gap-3" id="candidater">
+              {/* Le bouton ne promet une candidature que s'il y en a une à
+                  déposer. Hors période, il est désactivé et la raison est dite —
+                  un lien qui mène à un formulaire fermé est pire qu'un bouton
+                  éteint. */}
+              {depotOuvert ? (
+                <Link href="/register" className="focus-ring press-feedback inline-flex min-h-11 min-w-44 items-center justify-center gap-2 rounded-xl bg-gold-500 px-5 text-sm font-bold text-ink-950 transition-colors hover:bg-gold-600" data-testid="cta-candidater">
+                  Candidater <ArrowRight size={17} />
+                </Link>
+              ) : (
+                <Button className="min-w-44" disabled data-testid="cta-candidater-ferme">Candidatures fermées</Button>
+              )}
               <Button variant="ghost" className="min-w-48"><PlayCircle size={17} /> Découvrir le processus</Button>
             </div>
+            {depotOuvert ? null : (
+              <p className="mt-3 text-sm font-semibold text-slate-500" data-testid="aucune-campagne">
+                Les candidatures ne sont pas ouvertes actuellement.
+              </p>
+            )}
           </div>
           <div className="relative min-h-[380px] overflow-hidden lg:min-h-[470px]">
             <HeroCarousel images={heroImages} className="absolute inset-0 h-full w-full" />
@@ -80,15 +160,33 @@ export default function Home() {
           </div>
         </div>
         <div className="mx-auto grid max-w-[1500px] gap-4 px-6 pb-8 lg:grid-cols-[1.05fr_.95fr] lg:px-12 xl:px-16">
+          {/* Calendrier réel. Le libellé vient de la campagne, le décompte de
+              sa date de clôture — plus aucune valeur figée. */}
           <Reveal id="calendrier" className="hover-lift"><Card className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
-            <div className="flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-xl bg-brand-50 text-brand-900"><CalendarDays size={23} /></div><div><div className="text-sm font-bold text-slate-700">Prochaine clôture des candidatures</div><div className="mt-0.5 text-xs text-slate-400">{demoCampaign.deadlineLabel}</div></div></div>
-            <div className="grid grid-cols-4 divide-x divide-slate-200">
-              {Object.entries(demoCampaign.countdown).map(([key, value]) => <div key={key} className="px-3 text-center sm:px-5"><div className="text-2xl font-black text-brand-800"><AnimatedCounter value={String(value)} durationMs={800} /></div><div className="mt-1 text-[9px] font-bold uppercase tracking-wide text-slate-500">{countdownLabels[key]}</div></div>)}
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-brand-50 text-brand-900"><CalendarDays size={23} /></div>
+              <div>
+                <div className="text-sm font-bold text-slate-700">
+                  {campaign === null ? 'Aucune édition ouverte' : `Clôture des candidatures — ${campaign.name}`}
+                </div>
+                <div className="mt-0.5 text-xs text-slate-400" data-testid="cloture">
+                  {campaign?.closesAt
+                    ? clotureLisible(campaign.closesAt, campaign.timezone)
+                    : 'Les candidatures ne sont pas ouvertes actuellement.'}
+                </div>
+              </div>
             </div>
+            {restant === null ? null : (
+              <div className="grid grid-cols-4 divide-x divide-slate-200" data-testid="compte-a-rebours">
+                {(['days', 'hours', 'minutes', 'seconds'] as const).map((cle) => (
+                  <div key={cle} className="px-3 text-center sm:px-5">
+                    <div className="text-2xl font-black text-brand-800"><AnimatedCounter value={String(restant[cle])} durationMs={800} /></div>
+                    <div className="mt-1 text-[9px] font-bold uppercase tracking-wide text-slate-500">{countdownLabels[cle]}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card></Reveal>
-          <Reveal delay={80} className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-4">
-            {demoCampaign.stats.map(([value, label], index) => <div key={label} className="hover-lift bg-white px-4 py-4 text-center"><div className="text-2xl font-black text-brand-800"><AnimatedCounter value={value} /></div><div className="mt-1 text-[11px] font-semibold text-slate-500">{label}</div>{index === 3 ? <Handshake className="mx-auto mt-2 text-brand-700" size={18} /> : null}</div>)}
-          </Reveal>
         </div>
       </section>
 

@@ -80,6 +80,50 @@ else
   echo "        En production, SITE_ADDRESS doit porter le domaine réel."
 fi
 
+# — La page d'accueil ne sert aucune valeur de maquette
+#
+# Elle a longtemps affiché une édition, une date limite et des statistiques
+# venues de `resources/js/data/demo.ts`. Une date limite fausse sur le site
+# officiel induit en erreur un candidat qui n'a rien fait de mal : ce contrôle
+# vérifie qu'aucune de ces chaînes ne revient dans le HTML servi.
+accueil="$(curl -s --max-time 15 "${base}/")"
+
+demo_trouvee=""
+for trace in '30 juin 2026' '5 000+' '1 200+' 'Jeunes impactés' 'Projets accompagnés' 'Partenaires engagés'; do
+  if grep -qF "$trace" <<< "$accueil"; then
+    demo_trouvee="$trace"
+    break
+  fi
+done
+
+if [[ -n "$demo_trouvee" ]]; then
+  printf '  ECHEC %-52s « %s » encore servi
+' "accueil sans donnée de maquette" "$demo_trouvee"
+  echoues=$((echoues + 1))
+else
+  printf '  OK    %-52s aucune
+' "accueil sans donnée de maquette"
+  reussis=$((reussis + 1))
+fi
+
+# — L'accueil dit l'état réel du dépôt : soit un décompte, soit sa fermeture.
+#
+# Les deux réponses sont acceptables ; c'est leur absence qui ne l'est pas. Une
+# page qui n'annonce ni l'un ni l'autre laisse le visiteur sans réponse.
+if grep -qF 'data-testid="compte-a-rebours"' <<< "$accueil"; then
+  printf '  OK    %-52s décompte affiché
+' "accueil : état du dépôt annoncé"
+  reussis=$((reussis + 1))
+elif grep -qF "Les candidatures ne sont pas ouvertes actuellement" <<< "$accueil"; then
+  printf '  OK    %-52s dépôt annoncé fermé
+' "accueil : état du dépôt annoncé"
+  reussis=$((reussis + 1))
+else
+  printf '  ECHEC %-52s ni décompte ni mention de fermeture
+' "accueil : état du dépôt annoncé"
+  echoues=$((echoues + 1))
+fi
+
 # — Aucune trace d'exécution ne doit fuir (APP_DEBUG=false)
 page_absente="$(curl -s --max-time 15 "${base}/page-qui-nexiste-pas")"
 if grep -qiE 'stack trace|vendor/laravel|APP_KEY|DB_PASSWORD' <<< "$page_absente"; then
@@ -96,5 +140,9 @@ echo
 echo "Reste à vérifier au navigateur (checklist §7) : inscription, connexion"
 echo "candidat et administrateur, création d'une candidature, persistance après"
 echo "rechargement, 403 candidat vers l'administration, 404 sur un dossier absent."
+echo
+echo "La limitation des inscriptions (10 comptes / 15 min par origine) crée des"
+echo "comptes : elle est donc prouvée par AccueilPublicTest, pas ici — ce script"
+echo "reste strictement en lecture et rejouable sur une production ouverte."
 
 [[ "$echoues" -eq 0 ]]
