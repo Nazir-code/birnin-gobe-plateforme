@@ -245,8 +245,15 @@ export default function Home({ campaign, stats, themes, criteria }: {
                     ? `${clotureLisible(campaign.closesAt, campaign.timezone)} — ${campaign.name}`
                     : 'Les candidatures ne sont pas ouvertes actuellement.'}
                 </div>
+                {/* Le libellé suit ce que le serveur fait, pas l'inverse.
+                    `SubmissionReadiness` ferme bien le dépôt passé `closes_at` —
+                    mais `ApplicationPolicy::update()` n'ayant aucune borne de
+                    calendrier, un brouillon reste modifiable après la clôture.
+                    Annoncer un verrouillage des dossiers serait donc faux ;
+                    annoncer la fermeture du dépôt est exact. Les deux moitiés du
+                    contrat sont éprouvées par `ClotureEtVerrouillageTest`. */}
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  À cette date, les dossiers sont verrouillés et ne peuvent plus être modifiés.
+                  Après cette date, aucune candidature ne pourra être soumise.
                 </p>
               </div>
             </div>

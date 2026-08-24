@@ -80,8 +80,11 @@ test.describe('Page d’accueil publique', () => {
     expect(texte).toContain('Clôture des candidatures');
     expect(texte).not.toContain('Prochaine clôture');
 
-    // Le sens du verrouillage est dit, pas seulement suggere par l'icone.
-    expect(texte).toContain('les dossiers sont verrouillés');
+    // La consequence de la date est dite, pas seulement suggeree par l'icone —
+    // et elle dit ce que le serveur fait vraiment : le depot se ferme. Un
+    // brouillon, lui, reste modifiable, la policy ne connaissant aucune date.
+    // Voir ClotureEtVerrouillageTest.
+    expect(texte).toContain('aucune candidature ne pourra être soumise');
     await expect(page.getByTestId('cloture')).toBeVisible();
   });
 
