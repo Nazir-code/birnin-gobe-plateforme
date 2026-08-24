@@ -147,26 +147,30 @@ final class AccueilPublicTest extends TestCase
     /**
      * Le formulaire d'inscription est limité, comme les deux connexions.
      *
-     * Onze tentatives depuis la même origine : les dix premières passent, la
-     * onzième est refusée. La limite porte sur l'origine et non sur l'e-mail —
-     * compter par e-mail ne protégerait de rien, puisqu'un script en change à
-     * chaque envoi, ce que reproduit exactement cette boucle.
+     * Soixante et une tentatives depuis la même origine : les soixante
+     * premières passent, la suivante est refusée. La limite porte sur l'origine
+     * et non sur l'e-mail — compter par e-mail ne protégerait de rien, puisqu'un
+     * script en change à chaque envoi, ce que reproduit exactement cette boucle.
+     *
+     * Le seuil est haut à dessein : les opérateurs mobiles nigériens partagent
+     * leurs adresses publiques, et un seuil serré fermerait la porte à des
+     * candidats légitimes. Voir `LimiteurDInscriptions`.
      */
     public function test_les_inscriptions_sont_limitees_par_origine(): void
     {
         RateLimiter::clear('inscription|127.0.0.1');
 
-        for ($i = 1; $i <= 10; $i++) {
+        for ($i = 1; $i <= 60; $i++) {
             $this->post('/register', $this->inscription($i))->assertRedirect();
             $this->post('/logout');
         }
 
-        $this->assertSame(10, User::query()->count());
+        $this->assertSame(60, User::query()->count());
 
-        $this->post('/register', $this->inscription(11))
+        $this->post('/register', $this->inscription(61))
             ->assertSessionHasErrors('email');
 
-        $this->assertSame(10, User::query()->count());
+        $this->assertSame(60, User::query()->count());
     }
 
     /**
@@ -180,7 +184,7 @@ final class AccueilPublicTest extends TestCase
     {
         RateLimiter::clear('inscription|127.0.0.1');
 
-        for ($i = 1; $i <= 10; $i++) {
+        for ($i = 1; $i <= 60; $i++) {
             $this->post('/register', ['name' => '', 'email' => 'pas-un-email', 'password' => 'x'])
                 ->assertSessionHasErrors();
         }

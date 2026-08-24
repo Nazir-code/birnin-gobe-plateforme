@@ -106,20 +106,22 @@ else
   reussis=$((reussis + 1))
 fi
 
-# — L'accueil dit l'état réel du dépôt : soit un décompte, soit sa fermeture.
+# — L'accueil dit l'état réel du dépôt : une édition, ou aucune.
 #
-# Les deux réponses sont acceptables ; c'est leur absence qui ne l'est pas. Une
-# page qui n'annonce ni l'un ni l'autre laisse le visiteur sans réponse.
-if grep -qF 'data-testid="compte-a-rebours"' <<< "$accueil"; then
-  printf '  OK    %-52s décompte affiché
+# On lit la charge utile Inertia (`data-page`), pas le DOM : la page est rendue
+# par le navigateur, et un `curl` ne verrait jamais le décompte ni le message de
+# fermeture. `"campaign":null` et `"campaign":{...}` sont les deux réponses
+# légitimes du serveur ; c'est leur absence qui signalerait une régression.
+if grep -qF '"campaign":null' <<< "$accueil"; then
+  printf '  OK    %-52s aucune édition ouverte, dit comme tel
 ' "accueil : état du dépôt annoncé"
   reussis=$((reussis + 1))
-elif grep -qF "Les candidatures ne sont pas ouvertes actuellement" <<< "$accueil"; then
-  printf '  OK    %-52s dépôt annoncé fermé
+elif grep -qE '"campaign":\{[^}]*"closesAt":"[0-9]{4}-' <<< "$accueil"; then
+  printf '  OK    %-52s édition ouverte, clôture réelle servie
 ' "accueil : état du dépôt annoncé"
   reussis=$((reussis + 1))
 else
-  printf '  ECHEC %-52s ni décompte ni mention de fermeture
+  printf '  ECHEC %-52s le serveur n'"'"'annonce ni édition ni fermeture
 ' "accueil : état du dépôt annoncé"
   echoues=$((echoues + 1))
 fi
