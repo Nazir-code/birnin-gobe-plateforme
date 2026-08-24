@@ -185,7 +185,13 @@ test.describe('Étape 9 — relecture et dépôt', () => {
     // — Les neuf etapes sont la, lisibles
     await expect(page.getByTestId('relecture-eligibility')).toHaveAttribute('data-etat', 'complete');
     await expect(page.getByTestId('relecture-implementation')).toHaveAttribute('data-etat', 'complete');
-    await expect(page.getByTestId('relecture-attachments')).toHaveAttribute('data-etat', 'complete');
+    // L'etape 8 est presente et son contenu compte pour la recevabilite, mais son
+    // etat affiche reste « non-implementee » tant qu'elle n'a pas d'ecran :
+    // `etat()` classe d'abord sur ce que le produit propose, et c'est honnete.
+    // L'assertion porte donc sur sa presence, pas sur un etat qui changera le
+    // jour ou la branche « Pieces / declarations » sera integree.
+    await expect(page.getByTestId('relecture-attachments')).toBeVisible();
+    await expect(page.getByTestId('recevabilite')).toContainText('Votre dossier est complet');
     // Des libelles, jamais des cles techniques.
     await expect(page.getByTestId('relecture-solution')).toContainText('Ruwa Link');
     await expect(page.getByTestId('relecture-solution')).not.toContainText('solution_name');
