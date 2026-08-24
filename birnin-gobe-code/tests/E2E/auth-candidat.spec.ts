@@ -39,8 +39,13 @@ test.describe('Parcours d’authentification candidat', () => {
     const { nom, email } = compteUnique();
 
     // — Depuis l'accueil, le CTA public mene a l'inscription candidat
+    //
+    // Le CTA est designe par son `data-testid` et non par son libelle : celui-ci
+    // dit desormais l'action en toutes lettres (« Commencer ma candidature »),
+    // et il est appele a etre reformule. Ce scenario-ci eprouve la destination,
+    // pas la formulation — le libelle exact est eprouve par `accueil-public`.
     await page.goto('/');
-    await page.getByRole('link', { name: /candidater/i }).first().click();
+    await page.getByTestId('cta-candidater').click();
     await expect(page).toHaveURL(/\/register$/);
 
     // — Inscription
