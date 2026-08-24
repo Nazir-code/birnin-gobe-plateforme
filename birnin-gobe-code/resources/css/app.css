@@ -130,9 +130,16 @@
 }
 html { background: var(--bg); }
 
+/* Défilement doux vers les ancres — « Découvrir le processus », navigation,
+   pied de page. Le bloc `prefers-reduced-motion` plus haut le neutralise pour
+   qui l'a demandé : la règle y est déjà `scroll-behavior: auto !important`. */
+html { scroll-behavior: smooth; }
+
 /* Les ancres publiques (navigation, pied de page) doivent dégager la hauteur de
-   l'en-tête collant, sinon la cible arrive sous la barre. */
-:target { scroll-margin-top: 104px; }
+   l'en-tête collant, sinon la cible arrive sous la barre. La valeur suit la
+   navbar, agrandie avec le logo. */
+:target,
+section[id] { scroll-margin-top: 120px; }
 body { margin: 0; font-family: var(--font-sans); color: var(--ink); background: var(--bg); }
 button, input, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }

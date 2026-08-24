@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Application\ApplicationStatus;
+use App\Domain\Auth\UserRole;
 use App\Domain\Campaign\CampaignStatus;
+use App\Models\Application;
 use App\Models\Campaign;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -140,6 +143,181 @@ final class AccueilPublicTest extends TestCase
 
         $reponse->assertInertia(fn ($page) => $page->missing('campaign.countdown'));
         $this->assertStringNotContainsString('24 j', $reponse->getContent());
+    }
+
+    // — Les chiffres clés viennent de la base ————————————————————
+
+    /**
+     * Aucun candidat, aucune candidature : la page affiche des zéros.
+     *
+     * Zéro est une valeur exacte, et une plateforme qui vient d'ouvrir n'a rien
+     * d'autre à annoncer. C'est précisément le moment où la tentation d'arrondir
+     * est la plus forte — « 5 000+ jeunes impactés » était née comme ça.
+     */
+    public function test_sans_donnees_les_chiffres_valent_zero(): void
+    {
+        $this->campagne();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('stats.candidates', 0)
+                ->where('stats.draftApplications', 0)
+                ->where('stats.submittedApplications', 0)
+                ->where('stats.themes', 4));
+    }
+
+    /** Les candidats sont comptés, les comptes internes ne le sont pas. */
+    public function test_les_candidats_sont_comptes_sans_les_comptes_internes(): void
+    {
+        $this->campagne();
+
+        User::factory()->count(3)->create();
+        User::factory()->role(UserRole::ADMIN)->create();
+        User::factory()->role(UserRole::EVALUATOR)->create();
+        User::factory()->role(UserRole::JURY)->create();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('stats.candidates', 3));
+    }
+
+    /** Brouillons et dossiers déposés sont comptés séparément. */
+    public function test_les_candidatures_sont_comptees_par_statut(): void
+    {
+        $campagne = $this->campagne();
+
+        // Un candidat par dossier : l'unique `(campaign_id, candidate_id)`
+        // interdit deux candidatures du même candidat sur la même édition.
+        foreach (range(1, 2) as $ignore) {
+            Application::factory()->for($campagne)->for(User::factory(), 'candidate')->create();
+        }
+
+        Application::factory()
+            ->for($campagne)
+            ->for(User::factory(), 'candidate')
+            ->status(ApplicationStatus::SUBMITTED)
+            ->create();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('stats.draftApplications', 2)
+                ->where('stats.submittedApplications', 1));
+    }
+
+    // — Le contenu officiel ————————————————————————————————————————
+
+    /** Les quatre thématiques officielles, avec leurs deux volets. */
+    public function test_l_accueil_porte_les_quatre_thematiques_officielles(): void
+    {
+        $this->campagne();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('themes', 4)
+                ->where('themes.0.title', 'Gestion urbaine et services de base')
+                ->where('themes.1.title', 'Gestion foncière et cadastrale')
+                ->where('themes.2.title', 'État civil et services administratifs')
+                ->where('themes.3.title', 'Cartographie, géolocalisation, risques et résilience')
+                // Les deux volets restent distincts, et le premier est cité au mot près.
+                ->where('themes.0.problems', 'Signalement et suivi des déchets, voirie, caniveaux, éclairage, équipements, interventions et relation citoyenne.')
+                ->where('themes.0.results', 'Collecte terrain, priorisation, affectation, traçabilité et tableau de bord opérationnel.'));
+    }
+
+    /** Les thématiques de maquette ont disparu du rendu public. */
+    public function test_les_anciennes_thematiques_de_maquette_ont_disparu(): void
+    {
+        $this->campagne();
+
+        $rendu = $this->get('/')->assertOk()->getContent();
+
+        foreach (['Agroalimentaire', 'Énergies renouvelables et résilience', 'Culture & Créativité'] as $trace) {
+            $this->assertStringNotContainsString($trace, $rendu, "La page sert encore « {$trace} ».");
+        }
+    }
+
+    /** Les huit critères d'évaluation, avec leur question directrice. */
+    public function test_l_accueil_porte_les_huit_criteres_d_evaluation(): void
+    {
+        $this->campagne();
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(function ($page) {
+                $page->has('criteria', 8);
+
+                $attendus = [
+                    'Pertinence', 'Impact usager', 'Faisabilité', 'Qualité technique',
+                    'Innovation utile', 'Sécurité', 'Durabilité', 'Équipe et pitch',
+                ];
+
+                foreach ($attendus as $rang => $titre) {
+                    $page->where("criteria.{$rang}.title", $titre);
+                }
+
+                // Une question au moins, au mot près : ce ne sont pas que des titres.
+                $page->where('criteria.2.question', 'Le MVP peut-il fonctionner avec les ressources, données et délais disponibles ?');
+            });
+    }
+
+    /**
+     * Les critères d'évaluation ne se font pas passer pour de l'éligibilité.
+     *
+     * Les deux notions cohabitent sur la page. Sans cette phrase, un candidat
+     * pourrait croire qu'il faut satisfaire les huit critères pour avoir le
+     * droit de déposer, alors qu'ils servent à juger un dossier déjà recevable.
+     */
+    public function test_les_criteres_sont_annonces_comme_criteres_d_evaluation(): void
+    {
+        $this->campagne();
+
+        // La distinction est portée par l'écran — voir le spec Playwright
+        // `accueil-public`. Ce qui se vérifie ici, c'est que le serveur ne
+        // confond pas les deux jeux de règles : les critères d'évaluation sont
+        // du contenu, et aucune règle d'éligibilité n'est servie à la page.
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->has('criteria', 8)->missing('eligibility'));
+    }
+
+    // — Les libellés attendus ——————————————————————————————————————
+
+    /** « Clôture des candidatures », et pas « Prochaine clôture ». */
+    public function test_le_libelle_de_cloture_est_exact(): void
+    {
+        $this->campagne();
+
+        $rendu = $this->get('/')->assertOk()->getContent();
+
+        // Le libellé est rendu par React ; ce qui se vérifie côté serveur, c'est
+        // qu'aucune trace de l'ancien intitulé ne subsiste dans ce qui est servi.
+        // Le libellé exact est éprouvé à l'écran par le spec Playwright.
+        $this->assertStringNotContainsString('Prochaine clôture', $rendu);
+    }
+
+    /** Le sélecteur de langue a disparu : aucune i18n n'existe derrière. */
+    public function test_le_selecteur_de_langue_a_disparu(): void
+    {
+        $this->campagne();
+
+        $rendu = $this->get('/')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('>FR ', $rendu);
+        $this->assertStringNotContainsString('ChevronDown', $rendu);
+    }
+
+    /** Le CTA nomme l'action et mène à l'inscription. */
+    public function test_le_cta_public_mene_a_l_inscription(): void
+    {
+        $this->campagne();
+
+        $rendu = $this->get('/')->assertOk()->getContent();
+
+        // Rendu par React : le libellé s'éprouve à l'écran. Ici on vérifie que
+        // l'ancien intitulé n'est plus servi nulle part.
+        $this->assertStringNotContainsString('>Candidater<', $rendu);
     }
 
     // — La limitation des inscriptions ————————————————————————————

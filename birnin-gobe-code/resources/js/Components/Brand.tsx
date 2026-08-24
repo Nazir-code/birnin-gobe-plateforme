@@ -1,11 +1,14 @@
 const LOGO_SRC = '/assets/branding/birnin-gobe-logo-final.jpg';
 const LOGO_ALT = 'BIRNI’NGOBE — Startup Jeune Talent';
 
-// header: navbar publique (60-75px desktop, 48-60px mobile via breakpoint).
+// header: navbar publique. Agrandi a la demande — le logo est le premier repere
+// institutionnel de la page et se lisait mal. Seule la hauteur change :
+// `w-auto object-contain` preserve les proportions, l'image n'est jamais etiree.
+// La navbar suit (h-[104px] dans PublicLayout) pour ne pas serrer le logo.
 // sidebar: sidebars candidat/admin/évaluateur. mobile: header mobile compact.
 // footer: bloc marque du pied de page public (posé sur une plaque blanche).
 const sizeClasses = {
-  header: 'h-[56px] sm:h-[68px]',
+  header: 'h-[64px] sm:h-[84px]',
   sidebar: 'h-16',
   mobile: 'h-[52px]',
   footer: 'h-[60px] sm:h-[72px]',
