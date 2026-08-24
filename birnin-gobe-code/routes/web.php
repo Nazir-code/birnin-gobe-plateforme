@@ -11,7 +11,10 @@ use App\Http\Controllers\Candidate\ApplicationController;
 use App\Http\Controllers\Candidate\ChallengeSectionController;
 use App\Http\Controllers\Candidate\DashboardController;
 use App\Http\Controllers\Candidate\EligibilitySectionController;
+use App\Http\Controllers\Candidate\ImpactSectionController;
+use App\Http\Controllers\Candidate\ImplementationSectionController;
 use App\Http\Controllers\Candidate\ProfileSectionController;
+use App\Http\Controllers\Candidate\SolutionSectionController;
 use App\Http\Controllers\Candidate\TeamSectionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -93,7 +96,8 @@ Route::middleware(['auth', 'role:candidate'])
         // Sections posterieures a l'eligibilite : fermees tant qu'une regle
         // bloquante est declenchee (cahier des charges 5.2). Declare sur la
         // route, comme `can:` — voir EnsureApplicationIsEligible. Elle vaut pour
-        // les deux sections ci-dessous, « Profil » comme « Défi ».
+        // toutes les sections ci-dessous, de « Profil » au « Plan de mise en
+        // oeuvre ».
 
         // Etape 2 — profil du candidat.
         Route::get('/application/{application}/profile', [ProfileSectionController::class, 'edit'])
@@ -123,6 +127,36 @@ Route::middleware(['auth', 'role:candidate'])
         Route::patch('/application/{application}/challenge', [ChallengeSectionController::class, 'update'])
             ->middleware(['can:update,application', 'eligible'])
             ->name('application.challenge.update');
+
+        // Etape 5 — solution proposee (cahier des charges 5.2 etape 5, 7.1
+        // rubriques Identification et Solution).
+        Route::get('/application/{application}/solution', [SolutionSectionController::class, 'edit'])
+            ->middleware(['can:view,application', 'eligible'])
+            ->name('application.solution');
+
+        Route::patch('/application/{application}/solution', [SolutionSectionController::class, 'update'])
+            ->middleware(['can:update,application', 'eligible'])
+            ->name('application.solution.update');
+
+        // Etape 6 — impact et viabilite (5.2 etape 6, 7.1 rubriques Impact,
+        // Inclusion et Viabilite). Description par le candidat, jamais notation.
+        Route::get('/application/{application}/impact', [ImpactSectionController::class, 'edit'])
+            ->middleware(['can:view,application', 'eligible'])
+            ->name('application.impact');
+
+        Route::patch('/application/{application}/impact', [ImpactSectionController::class, 'update'])
+            ->middleware(['can:update,application', 'eligible'])
+            ->name('application.impact.update');
+
+        // Etape 7 — plan de mise en oeuvre (5.2 etape 7, 7.1 rubrique
+        // Execution). Derniere etape du parcours ouvert a ce jour.
+        Route::get('/application/{application}/implementation', [ImplementationSectionController::class, 'edit'])
+            ->middleware(['can:view,application', 'eligible'])
+            ->name('application.implementation');
+
+        Route::patch('/application/{application}/implementation', [ImplementationSectionController::class, 'update'])
+            ->middleware(['can:update,application', 'eligible'])
+            ->name('application.implementation.update');
     });
 
 /*

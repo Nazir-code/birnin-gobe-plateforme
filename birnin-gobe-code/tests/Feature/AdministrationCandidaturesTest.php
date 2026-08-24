@@ -593,9 +593,11 @@ final class AdministrationCandidaturesTest extends TestCase
                 ->where('application.sections.2.key', ApplicationSection::TEAM->value)
                 ->where('application.sections.2.state', 'non-commencee')
                 ->where('application.sections.2.implemented', true)
-                // La premiere etape encore fermee est desormais la cinquieme.
-                ->where('application.sections.4.key', ApplicationSection::SOLUTION->value)
-                ->where('application.sections.4.state', 'non-implementee'));
+                // La premiere etape encore fermee est desormais la huitieme :
+                // l'ouverture des etapes 5 a 7 a repousse la frontiere, et cet
+                // ecran la suit sans qu'aucune ligne du presentateur change.
+                ->where('application.sections.7.key', ApplicationSection::ATTACHMENTS->value)
+                ->where('application.sections.7.state', 'non-implementee'));
     }
 
     /** Les réponses sortent en couples lisibles, jamais en JSON brut. */
@@ -723,23 +725,24 @@ final class AdministrationCandidaturesTest extends TestCase
      * Une section hors du parcours ouvert ne gonfle pas le pourcentage — côté
      * administration comme côté candidat (ADR-009).
      *
-     * L'exemple a changé de section, et cela dit l'essentiel de cette
-     * intégration : « Défi » servait de contre-exemple tant que l'étape 3
-     * n'existait pas. Depuis qu'elle existe, « Défi » est **dans** le parcours
-     * et compte. Le contre-exemple est donc désormais une étape encore fermée —
-     * « Solution », la cinquième — dont des réponses ne doivent rien ajouter.
+     * Le contre-exemple change de section à chaque ouverture d'étape, et c'est
+     * précisément ce que cette intégration doit suivre : « Défi » a servi tant
+     * que l'étape 3 n'existait pas, « Solution » tant que l'étape 5 n'existait
+     * pas. Depuis l'ouverture des étapes 5 à 7, la première section encore
+     * fermée est « Pièces / déclarations », la huitième — des réponses qui s'y
+     * trouveraient ne doivent rien ajouter.
      */
     public function test_une_section_hors_parcours_ne_gonfle_pas_la_progression(): void
     {
         $campagne = $this->campagne(ouverte: true);
         $dossier = Application::factory()->for($campagne)->for(User::factory(), 'candidate')->create();
         $dossier->sections()->create([
-            'section' => ApplicationSection::SOLUTION->value,
+            'section' => ApplicationSection::ATTACHMENTS->value,
             'answers' => ['esquisse' => 'Forage solaire'],
             'completed_at' => now(),
         ]);
 
-        $this->assertFalse(ApplicationSection::SOLUTION->isOnOpenPath());
+        $this->assertFalse(ApplicationSection::ATTACHMENTS->isOnOpenPath());
 
         $this->actingAs($this->admin())
             ->get('/admin/applications')

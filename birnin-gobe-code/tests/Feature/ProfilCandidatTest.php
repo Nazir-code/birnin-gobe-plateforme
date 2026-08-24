@@ -466,7 +466,7 @@ final class ProfilCandidatTest extends TestCase
         $this->assertSame($this->pourcentage(2), (int) $application->fresh()->completion_percent);
     }
 
-    public function test_les_quatre_premieres_etapes_sont_sur_le_parcours_ouvert(): void
+    public function test_les_sept_premieres_etapes_sont_sur_le_parcours_ouvert(): void
     {
         $candidat = $this->candidat();
         $application = $this->brouillonDe($candidat, $this->campagne());
@@ -496,6 +496,9 @@ final class ProfilCandidatTest extends TestCase
                     ApplicationSection::PROFILE,
                     ApplicationSection::TEAM,
                     ApplicationSection::CHALLENGE,
+                    ApplicationSection::SOLUTION,
+                    ApplicationSection::IMPACT,
+                    ApplicationSection::IMPLEMENTATION,
                 ] as $section) {
                     $this->assertTrue(
                         $etapes->firstWhere('key', $section->value)['onOpenPath'],
@@ -503,8 +506,8 @@ final class ProfilCandidatTest extends TestCase
                     );
                 }
 
-                // L'étape 5 n'est pas développée : le parcours s'arrête là.
-                $this->assertFalse($etapes->firstWhere('key', ApplicationSection::SOLUTION->value)['onOpenPath']);
+                // L'étape 8 n'est pas développée : le parcours s'arrête là.
+                $this->assertFalse($etapes->firstWhere('key', ApplicationSection::ATTACHMENTS->value)['onOpenPath']);
                 $this->assertSame('done', $etapes->firstWhere('key', ApplicationSection::CHALLENGE->value)['state']);
             });
     }
@@ -573,7 +576,10 @@ final class ProfilCandidatTest extends TestCase
                 // plus proche : le candidat rejoint le parcours sans perdre sa
                 // saisie ni se retrouver sur un écran inexistant.
                 ->where('previousUrl', url("/candidate/application/{$application->getKey()}/team"))
-                ->where('nextUrl', null));
+                // Et la suite existe désormais : l'ouverture de l'étape 5 rend
+                // au dossier arrêté au « Défi » un chemin vers l'avant, sans
+                // qu'une seule de ses réponses ait été touchée.
+                ->where('nextUrl', url("/candidate/application/{$application->getKey()}/solution")));
     }
 
     public function test_un_brouillon_ancien_conserve_ses_reponses_et_son_etape(): void

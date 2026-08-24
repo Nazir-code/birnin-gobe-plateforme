@@ -8,6 +8,9 @@
 | Formulaire — Étape 2 Profil | `/candidate/application/{application}/profile` | `resources/js/Pages/Candidate/Application/Profile.tsx` |
 | Formulaire — Étape 3 Structure / équipe | `/candidate/application/{application}/team` | `resources/js/Pages/Candidate/Application/Team.tsx` |
 | Formulaire — Étape 4 Défi | `/candidate/application/{application}/challenge` | `resources/js/Pages/Candidate/Application/Challenge.tsx` |
+| Formulaire — Étape 5 Solution | `/candidate/application/{application}/solution` | `resources/js/Pages/Candidate/Application/Solution.tsx` |
+| Formulaire — Étape 6 Impact / viabilité | `/candidate/application/{application}/impact` | `resources/js/Pages/Candidate/Application/Impact.tsx` |
+| Formulaire — Étape 7 Plan de mise en œuvre | `/candidate/application/{application}/implementation` | `resources/js/Pages/Candidate/Application/Implementation.tsx` |
 | Entrée « Ma candidature » | `/candidate/application` | redirection serveur vers la section en cours (ADR-005) |
 | Mobile-first | mêmes routes, responsive | layouts + breakpoints Tailwind |
 | Back-office administratif | `/admin/dashboard` | `resources/js/Pages/Admin/Dashboard.tsx` |
