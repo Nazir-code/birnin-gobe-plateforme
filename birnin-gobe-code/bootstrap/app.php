@@ -18,6 +18,25 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [HandleInertiaRequests::class]);
 
+        // L'application ne reçoit jamais de requête directement : Caddy la lui
+        // transmet. Sans cette déclaration, Laravel voit l'adresse du conteneur
+        // Caddy comme adresse cliente et une connexion « en clair » même quand
+        // le visiteur est en HTTPS — d'où des liens en `http://`, un
+        // `$request->ip()` identique pour tout le monde, et une limitation des
+        // tentatives de connexion qui compterait le proxy au lieu du visiteur.
+        //
+        // Le réseau Docker de la pile n'est pas routable depuis l'extérieur :
+        // seul Caddy peut atteindre PHP-FPM, et faire confiance à ses en-têtes
+        // ne crée donc pas de porte dérobée. `TRUSTED_PROXIES` reste réglable
+        // au cas où un répartiteur de charge s'intercalerait un jour.
+        $middleware->trustProxies(
+            at: env('TRUSTED_PROXIES', '*'),
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
+
         // Contrôle d'accès par espace (ADR-003) : `->middleware('role:candidate')`.
         // Barrière d'éligibilité (ADR-007) : `->middleware('eligible')` sur les
         // sections postérieures à l'étape 1.

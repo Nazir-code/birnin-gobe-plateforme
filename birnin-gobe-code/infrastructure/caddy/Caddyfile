@@ -1,12 +1,33 @@
-:80 {
+# Adresse du site.
+#
+# `{$SITE_ADDRESS::80}` : la variable d'environnement `SITE_ADDRESS`, et à
+# défaut `:80`. C'est ce défaut qui préserve le développement — Caddy sert en
+# clair, sans certificat, exactement comme avant.
+#
+# En production, renseigner un nom de domaine — `SITE_ADDRESS=birningobe.ne` —
+# suffit à déclencher HTTPS : Caddy obtient et renouvelle seul le certificat,
+# redirige le port 80 vers 443, et sert HTTP/2 et HTTP/3. Deux conditions, et
+# elles sont dans `docker-compose.prod.yml` : les ports 80 et 443 publiés, et
+# le volume `caddy_data` conservé — c'est lui qui garde le certificat d'un
+# redéploiement à l'autre, et le perdre expose aux limites de délivrance de
+# l'autorité de certification.
+{$SITE_ADDRESS::80} {
     encode zstd gzip
     root * /var/www/html/public
-    @notStatic not path /build/* /assets/* /favicon.ico
     php_fastcgi app:9000
     file_server
+
     header {
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         X-Frame-Options SAMEORIGIN
+
+        # Ignoré par les navigateurs tant que la connexion est en clair : la
+        # ligne est donc sans effet en développement, et protège dès que
+        # `SITE_ADDRESS` porte un domaine. Un an, sous-domaines compris.
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+        # La version du serveur n'apprend rien à un visiteur légitime.
+        -Server
     }
 }

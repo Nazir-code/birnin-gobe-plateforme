@@ -7,6 +7,19 @@ Les commandes d'exploitation sont dans [`NIGER_TELECOM_RUNBOOK.md`](NIGER_TELECO
 affirmation ci-dessous a été vérifiée dans le code. Les écarts entre l'intention
 documentée (README, ADR) et le code réel sont signalés explicitement.
 
+> **Instantané daté — à lire comme un historique, pas comme l'état courant.**
+>
+> Cet audit décrit le dépôt au moment de la passation, au tag
+> `niger-telecom-handoff-v0.1`. Plusieurs de ses constats ont depuis été
+> traités : l'authentification, la persistance des candidatures, le parcours
+> candidat, l'administration des campagnes et la consultation des dossiers
+> existent, et la suite de tests couvre l'ensemble. Le tableau de dettes du §10
+> indique, ligne par ligne, ce qui a été résolu et ce qui reste ouvert.
+>
+> Pour mettre en service, ne pas partir d'ici mais de
+> [`LAUNCH_CHECKLIST.md`](LAUNCH_CHECKLIST.md), puis du
+> [runbook](NIGER_TELECOM_RUNBOOK.md).
+
 ---
 
 ## 1. Ce qu'est BIRNI'NGOBE
@@ -166,25 +179,28 @@ traiteront rien tant que le métier n'est pas branché. Ils doivent néanmoins
 |---|---|---|
 | Cache | `redis` | `config/cache.php` — `CACHE_STORE` |
 | Files d'attente | `redis` | `config/queue.php` — `QUEUE_CONNECTION` |
-| **Sessions** | **`file`** | `config/session.php` — `SESSION_DRIVER` |
+| Sessions | `database` | `config/session.php` — `SESSION_DRIVER` |
 
 Redis utilise deux bases : `0` pour les queues (`REDIS_DB`), `1` pour le cache
 (`REDIS_CACHE_DB`). `--appendonly yes` est activé, les données survivent au
 redémarrage du conteneur.
 
-**Deux problèmes à traiter avant une vraie mise en service :**
+**Sur les deux problèmes relevés à la passation :**
 
-1. **Les sessions sont en fichiers**, dans `storage/framework/sessions` du
-   conteneur, sans volume. Elles sont perdues à chaque redéploiement, et ne
-   fonctionneraient pas avec plusieurs répliques de `app`. Basculer
-   `SESSION_DRIVER=redis` est le correctif naturel — **décision d'architecture,
-   à prendre par le senior**, non appliquée ici.
+1. ~~Les sessions sont en fichiers~~ — **résolu.** ADR-004 les a basculées en
+   base, avec une table `sessions` et `SESSION_DRIVER=database` dans
+   `.env.example`. Elles survivent désormais au redéploiement et
+   fonctionneraient avec plusieurs instances applicatives.
 2. **`config/queue.php` déclare une table `failed_jobs`** (driver
-   `database-uuids`) **qui n'existe dans aucune migration**. Le premier job en
-   échec provoquera une erreur SQL. → dette technique.
+   `database-uuids`) **qui n'existe dans aucune migration** — toujours ouvert.
+   Sans effet aujourd'hui : aucune tâche n'est mise en file dans le code
+   (`grep -r "dispatch("` ne rend rien). À créer avant la première tâche
+   asynchrone, sans quoi son premier échec lèvera une erreur SQL.
 
-`SESSION_DRIVER`, `SESSION_SECURE_COOKIE`, `REDIS_PASSWORD` et les variables
-`MAIL_*` **ne figurent pas dans `.env.example`** alors que le code les lit.
+`SESSION_DRIVER` et `SESSION_SECURE_COOKIE` figurent désormais dans
+`.env.example` et dans `.env.production.example`. `REDIS_PASSWORD` est
+documenté dans le gabarit de production ; les variables `MAIL_*` restent
+absentes, aucun envoi de courriel n'étant configuré.
 
 ---
 
@@ -287,23 +303,25 @@ aucun contenu mixte
 
 ## 10. Actions techniques identifiées — à réaliser par le senior
 
-Relevées pendant l'audit, **volontairement non appliquées** : ce sont des
-décisions d'architecture ou des modifications de code hors périmètre d'une
-passation.
+Relevées pendant l'audit de passation, **volontairement non appliquées** à
+l'époque. La colonne « Depuis » indique ce qu'il en est aujourd'hui : les
+lignes barrées ont été traitées, les autres restent ouvertes.
 
-| # | Sujet | Constat | Criticité |
-|---|---|---|---|
-| 1 | `infrastructure/caddy/Dockerfile` | Compile le frontend avec `npm install` sans copier `package-lock.json`, alors que le `Dockerfile` racine utilise `npm ci`. Les deux images peuvent servir des builds différents. | **Haute** |
-| 2 | Table `failed_jobs` | Déclarée dans `config/queue.php`, absente des migrations. | **Haute** |
-| 3 | `SESSION_DRIVER` | `file` par défaut, sans volume : sessions perdues à chaque redéploiement. | **Haute** |
-| 4 | `phpunit.xml` + tests PHP | Absents, alors que la CI lance `php artisan test`. | **Haute** |
-| 5 | Persistance de `storage/` | Aucun volume : logs Laravel perdus au redéploiement. | Moyenne |
-| 6 | Healthchecks | Absents sur `app`, `caddy`, `worker`, `scheduler`. `/up` et `/api/v1/health` sont disponibles pour les écrire. | Moyenne |
-| 7 | `.env.example` | Ne documente ni `SESSION_DRIVER`, ni `SESSION_SECURE_COOKIE`, ni `REDIS_PASSWORD`, ni `MAIL_*`. | Moyenne |
-| 8 | CI | N'exécute ni Playwright ni Pint. | Moyenne |
-| 8b | **Style de code** | **Pint échoue : 28 fichiers, 19 violations.** Le dépôt ne respecte pas son propre formateur. | Moyenne |
-| 8c | **Outillage PHP indisponible** | L'image `app` étant construite `--no-dev`, `php artisan test` et `vendor/bin/pint` **n'existent pas dans le conteneur**. Voir runbook §8 pour la voie de contournement vérifiée. | Moyenne |
-| 9 | `Caddyfile` | Matcher `@notStatic` déclaré et jamais utilisé. | Faible |
+| # | Sujet | Constat à la passation | Criticité | Depuis |
+|---|---|---|---|---|
+| 1 | ~~`infrastructure/caddy/Dockerfile`~~ | Compile le frontend avec `npm install` sans copier `package-lock.json`, alors que le `Dockerfile` racine utilise `npm ci`. | **Haute** | **Résolu** — `npm ci` avec le verrou dans les deux images. |
+| 2 | Table `failed_jobs` | Déclarée dans `config/queue.php`, absente des migrations. | **Haute** | **Ouvert**, sans effet : aucune tâche n'est encore mise en file. |
+| 3 | ~~`SESSION_DRIVER`~~ | `file` par défaut, sans volume. | **Haute** | **Résolu** — `database` depuis ADR-004, table `sessions` migrée. |
+| 4 | ~~`phpunit.xml` + tests PHP~~ | Absents, alors que la CI lance `php artisan test`. | **Haute** | **Résolu** — suite complète, exécutée par la CI. |
+| 5 | ~~Persistance de `storage/`~~ | Aucun volume : logs Laravel perdus au redéploiement. | Moyenne | **Résolu en production** — volume `app_storage` dans `docker-compose.prod.yml`, et `LOG_CHANNEL=stderr` sort les journaux dans `docker compose logs`. |
+| 6 | ~~Healthchecks~~ | Absents sur `app`, `caddy`, `worker`, `scheduler`. | Moyenne | **Résolu** — sonde sur `app` (port PHP-FPM), `caddy` attend `app` sain, `worker` et `scheduler` attendent PostgreSQL et Redis sains. |
+| 7 | ~~`.env.example`~~ | Ne documente ni `SESSION_DRIVER`, ni `SESSION_SECURE_COOKIE`, ni `REDIS_PASSWORD`, ni `MAIL_*`. | Moyenne | **Résolu** sauf `MAIL_*` — aucun envoi de courriel n'est configuré. Voir `.env.production.example`. |
+| 8 | CI | N'exécute ni Playwright ni Pint. | Moyenne | **Partiel** — Pint, PHPUnit, `tsc` et la construction tournent ; Playwright reste manuel. |
+| 8b | ~~**Style de code**~~ | Pint échoue : 28 fichiers, 19 violations. | Moyenne | **Résolu** — Pint passe, et la CI le vérifie. |
+| 8c | **Outillage PHP indisponible** | L'image `app` étant construite `--no-dev`, `php artisan test` et `vendor/bin/pint` n'existent pas dans le conteneur. | Moyenne | **Ouvert, et voulu** — une image de production n'embarque pas ses outils de test. Voir runbook §8. |
+| 9 | ~~`Caddyfile`~~ | Matcher `@notStatic` déclaré et jamais utilisé. | Faible | **Résolu** — retiré. |
+| 10 | Proxys de confiance | *Non relevé à la passation.* Sans `trustProxies`, Laravel voyait l'adresse de Caddy comme adresse cliente et la connexion comme non chiffrée. | **Haute** | **Résolu** — déclaré dans `bootstrap/app.php`. |
+| 11 | Page d'accueil publique | *Non relevé à la passation.* Calendrier, compte à rebours et statistiques viennent de `data/demo.ts`, pas de la campagne réelle. | **Haute** | **Ouvert** — correctif identifié, en attente d'une fenêtre sans branche parallèle sur `routes/web.php`. |
 
 ---
 

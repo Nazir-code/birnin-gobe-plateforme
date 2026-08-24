@@ -1,0 +1,104 @@
+# Surcouche de production.
+#
+# S'applique PAR-DESSUS `docker-compose.yml`, jamais à sa place :
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Pourquoi une surcouche plutôt que des modifications du fichier de base : le
+# fichier de base sert aussi aux postes de développement, où le port 8080 et
+# l'absence de redémarrage automatique sont des commodités. Les écraser
+# obligerait chaque environnement à défaire la production. Ici, chacun garde
+# ses valeurs et la production ajoute les siennes.
+#
+# Ce que cette surcouche apporte, et que le développement n'a pas :
+#
+#   redémarrage automatique après incident ou reboot du serveur ;
+#   ports 80 et 443 — c'est la condition d'obtention du certificat ;
+#   un volume pour `storage/`, sans lequel les journaux applicatifs
+#     disparaissent au premier redéploiement ;
+#   des journaux Docker bornés, pour qu'ils ne remplissent pas le disque.
+#
+# Les valeurs à fournir dans `.env` sont décrites par `.env.production.example`
+# et récapitulées dans `docs/deployment/LAUNCH_CHECKLIST.md`.
+
+services:
+  app:
+    # `unless-stopped` et non `always` : un arrêt volontaire pendant une
+    # intervention doit le rester, y compris après un redémarrage du serveur.
+    restart: unless-stopped
+    volumes:
+      # Journaux applicatifs et caches de framework. Sans ce volume, chaque
+      # `docker compose up -d --build` repart d'un conteneur neuf et emporte
+      # `storage/logs/laravel.log`, c'est-à-dire la trace de l'incident qu'on
+      # cherchait justement à comprendre.
+      - app_storage:/var/www/html/storage
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  caddy:
+    restart: unless-stopped
+    ports:
+      # `!override` remplace la liste du fichier de base au lieu de s'y ajouter :
+      # sans lui, Compose fusionne et la production publierait aussi 8080.
+      #
+      # 443/udp sert HTTP/3. Le port 80 n'est pas décoratif : il porte la
+      # validation ACME. Le fermer, c'est ne jamais obtenir de certificat.
+      !override
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      # Domaine réel du service. Tant qu'il vaut `:80`, Caddy sert en clair et
+      # ne demande aucun certificat — c'est le comportement de développement.
+      # Renseigner un nom de domaine suffit à déclencher HTTPS automatique.
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      # Adresse de contact transmise à l'autorité de certification, qui s'en
+      # sert pour prévenir d'une expiration. Facultative, recommandée.
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  postgres:
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  redis:
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  worker:
+    restart: unless-stopped
+    volumes:
+      - app_storage:/var/www/html/storage
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  scheduler:
+    restart: unless-stopped
+    volumes:
+      - app_storage:/var/www/html/storage
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  app_storage: {}

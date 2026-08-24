@@ -1,0 +1,8 @@
+# Fins de ligne des scripts destinés au serveur.
+#
+# Ces fichiers sont exécutés par `bash` sur une machine Linux. Une case-out en
+# CRLF — ce que fait Git sous Windows avec `core.autocrlf=true` — casserait
+# l'exécution avec un « \r: command not found » difficile à relier à sa cause.
+# `eol=lf` fige la fin de ligne à la sortie du dépôt, quelle que soit la
+# plateforme du poste qui l'a écrit.
+*.sh text eol=lf
