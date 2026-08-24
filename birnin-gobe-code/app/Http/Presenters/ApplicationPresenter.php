@@ -18,10 +18,11 @@ use App\Models\Campaign;
  * Les dates partent en ISO 8601 et les libellés de statut viennent des enums :
  * le formatage local est fait par le navigateur, dans la langue du candidat.
  *
- * Y vivent aussi les trois briques que les écrans de section partageaient mot
- * pour mot — `section()`, `navigation()` et `savedPayload()`. Elles ont été
- * remontées ici à l'arrivée de la troisième section : ce sont les seules parties
- * réellement identiques d'un écran à l'autre. Les champs, la validation et les
+ * Y vivent aussi les trois briques que les écrans de section partagent mot pour
+ * mot — `section()`, `navigation()` et `savedPayload()`. Elles ont été remontées
+ * ici à l'arrivée de la troisième section, et les sept écrans les réutilisent
+ * telles quelles : ce sont les seules parties réellement identiques d'un écran à
+ * l'autre. Les champs, la validation et les
  * règles métier restent dans leur section. Voir ADR-009.
  */
 final class ApplicationPresenter
@@ -98,7 +99,7 @@ final class ApplicationPresenter
     }
 
     /**
-     * Entête d'un écran de section : ce que les trois écrans affichent à
+     * Entête d'un écran de section : ce que tous les écrans affichent à
      * l'identique, au-dessus du formulaire.
      *
      * @return array{key: string, label: string, position: int, total: int, completedAt: string|null}
@@ -117,7 +118,7 @@ final class ApplicationPresenter
     /**
      * Boutons « Précédent » et « Suivant » d'une section.
      *
-     * Calculés au même endroit pour les trois écrans : c'est la seule façon
+     * Calculés au même endroit pour tous les écrans : c'est la seule façon
      * d'être sûr que le parcours annoncé au candidat est le même partout.
      * `nextUrl` vaut `null` quand le parcours s'arrête — l'écran le dit alors,
      * plutôt que de proposer un lien vers une étape qui n'existe pas.
@@ -138,7 +139,7 @@ final class ApplicationPresenter
     /**
      * Corps de réponse d'une sauvegarde automatique.
      *
-     * Identique pour les trois sections : l'horodatage confirmé par le serveur,
+     * Identique pour toutes les sections : l'horodatage confirmé par le serveur,
      * l'état du dossier et l'avancement recalculé. Une section qui a davantage
      * à dire — l'éligibilité y joint son verdict — complète ce tableau.
      *
@@ -183,6 +184,9 @@ final class ApplicationPresenter
             ApplicationSection::PROFILE => route('candidate.application.profile', $application),
             ApplicationSection::TEAM => route('candidate.application.team', $application),
             ApplicationSection::CHALLENGE => route('candidate.application.challenge', $application),
+            ApplicationSection::SOLUTION => route('candidate.application.solution', $application),
+            ApplicationSection::IMPACT => route('candidate.application.impact', $application),
+            ApplicationSection::IMPLEMENTATION => route('candidate.application.implementation', $application),
             default => null,
         };
     }

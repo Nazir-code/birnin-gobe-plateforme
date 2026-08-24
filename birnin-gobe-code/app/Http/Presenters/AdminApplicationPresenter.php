@@ -6,7 +6,11 @@ use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ChallengeSection;
 use App\Domain\Application\EligibilitySection;
+use App\Domain\Application\ImpactSection;
+use App\Domain\Application\ImplementationSection;
+use App\Domain\Application\MaturityStage;
 use App\Domain\Application\ProfileSection;
+use App\Domain\Application\SolutionSection;
 use App\Domain\Application\TeamSection;
 use App\Domain\Application\TeamSectionAssessment;
 use App\Domain\Candidate\CandidateType;
@@ -238,6 +242,9 @@ final class AdminApplicationPresenter
             ApplicationSection::PROFILE => $this->champsProfil($reponses),
             ApplicationSection::CHALLENGE => $this->champsDefi($reponses),
             ApplicationSection::TEAM => $this->champsStructure($reponses),
+            ApplicationSection::SOLUTION => $this->champsSolution($reponses),
+            ApplicationSection::IMPACT => $this->champsImpact($reponses),
+            ApplicationSection::IMPLEMENTATION => $this->champsPlan($reponses),
             // Section ajoutée par une phase ultérieure : son état et son nombre
             // de réponses sont dits, ses champs attendent leurs libellés.
             default => [],
@@ -377,6 +384,69 @@ final class AdminApplicationPresenter
             ['label' => 'Personnes touchées', 'value' => $this->texte($r['affected_people'] ?? null)],
             ['label' => 'Causes profondes', 'value' => $this->texte($r['root_causes'] ?? null)],
             ['label' => 'Localisation', 'value' => $this->enum(NigerRegion::class, $r[ChallengeSection::REGION_FIELD] ?? null)],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $r
+     * @return list<array{label: string, value: string}>
+     */
+    private function champsSolution(array $r): array
+    {
+        return [
+            ['label' => 'Nom de la solution', 'value' => $this->texte($r[SolutionSection::SOLUTION_NAME] ?? null)],
+            ['label' => 'Proposition de valeur', 'value' => $this->texte($r[SolutionSection::VALUE_PROPOSITION] ?? null)],
+            ['label' => 'Fonctionnalités principales', 'value' => $this->texte($r[SolutionSection::KEY_FEATURES] ?? null)],
+            ['label' => 'Scénario d’usage', 'value' => $this->texte($r[SolutionSection::USAGE_SCENARIO] ?? null)],
+            ['label' => 'Différenciation', 'value' => $this->texte($r[SolutionSection::INNOVATION] ?? null)],
+            ['label' => 'Stade de maturité', 'value' => $this->enum(MaturityStage::class, $r[SolutionSection::MATURITY_STAGE] ?? null)],
+            ['label' => 'État du prototype', 'value' => $this->texte($r[SolutionSection::PROTOTYPE_STATUS] ?? null)],
+            ['label' => 'Technologies', 'value' => $this->texte($r[SolutionSection::TECHNOLOGIES] ?? null)],
+            ['label' => 'Interopérabilité', 'value' => $this->texte($r[SolutionSection::INTEROPERABILITY] ?? null)],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $r
+     * @return list<array{label: string, value: string}>
+     */
+    private function champsImpact(array $r): array
+    {
+        return [
+            ['label' => 'Bénéficiaires', 'value' => $this->texte($r[ImpactSection::BENEFICIARIES] ?? null)],
+            ['label' => 'Résultats attendus', 'value' => $this->texte($r[ImpactSection::EXPECTED_RESULTS] ?? null)],
+            // Indicateurs déclarés par le candidat : ce que lui compte suivre.
+            // Ce n'est ni une note ni une mesure calculée par la plateforme.
+            ['label' => 'Indicateurs de suivi déclarés', 'value' => $this->texte($r[ImpactSection::IMPACT_INDICATORS] ?? null)],
+            ['label' => 'Mesures d’inclusion', 'value' => $this->texte($r[ImpactSection::INCLUSION_MEASURES] ?? null)],
+            ['label' => 'Contribution à la résilience', 'value' => $this->texte($r[ImpactSection::RESILIENCE_CONTRIBUTION] ?? null)],
+            ['label' => 'Modèle économique', 'value' => $this->texte($r[ImpactSection::BUSINESS_MODEL] ?? null)],
+            ['label' => 'Adoption et pérennité', 'value' => $this->texte($r[ImpactSection::SUSTAINABILITY] ?? null)],
+            ['label' => 'Mise à l’échelle', 'value' => $this->texte($r[ImpactSection::SCALING_PLAN] ?? null)],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $r
+     * @return list<array{label: string, value: string}>
+     */
+    private function champsPlan(array $r): array
+    {
+        $duree = $r[ImplementationSection::DURATION_MONTHS] ?? null;
+        $budget = $r[ImplementationSection::BUDGET_AMOUNT] ?? null;
+
+        return [
+            ['label' => 'Durée du plan', 'value' => is_int($duree) ? $duree.' mois' : ''],
+            ['label' => 'Activités', 'value' => $this->texte($r[ImplementationSection::ACTIVITIES] ?? null)],
+            ['label' => 'Jalons', 'value' => $this->texte($r[ImplementationSection::MILESTONES] ?? null)],
+            ['label' => 'Ressources', 'value' => $this->texte($r[ImplementationSection::RESOURCES] ?? null)],
+            ['label' => 'Partenaires', 'value' => $this->texte($r[ImplementationSection::PARTNERS] ?? null)],
+            ['label' => 'Risques et hypothèses', 'value' => $this->texte($r[ImplementationSection::RISKS] ?? null)],
+            ['label' => 'Besoins d’accompagnement', 'value' => $this->texte($r[ImplementationSection::SUPPORT_NEEDS] ?? null)],
+            // Un budget à zéro est une réponse : il s'affiche, là où une case
+            // vide reste vide.
+            ['label' => 'Budget indicatif', 'value' => is_int($budget) ? number_format($budget, 0, ',', ' ').' FCFA' : ''],
+            ['label' => 'Répartition du budget', 'value' => $this->texte($r[ImplementationSection::BUDGET_BREAKDOWN] ?? null)],
         ];
     }
 

@@ -137,12 +137,19 @@ final class StructureEquipeCandidatTest extends TestCase
         // Le seul obstacle qui tenait « Défi » hors du parcours vient de tomber.
         $this->assertTrue(ApplicationSection::CHALLENGE->isOnOpenPath());
 
+        // Le parcours s'est prolongé depuis, jusqu'à l'étape 7 : ce que ce test
+        // vérifie reste que « Défi » y est entré et que rien n'y manque avant
+        // lui. Les trois étapes suivantes sont couvertes par leurs propres
+        // fichiers.
         $this->assertSame(
             [
                 ApplicationSection::ELIGIBILITY,
                 ApplicationSection::PROFILE,
                 ApplicationSection::TEAM,
                 ApplicationSection::CHALLENGE,
+                ApplicationSection::SOLUTION,
+                ApplicationSection::IMPACT,
+                ApplicationSection::IMPLEMENTATION,
             ],
             ApplicationSection::openPath(),
         );
@@ -152,8 +159,8 @@ final class StructureEquipeCandidatTest extends TestCase
     {
         $this->assertSame(ApplicationSection::TEAM, ApplicationSection::PROFILE->nextOnOpenPath());
         $this->assertSame(ApplicationSection::CHALLENGE, ApplicationSection::TEAM->nextOnOpenPath());
-        // L'étape 5 n'existe pas : le parcours s'arrête honnêtement à « Défi ».
-        $this->assertNull(ApplicationSection::CHALLENGE->nextOnOpenPath());
+        // « Défi » n'est plus le terminus : l'étape 5 l'a prolongé.
+        $this->assertSame(ApplicationSection::SOLUTION, ApplicationSection::CHALLENGE->nextOnOpenPath());
 
         $this->assertSame(ApplicationSection::PROFILE, ApplicationSection::TEAM->previousImplemented());
         $this->assertSame(ApplicationSection::TEAM, ApplicationSection::CHALLENGE->previousImplemented());

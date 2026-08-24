@@ -178,16 +178,31 @@ final class IntegrationStructureAdministrationTest extends TestCase
                 ->where('application.completedSections', 4));
     }
 
-    /** Le parcours ouvert compte désormais quatre étapes, et elles se suivent. */
-    public function test_le_parcours_ouvert_va_de_l_etape_1_a_l_etape_4(): void
+    /**
+     * Le parcours ouvert va sans trou de l'étape 1 à l'étape 7.
+     *
+     * Ce test suivait l'étape 4 quand elle fermait la marche ; l'ouverture des
+     * étapes 5 à 7 l'a prolongé jusqu'au plan de mise en œuvre. Ce qu'il vérifie
+     * n'a pas changé : le parcours est continu, et la première étape encore
+     * fermée en marque honnêtement la fin.
+     */
+    public function test_le_parcours_ouvert_va_de_l_etape_1_a_l_etape_7(): void
     {
         $this->assertSame(
-            [ApplicationSection::ELIGIBILITY, ApplicationSection::PROFILE, ApplicationSection::TEAM, ApplicationSection::CHALLENGE],
+            [
+                ApplicationSection::ELIGIBILITY,
+                ApplicationSection::PROFILE,
+                ApplicationSection::TEAM,
+                ApplicationSection::CHALLENGE,
+                ApplicationSection::SOLUTION,
+                ApplicationSection::IMPACT,
+                ApplicationSection::IMPLEMENTATION,
+            ],
             ApplicationSection::openPath(),
         );
 
-        $this->assertFalse(ApplicationSection::SOLUTION->isOnOpenPath());
-        $this->assertFalse(ApplicationSection::SOLUTION->isImplemented());
+        $this->assertFalse(ApplicationSection::ATTACHMENTS->isOnOpenPath());
+        $this->assertFalse(ApplicationSection::ATTACHMENTS->isImplemented());
     }
 
     // — Structure vue par l'administration ————————————————————————

@@ -135,13 +135,16 @@ test.describe('Administration — consultation des candidatures', () => {
     await expect(page.getByTestId('section-eligibility')).toContainText('Équipe');
     await expect(page.getByTestId('section-eligibility')).not.toContainText('candidate_type');
 
-    // Profil, Structure et Defi sont desormais les etapes 2, 3 et 4 du parcours
-    // ouvert : ce candidat n'a rempli que l'etape 1, elles sont donc simplement
-    // non commencees. « Solution », cinquieme, reste fermee.
+    // Les etapes 2 a 7 sont desormais toutes ouvertes : ce candidat n'a rempli
+    // que l'etape 1, elles sont donc simplement non commencees. La premiere
+    // encore fermee est « Pieces / declarations », la huitieme.
     await expect(page.getByTestId('section-profile')).toHaveAttribute('data-etat', 'non-commencee');
     await expect(page.getByTestId('section-team')).toHaveAttribute('data-etat', 'non-commencee');
     await expect(page.getByTestId('section-challenge')).toHaveAttribute('data-etat', 'non-commencee');
-    await expect(page.getByTestId('section-solution')).toHaveAttribute('data-etat', 'non-implementee');
+    await expect(page.getByTestId('section-solution')).toHaveAttribute('data-etat', 'non-commencee');
+    await expect(page.getByTestId('section-impact')).toHaveAttribute('data-etat', 'non-commencee');
+    await expect(page.getByTestId('section-implementation')).toHaveAttribute('data-etat', 'non-commencee');
+    await expect(page.getByTestId('section-attachments')).toHaveAttribute('data-etat', 'non-implementee');
 
     // — Les cinq regles d'eligibilite viennent du moteur
     await expect(page.getByTestId('regles-eligibilite').getByRole('listitem')).toHaveCount(5);

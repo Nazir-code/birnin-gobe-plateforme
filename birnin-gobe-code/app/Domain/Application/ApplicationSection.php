@@ -19,11 +19,11 @@ namespace App\Domain\Application;
  *   `isOnOpenPath()`   la section est de surcroît atteignable en suivant le
  *                      parcours depuis l'étape 1, sans sauter d'étape.
  *
- * « Défi » illustre l'écart : la section est développée (étape 4) mais
- * « Structure / équipe » (étape 3) ne l'est pas encore. « Défi » reste donc
- * consultable et modifiable — les brouillons antérieurs y vivent — sans être
- * présentée comme la suite du parcours ni compter dans la progression. Voir
- * ADR-009.
+ * Les deux notions coïncident tant qu'aucune section n'est développée en avance
+ * sur celles qui la précèdent — c'est le cas depuis l'ouverture de l'étape 3, et
+ * ce l'est encore avec les étapes 5 à 7. Elles restent néanmoins distinctes :
+ * « Défi » a vécu développée mais hors parcours, derrière une étape 3 qui ne
+ * l'était pas, et rien n'interdit que cela se reproduise. Voir ADR-009.
  */
 enum ApplicationSection: string
 {
@@ -56,25 +56,35 @@ enum ApplicationSection: string
     /**
      * Section effectivement persistée aujourd'hui.
      *
-     * Quatre sections sont branchées, et elles se suivent enfin sans trou :
-     * « Éligibilité » (1), « Profil » (2), « Structure / équipe » (3) et
-     * « Défi » (4). Ouvrir une autre section, c'est l'ajouter ici en même temps
-     * que son écran et sa validation — pas avant.
+     * Sept sections sont branchées, et elles se suivent sans trou :
+     * « Éligibilité » (1), « Profil » (2), « Structure / équipe » (3),
+     * « Défi » (4), « Solution » (5), « Impact / viabilité » (6) et
+     * « Plan de mise en œuvre » (7). Ouvrir une autre section, c'est l'ajouter
+     * ici en même temps que son écran et sa validation — pas avant.
      *
-     * L'ouverture de l'étape 3 fait mécaniquement rentrer « Défi » dans le
-     * parcours ouvert : c'était le seul obstacle qui l'en tenait à l'écart.
+     * Restent fermées « Pièces / déclarations » (8), qui attend le téléversement
+     * et l'analyse antivirus, et « Relecture / envoi » (9), qui attend la
+     * soumission.
      */
     public function isImplemented(): bool
     {
-        return in_array($this, [self::ELIGIBILITY, self::PROFILE, self::TEAM, self::CHALLENGE], strict: true);
+        return in_array($this, [
+            self::ELIGIBILITY,
+            self::PROFILE,
+            self::TEAM,
+            self::CHALLENGE,
+            self::SOLUTION,
+            self::IMPACT,
+            self::IMPLEMENTATION,
+        ], strict: true);
     }
 
     /**
      * Section atteignable sans sauter d'étape depuis l'étape 1.
      *
      * Le parcours s'arrête à la première étape non développée : aujourd'hui
-     * « Structure / équipe » (étape 3). « Défi », bien que développé, se trouve
-     * derrière elle et n'est donc pas sur le parcours ouvert.
+     * « Pièces / déclarations » (étape 8). Les sept premières sont donc toutes
+     * sur le parcours ouvert.
      *
      * C'est ce qui empêche l'écran d'annoncer un parcours que le produit ne
      * tient pas, et la progression de compter une étape que le candidat n'aurait
