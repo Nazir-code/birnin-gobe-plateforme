@@ -73,12 +73,17 @@ final class ApplicationPresenter
      *     completionPercent: int,
      *     currentStep: array{key: string, label: string, position: int}|null,
      *     updatedAt: string|null,
-     *     continueUrl: string|null
+     *     submissionNumber: string|null,
+     *     submittedAt: string|null,
+     *     continueUrl: string|null,
+     *     reviewUrl: string,
+     *     submittedUrl: string|null
      * }
      */
     public function summary(Application $application): array
     {
         $courante = $application->current_step;
+        $depose = ! $application->isDraft();
 
         return [
             'id' => $application->getKey(),
@@ -94,7 +99,14 @@ final class ApplicationPresenter
                 'position' => $courante->position(),
             ],
             'updatedAt' => $application->updated_at?->toIso8601String(),
-            'continueUrl' => $this->sectionUrl($application, $courante),
+            'submissionNumber' => $application->submission_number,
+            'submittedAt' => $application->submitted_at?->toIso8601String(),
+            // Un dossier déposé ne se reprend pas : la policy refuserait
+            // l'écriture, et proposer « Continuer » mènerait à un formulaire en
+            // lecture seule sans le dire. L'écran offre l'accusé à la place.
+            'continueUrl' => $depose ? null : $this->sectionUrl($application, $courante),
+            'reviewUrl' => route('candidate.application.review', $application),
+            'submittedUrl' => $depose ? route('candidate.application.submitted', $application) : null,
         ];
     }
 

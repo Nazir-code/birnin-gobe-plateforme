@@ -11,6 +11,8 @@
 | Formulaire — Étape 5 Solution | `/candidate/application/{application}/solution` | `resources/js/Pages/Candidate/Application/Solution.tsx` |
 | Formulaire — Étape 6 Impact / viabilité | `/candidate/application/{application}/impact` | `resources/js/Pages/Candidate/Application/Impact.tsx` |
 | Formulaire — Étape 7 Plan de mise en œuvre | `/candidate/application/{application}/implementation` | `resources/js/Pages/Candidate/Application/Implementation.tsx` |
+| Formulaire — Étape 9 Relecture / envoi | `/candidate/application/{application}/review` | `resources/js/Pages/Candidate/Application/Review.tsx` |
+| Accusé de dépôt | `/candidate/application/{application}/submitted` | `resources/js/Pages/Candidate/Application/Submitted.tsx` |
 | Entrée « Ma candidature » | `/candidate/application` | redirection serveur vers la section en cours (ADR-005) |
 | Mobile-first | mêmes routes, responsive | layouts + breakpoints Tailwind |
 | Back-office administratif | `/admin/dashboard` | `resources/js/Pages/Admin/Dashboard.tsx` |

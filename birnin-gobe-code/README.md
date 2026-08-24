@@ -60,6 +60,8 @@ Application : `http://localhost:8080`
 - `/candidate/application/{application}/solution` — étape 5 « Solution », persistée
 - `/candidate/application/{application}/impact` — étape 6 « Impact / viabilité », persistée
 - `/candidate/application/{application}/implementation` — étape 7 « Plan de mise en œuvre », persistée
+- `/candidate/application/{application}/review` — étape 9 « Relecture / envoi », en lecture seule
+- `/candidate/application/{application}/submitted` — accusé de dépôt (numéro, date, statut)
 - `/admin/dashboard`
 - `/admin/campaigns` — administration des éditions (ADR-008)
 - `/admin/campaigns/{campaign}/eligibility` — critères d'éligibilité de l'édition (ADR-010)
