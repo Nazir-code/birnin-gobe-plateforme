@@ -6,11 +6,14 @@
 # couvrirait pas `birnin-gobe-code/vendor`.
 
 # --- Secrets -----------------------------------------------------------------
-# `.env` porte APP_KEY et AWS_SECRET_ACCESS_KEY : il ne doit jamais etre versionne.
-# C'est `.env.example` qui documente les variables attendues.
+# `.env` porte APP_KEY et DB_PASSWORD : il ne doit jamais etre versionne.
+# Seuls les gabarits le sont — `.env.example` pour le developpement,
+# `.env.production.example` pour la mise en service. Ils ne contiennent que
+# des noms de variables et des valeurs a remplacer.
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 *.pem
 *.key
@@ -36,6 +39,9 @@ vendor/
 !**/storage/framework/sessions/.gitkeep
 **/storage/framework/views/*
 !**/storage/framework/views/.gitkeep
+# Les sauvegardes produites par scripts/backup-database.sh : une copie de la
+# base entiere, donnees personnelles comprises.
+**/storage/backups/
 **/storage/logs/*
 !**/storage/logs/.gitkeep
 **/bootstrap/cache/*

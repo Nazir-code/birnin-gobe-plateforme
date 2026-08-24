@@ -7,6 +7,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # PHP-FPM n'expose pas d'URL : la sonde ouvre son port, ce qui prouve qu'il
+    # ecoute vraiment. Aucun paquet supplementaire (l'image n'a ni curl ni
+    # wget), aucune authentification, aucune requete metier.
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 9000) ? 0 : 1);"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     networks: [birnin]
 
   caddy:
@@ -18,7 +27,9 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
-    depends_on: [app]
+    depends_on:
+      app:
+        condition: service_healthy
     networks: [birnin]
 
   postgres:
@@ -50,17 +61,33 @@ services:
     build: .
     command: php artisan queue:work redis --sleep=1 --tries=3 --timeout=120
     env_file: .env
-    depends_on: [app, redis, postgres]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks: [birnin]
 
   scheduler:
     build: .
     command: php artisan schedule:work
     env_file: .env
-    depends_on: [app, redis, postgres]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks: [birnin]
 
+  # Stockage objet et antivirus : l'architecture les prevoit pour les pieces
+  # jointes, mais aucun code ne les appelle encore — `grep -r "Storage::"` ne
+  # rend rien. Ils passent donc derriere un profil : ils ne demarrent plus avec
+  # `docker compose up -d`, et reviennent avec `--profile fichiers` le jour ou
+  # l'etape « Pieces » les utilisera. Demarrer aujourd'hui un antivirus qui
+  # telecharge ses signatures et occupe un Go de memoire pour rien serait payer
+  # d'avance une fonctionnalite absente.
   minio:
+    profiles: [fichiers]
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
@@ -72,6 +99,7 @@ services:
     networks: [birnin]
 
   clamav:
+    profiles: [fichiers]
     image: clamav/clamav:stable
     volumes: [clamav_data:/var/lib/clamav]
     networks: [birnin]
