@@ -32,6 +32,13 @@ RUN apk add --no-cache icu-dev libzip-dev postgresql-dev linux-headers $PHPIZE_D
 WORKDIR /var/www/html
 COPY --from=composer /app /var/www/html
 COPY --from=frontend /app/public/build /var/www/html/public/build
-RUN chown -R www-data:www-data storage bootstrap/cache
+# `storage/app/private` doit exister DANS l'image, et pas seulement a
+# l'execution : docker-compose y monte un volume nomme pour rendre les pieces de
+# candidature durables, et un volume dont le point de montage n'existe pas dans
+# l'image est cree par le demon en root:root. PHP-FPM tourne en www-data : le
+# televersement echouerait alors sur un refus de permission, en production
+# seulement. Creer le dossier avant le `chown` fait heriter au volume le bon
+# proprietaire.
+RUN mkdir -p storage/app/private/documents     && chown -R www-data:www-data storage bootstrap/cache
 USER www-data
 CMD ["php-fpm", "-F"]

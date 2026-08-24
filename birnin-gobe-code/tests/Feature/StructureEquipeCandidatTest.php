@@ -137,7 +137,7 @@ final class StructureEquipeCandidatTest extends TestCase
         // Le seul obstacle qui tenait « Défi » hors du parcours vient de tomber.
         $this->assertTrue(ApplicationSection::CHALLENGE->isOnOpenPath());
 
-        // Le parcours s'est prolongé depuis, jusqu'à l'étape 7 : ce que ce test
+        // Le parcours s'est prolongé depuis, jusqu'à l'étape 8 : ce que ce test
         // vérifie reste que « Défi » y est entré et que rien n'y manque avant
         // lui. Les trois étapes suivantes sont couvertes par leurs propres
         // fichiers.
@@ -150,6 +150,7 @@ final class StructureEquipeCandidatTest extends TestCase
                 ApplicationSection::SOLUTION,
                 ApplicationSection::IMPACT,
                 ApplicationSection::IMPLEMENTATION,
+                ApplicationSection::ATTACHMENTS,
             ],
             ApplicationSection::openPath(),
         );

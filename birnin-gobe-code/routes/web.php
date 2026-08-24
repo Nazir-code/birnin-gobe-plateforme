@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Candidate\ApplicationController;
+use App\Http\Controllers\Candidate\AttachmentsSectionController;
 use App\Http\Controllers\Candidate\ChallengeSectionController;
 use App\Http\Controllers\Candidate\DashboardController;
 use App\Http\Controllers\Candidate\EligibilitySectionController;
@@ -160,6 +161,42 @@ Route::middleware(['auth', 'role:candidate'])
             ->middleware(['can:update,application', 'eligible'])
             ->name('application.implementation.update');
 
+        // Etape 8 — pieces et declarations (5.2 etape 8, 7.2 pieces, 7.3
+        // declarations). Derniere etape de contenu : « Relecture / envoi »
+        // (etape 9) n'est pas developpee ici, et aucun bouton de depot ne vit
+        // sur cet ecran.
+        Route::get('/application/{application}/attachments', [AttachmentsSectionController::class, 'edit'])
+            ->middleware(['can:view,application', 'eligible'])
+            ->name('application.attachments');
+
+        // Les declarations : meme chemin que les sept sections precedentes.
+        Route::patch('/application/{application}/attachments', [AttachmentsSectionController::class, 'update'])
+            ->middleware(['can:update,application', 'eligible'])
+            ->name('application.attachments.update');
+
+        // Les pieces : leurs propres routes. Un fichier se depose une fois, se
+        // remplace ou se retire — il n'a rien a faire dans la sauvegarde
+        // automatique, qui repartirait a chaque frappe.
+        //
+        // `can:update` porte les deux gardes : le dossier est le sien, et il est
+        // encore un brouillon. Un televersement apres soumission tombe donc en
+        // 403 sans jamais atteindre le disque.
+        Route::post('/application/{application}/attachments/documents', [AttachmentsSectionController::class, 'storeDocument'])
+            ->middleware(['can:update,application', 'eligible'])
+            ->name('application.attachments.documents.store');
+
+        Route::delete('/application/{application}/attachments/documents/{type}', [AttachmentsSectionController::class, 'destroyDocument'])
+            ->middleware(['can:update,application', 'eligible'])
+            ->name('application.attachments.documents.destroy');
+
+        // Telechargement par le proprietaire. `can:view` et non `can:update` :
+        // un dossier soumis reste consultable par celui qui l'a depose, pieces
+        // comprises. Aucun chemin de stockage ne transite — la piece est
+        // designee par son type.
+        Route::get('/application/{application}/attachments/documents/{type}', [AttachmentsSectionController::class, 'downloadDocument'])
+            ->middleware('can:view,application')
+            ->name('application.attachments.documents.download');
+
         // Depot officiel. `can:update` porte deja les deux gardes qui comptent :
         // le dossier est le sien, et il est encore un brouillon — un second
         // envoi tombe donc en 403 sans jamais atteindre le domaine.
@@ -219,6 +256,13 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::get('/applications', [AdminApplicationController::class, 'index'])->name('applications.index');
         Route::get('/applications/{application}', [AdminApplicationController::class, 'show'])
             ->name('applications.show');
+
+        // Lecture d'une piece jointe. Le 8.1 demande que le controle signale
+        // les « pieces illisibles » : encore faut-il pouvoir les ouvrir. C'est
+        // la seule route documentaire cote administration, et elle ne fait que
+        // lire — aucun remplacement, aucune suppression, aucun statut.
+        Route::get('/applications/{application}/documents/{type}', [AdminApplicationController::class, 'downloadDocument'])
+            ->name('applications.documents.download');
     });
 });
 

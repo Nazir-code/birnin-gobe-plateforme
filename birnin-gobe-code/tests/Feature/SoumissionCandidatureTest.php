@@ -114,14 +114,27 @@ final class SoumissionCandidatureTest extends TestCase
         return $fabrique->create();
     }
 
-    /** Un dossier limité aux étapes que le produit propose aujourd'hui. */
-    private function dossierDuParcoursOuvert(Campaign $campagne, ?User $candidat = null): Application
+    /**
+     * Un dossier complet de l'étape 1 à l'étape 7 — tout sauf les pièces.
+     *
+     * Ce fabricant portait le parcours ouvert tant que celui-ci s'arrêtait à
+     * l'étape 7. Depuis l'ouverture de l'étape 8, parcours ouvert et sections
+     * exigées coïncident, et un dossier bâti sur `openPath()` serait déposable :
+     * les tests qui mesurent la distance entre « rempli » et « déposable »
+     * n'auraient plus rien à mesurer. Ce qu'ils vérifient — un dossier auquel il
+     * manque une pièce ne part pas — est nommé ici explicitement.
+     */
+    private function dossierSansPieces(Campaign $campagne, ?User $candidat = null): Application
     {
         $fabrique = Application::factory()
             ->for($campagne)
             ->for($candidat ?? User::factory(), 'candidate');
 
-        foreach (ApplicationSection::openPath() as $section) {
+        foreach (SubmissionReadiness::requiredSections() as $section) {
+            if ($section === ApplicationSection::ATTACHMENTS) {
+                continue;
+            }
+
             $fabrique = $fabrique->withSection(
                 $section,
                 $section === ApplicationSection::ELIGIBILITY
@@ -219,17 +232,16 @@ final class SoumissionCandidatureTest extends TestCase
     /**
      * **Le garde-fou de cette phase.**
      *
-     * Un dossier dont toutes les étapes *proposées aujourd'hui* sont faites
-     * n'est pas un dossier complet : la solution, l'impact, le plan de mise en
-     * œuvre et les pièces manquent encore. Le dépôt doit refuser, et nommer ce
-     * qui manque — sinon la plateforme délivrerait des numéros officiels à des
-     * dossiers amputés, sans retour possible.
+     * Un dossier auquel il manque une section exigée n'est pas un dossier
+     * complet, quelle que soit la longueur du chemin déjà parcouru. Le dépôt
+     * doit refuser, et nommer ce qui manque — sinon la plateforme délivrerait
+     * des numéros officiels à des dossiers amputés, sans retour possible.
      */
-    public function test_un_dossier_limite_au_parcours_ouvert_est_refuse(): void
+    public function test_un_dossier_sans_pieces_est_refuse(): void
     {
         $campagne = $this->campagne($this->reglesCompletes());
         $candidat = User::factory()->create();
-        $dossier = $this->dossierDuParcoursOuvert($campagne, $candidat);
+        $dossier = $this->dossierSansPieces($campagne, $candidat);
 
         $this->deposer($candidat, $dossier)
             ->assertStatus(422)
@@ -243,25 +255,25 @@ final class SoumissionCandidatureTest extends TestCase
     /**
      * Le refus nomme les étapes qui manquent, il ne se contente pas de refuser.
      *
-     * **Ce test mesure la distance entre le parcours ouvert et le dossier
-     * final**, et c'est sa raison d'être. Il nommait quatre sections quand les
-     * étapes 5 à 7 n'existaient pas ; il n'en nomme plus qu'une depuis leur
-     * livraison, sans qu'une ligne de `SubmissionReadiness` ait changé. Le jour
-     * où l'étape 8 arrivera, la liste se videra de la même façon.
+     * **Ce test mesure la distance entre ce qui est rempli et ce qui est
+     * exigé**, et c'est sa raison d'être. Il nommait quatre sections quand les
+     * étapes 5 à 7 n'existaient pas, une seule depuis leur livraison — et
+     * toujours une seule ici, sans qu'une ligne de `SubmissionReadiness` ait
+     * changé.
      *
-     * Ce que cela prouve : la recevabilité ne se déduit pas d'`openPath()`. Un
-     * dossier peut être complet sur tout ce que le produit propose et rester
-     * non déposable, parce qu'il manque une pièce que le concours exige.
+     * Ce que cela prouve : la recevabilité ne se déduit pas d'une progression.
+     * Un dossier peut afficher sept étapes sur neuf et rester non déposable,
+     * parce qu'il manque une pièce que le concours exige.
      */
     public function test_le_refus_nomme_les_sections_manquantes(): void
     {
         $campagne = $this->campagne($this->reglesCompletes());
         $candidat = User::factory()->create();
-        $dossier = $this->dossierDuParcoursOuvert($campagne, $candidat);
+        $dossier = $this->dossierSansPieces($campagne, $candidat);
 
-        // Le parcours ouvert va jusqu'à l'étape 7 : le dossier est complet de
-        // tout ce que le candidat peut remplir aujourd'hui.
-        $this->assertCount(7, ApplicationSection::openPath());
+        // Le parcours ouvert compte désormais huit étapes ; ce dossier en a
+        // rempli sept.
+        $this->assertCount(8, ApplicationSection::openPath());
         $this->assertSame(7, app(ApplicationProgress::class)->completedOnOpenPath($dossier));
 
         $verdict = SubmissionReadiness::for($dossier, app(EvaluateEligibility::class));
@@ -280,15 +292,14 @@ final class SoumissionCandidatureTest extends TestCase
     /**
      * Sept étapes sur neuf ne déposent pas un dossier.
      *
-     * Le garde-fou de la vague A, éprouvé par la route elle-même : un candidat
-     * qui a rempli tout ce que la plateforme lui propose reçoit un refus motivé,
-     * pas un numéro de dépôt.
+     * Le garde-fou éprouvé par la route elle-même : un candidat à qui il manque
+     * les pièces reçoit un refus motivé, pas un numéro de dépôt.
      */
     public function test_un_dossier_a_sept_neuviemes_n_est_pas_deposable(): void
     {
         $campagne = $this->campagne($this->reglesCompletes());
         $candidat = User::factory()->create();
-        $dossier = $this->dossierDuParcoursOuvert($campagne, $candidat);
+        $dossier = $this->dossierSansPieces($campagne, $candidat);
 
         $this->assertSame($this->pourcentage(7), (int) $dossier->fresh()->completion_percent);
 
@@ -647,7 +658,7 @@ final class SoumissionCandidatureTest extends TestCase
     public function test_un_brouillon_n_annonce_ni_numero_ni_date(): void
     {
         $campagne = $this->campagne($this->reglesCompletes());
-        $this->dossierDuParcoursOuvert($campagne);
+        $this->dossierSansPieces($campagne);
 
         $this->actingAs(User::factory()->role(UserRole::ADMIN)->create())
             ->get('/admin/applications')
@@ -677,7 +688,7 @@ final class SoumissionCandidatureTest extends TestCase
         $campagne = $this->campagne($this->reglesCompletes());
         $candidat = User::factory()->create();
 
-        $this->dossierDuParcoursOuvert($campagne);
+        $this->dossierSansPieces($campagne);
         $this->deposer($candidat, $this->dossierComplet($campagne, $candidat))->assertOk();
 
         $this->actingAs(User::factory()->role(UserRole::ADMIN)->create())

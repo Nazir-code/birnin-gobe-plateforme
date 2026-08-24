@@ -197,12 +197,13 @@ final class IntegrationStructureAdministrationTest extends TestCase
                 ApplicationSection::SOLUTION,
                 ApplicationSection::IMPACT,
                 ApplicationSection::IMPLEMENTATION,
+                ApplicationSection::ATTACHMENTS,
             ],
             ApplicationSection::openPath(),
         );
 
-        $this->assertFalse(ApplicationSection::ATTACHMENTS->isOnOpenPath());
-        $this->assertFalse(ApplicationSection::ATTACHMENTS->isImplemented());
+        $this->assertFalse(ApplicationSection::REVIEW->isOnOpenPath());
+        $this->assertFalse(ApplicationSection::REVIEW->isImplemented());
     }
 
     // — Structure vue par l'administration ————————————————————————
