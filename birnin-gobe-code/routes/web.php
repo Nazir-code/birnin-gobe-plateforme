@@ -85,6 +85,11 @@ Route::middleware(['auth', 'role:candidate'])
         // Entrée « Ma candidature » de la navigation : redirige, n'écrit rien.
         Route::get('/application', [ApplicationController::class, 'show'])->name('application.entry');
 
+        // Entrée « Mon profil » de la navigation. Le profil du candidat est
+        // l'etape 2 de sa candidature : cette route y mene, elle ne cree pas un
+        // second systeme de profil. Redirige, n'ecrit rien.
+        Route::get('/profile', [ApplicationController::class, 'profile'])->name('profile.entry');
+
         // Etape 1 — l'auto-test d'eligibilite. Aucune barriere d'eligibilite
         // sur ses propres routes : c'est ici qu'on corrige ses reponses.
         Route::get('/application/{application}/eligibility', [EligibilitySectionController::class, 'edit'])

@@ -1,21 +1,34 @@
 import { useState, type PropsWithChildren, type ReactNode } from 'react';
 import { Link } from '@inertiajs/react';
-import { Bell, CircleHelp, FileText, Gauge, LogOut, Mail, Menu, Settings, UserRound, UsersRound } from 'lucide-react';
+import { FileText, Gauge, LogOut, Menu, UserRound } from 'lucide-react';
 import { BrandLogo } from '@/Components/Brand';
 import { initiales, useAuthUser } from '@/hooks/useAuth';
 import { MobileNavDrawer } from '@/Components/Ui';
 import { SiteFooter } from '@/Components/SiteFooter';
 
+/**
+ * Le menu du candidat : trois entrees, et chacune mene quelque part.
+ *
+ * Il en comptait sept. Les quatre autres — « Mes messages », « Mes documents »,
+ * « Assistance », « Parametres » — pointaient sur `#`, c'est-a-dire nulle part.
+ * Un candidat qui clique et ne voit rien se produire ne conclut pas « ce module
+ * arrive plus tard » : il conclut que la plateforme est cassee, et il doute
+ * aussi des entrees qui, elles, fonctionnent. C'est le retour d'usage qui a
+ * motive ce retrait.
+ *
+ * Rien n'a ete supprime de ces modules — ils n'existent pas encore. Ils
+ * reviendront dans ce tableau le jour ou ils auront un ecran, et pas avant :
+ * une entree de menu est une promesse.
+ *
+ * Les deux entrees ajoutees ici sont des points d'entree serveur qui resolvent
+ * le dossier du candidat authentifie puis redirigent. Le menu n'a donc a
+ * connaitre ni l'identifiant du dossier, ni l'etape courante — et ne peut pas
+ * mener au dossier d'un autre.
+ */
 const nav = [
   [Gauge, 'Tableau de bord', '/candidate/dashboard'],
-  [UserRound, 'Mon profil', '#'],
-  // Point d'entree qui redirige vers la section en cours cote serveur : le
-  // menu n'a pas a connaitre l'identifiant du dossier ni l'etape courante.
+  [UserRound, 'Mon profil', '/candidate/profile'],
   [FileText, 'Ma candidature', '/candidate/application'],
-  [Mail, 'Mes messages', '#'],
-  [UsersRound, 'Mes documents', '#'],
-  [CircleHelp, 'Assistance', '#'],
-  [Settings, 'Paramètres', '#'],
 ] as const;
 
 export function CandidateLayout({ children, active = 'Tableau de bord', topSlot }: PropsWithChildren<{ active?: string; topSlot?: ReactNode }>) {
@@ -24,11 +37,24 @@ export function CandidateLayout({ children, active = 'Tableau de bord', topSlot 
 
   const navLinks = (onNavigate?: () => void) => (
     <nav className="space-y-1 px-4">
-      {nav.map(([Icon, label, href]) => (
-        <Link href={href} key={label} onClick={onNavigate} className={`focus-ring flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition ${active === label ? 'bg-brand-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-50'}`}>
-          <Icon size={18} strokeWidth={1.7} /> {label}
-        </Link>
-      ))}
+      {nav.map(([Icon, label, href]) => {
+        const courant = active === label;
+
+        return (
+          <Link
+            href={href}
+            key={label}
+            onClick={onNavigate}
+            data-testid={`nav-${href.split('/').pop()}`}
+            // `aria-current` porte l'etat actif pour un lecteur d'ecran ; la
+            // couleur seule ne le dirait qu'a ceux qui la voient.
+            aria-current={courant ? 'page' : undefined}
+            className={`focus-ring flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold transition ${courant ? 'bg-brand-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-50'}`}
+          >
+            <Icon size={18} strokeWidth={1.7} /> <span className="truncate">{label}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 
@@ -49,7 +75,7 @@ export function CandidateLayout({ children, active = 'Tableau de bord', topSlot 
         {navLinks()}
         {bottomCard}
       </aside>
-      <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} panelClassName="bg-white">
+      <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} panelClassName="bg-white" testId="menu-mobile">
         <div className="px-3 pb-3"><BrandLogo size="sidebar" /></div>
         {navLinks(() => setMobileNavOpen(false))}
         {bottomCard}
@@ -64,7 +90,6 @@ export function CandidateLayout({ children, active = 'Tableau de bord', topSlot 
           </div>
           <div className="ml-auto flex items-center gap-5">
             {topSlot}
-            <button className="relative grid h-10 w-10 place-items-center rounded-full hover:bg-slate-50" aria-label="Notifications"><Bell size={20} /><span className="absolute right-1 top-1 grid h-5 min-w-5 place-items-center rounded-full bg-gold-500 px-1 text-[10px] font-extrabold">2</span></button>
             {user ? <div className="hidden items-center gap-3 sm:flex"><div className="grid h-10 w-10 place-items-center rounded-full bg-amber-100 font-extrabold text-amber-700">{initiales(user.name)}</div><div className="text-sm font-bold">{user.name}</div></div> : null}
           </div>
         </div>
