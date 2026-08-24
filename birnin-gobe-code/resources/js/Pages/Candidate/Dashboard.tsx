@@ -1,30 +1,30 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowRight, CalendarDays, FileText, FilePlus2, Mail, UploadCloud } from 'lucide-react';
+import { ArrowRight, CalendarDays, FileText, FilePlus2 } from 'lucide-react';
 import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { useAuthUser } from '@/hooks/useAuth';
-import { Button, Card, Pill, SectionTitle } from '@/Components/Ui';
+import { Button, Card, SectionTitle } from '@/Components/Ui';
 import { ProgressSteps, type Step } from '@/Components/ProgressSteps';
 import { AnimatedCounter } from '@/Components/AnimatedCounter';
 import { Reveal } from '@/Components/Reveal';
 import { useReveal } from '@/hooks/useReveal';
 
-/**
- * Messages et documents restent des donnees de demonstration : les modules
- * Notification et Storage ne sont pas developpes. Ils sont isoles ici, hors des
- * informations de candidature, qui viennent desormais toutes de PostgreSQL.
+/*
+ * Deux cartes ont disparu de cet ecran : « Messages recents » et « Mes
+ * documents ». Elles affichaient des donnees de demonstration — trois messages
+ * et quatre fichiers qui n'ont jamais existe — sous un « Voir tout » qui ne
+ * menait nulle part et un « Ajouter un document » sans effet.
+ *
+ * Elles partent pour la meme raison que les entrees de menu correspondantes :
+ * un candidat qui lit « Lettre de motivation — a ajouter » croit avoir une
+ * piece a fournir, cherche comment, et conclut que la plateforme est cassee.
+ * Retirer le menu en gardant les cartes n'aurait corrige que la moitie du
+ * probleme, et la plus discrete des deux.
+ *
+ * Les modules Notification et Storage ne sont pas developpes ; rien de leur
+ * code n'a ete touche. Ces cartes reviendront quand elles auront des donnees
+ * reelles a montrer.
  */
-const messages = [
-  ['Équipe BIRNIN GOBE', 'Webinaire d’information : préparez votre candidature comme un pro !', '24 mai 2026'],
-  ['Équipe BIRNIN GOBE', 'Rappel : date limite de soumission', '20 mai 2026'],
-  ['Mahamadou A.', 'Re : question sur le budget du projet', '18 mai 2026'],
-];
-const docs = [
-  ['Présentation du projet', 'PDF • 1,2 Mo', 'Ajouté'],
-  ['Budget prévisionnel', 'XLSX • 240 Ko', 'Ajouté'],
-  ['Plan d’action détaillé', 'XLSX • 300 Ko', 'Ajouté'],
-  ['Lettre de motivation', 'PDF • 450 Ko', 'À ajouter'],
-];
 
 type Props = {
   campaign: { name: string; code: string; closesAt: string | null; daysLeft: number | null } | null;
@@ -160,17 +160,6 @@ export default function CandidateDashboard({ campaign, application, steps, start
           <ProgressSteps steps={steps.map(({ label, state }): Step => ({ label, state }))} />
         </Card></Reveal>
 
-        <div className="mt-5 grid gap-5 xl:grid-cols-2">
-          <Reveal delay={140}><Card className="p-6">
-            <SectionTitle title="Messages récents" aside={<a href="#" className="text-xs font-bold text-brand-800">Voir tout</a>} />
-            <div className="divide-y divide-slate-100">{messages.map(([from, subject, date], i) => <div key={subject} className="flex gap-4 py-4 first:pt-0"><div className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${i === 2 ? 'bg-amber-100 text-amber-700' : 'border border-brand-700 bg-white text-brand-800'}`}>{i === 2 ? 'MA' : <Mail size={18}/>}</div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-3"><div className="font-bold text-slate-800">{from}</div><div className="whitespace-nowrap text-[11px] text-slate-400">{date}</div></div><div className="mt-0.5 truncate text-sm font-semibold text-slate-700">{subject}</div><div className="mt-1 truncate text-xs text-slate-400">Consultez le détail du message depuis votre centre de notifications…</div></div></div>)}</div>
-          </Card></Reveal>
-          <Reveal delay={200}><Card className="p-6">
-            <SectionTitle title="Mes documents" aside={<a href="#" className="text-xs font-bold text-brand-800">Voir tout</a>} />
-            <div className="space-y-3">{docs.map(([name, meta, status]) => <div key={name} className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-lg bg-slate-50 text-brand-800"><FileText size={18}/></div><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-slate-800">{name}</div><div className="text-[11px] text-slate-400">{meta}</div></div><Pill tone={status === 'Ajouté' ? 'green' : 'gold'}>{status}</Pill></div>)}</div>
-            <button className="focus-ring press-feedback mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/40 text-sm font-bold text-slate-700 hover:bg-brand-50"><UploadCloud size={18}/> Ajouter un document</button>
-          </Card></Reveal>
-        </div>
       </div>
     </CandidateLayout>
   );

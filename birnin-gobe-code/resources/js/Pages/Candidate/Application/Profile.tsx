@@ -58,6 +58,12 @@ function dateLisible(iso: string | null): string {
   return Number.isNaN(date.getTime()) ? 'Non renseignée' : dateCourte.format(date);
 }
 
+/*
+ * `active="Mon profil"` et non « Ma candidature » : cet ecran est bien l'etape 2
+ * du dossier, mais c'est aussi la destination de l'entree « Mon profil » du
+ * menu. Y arriver et voir une autre entree surlignee ferait douter d'avoir
+ * clique au bon endroit.
+ */
 export default function Profile({
   steps, section, answers, known, regions, genders, channels, educationLevels,
   requiredFields, shortTextMax, longTextMax, saveUrl, previousUrl, nextUrl,
@@ -74,7 +80,7 @@ export default function Profile({
   const manquants = requiredFields.filter((champ) => values[champ].trim() === '');
 
   return (
-    <CandidateLayout active="Ma candidature" topSlot={<div className="hidden md:flex"><SaveIndicator state={state} savedAt={savedAt} /></div>}>
+    <CandidateLayout active="Mon profil" topSlot={<div className="hidden md:flex"><SaveIndicator state={state} savedAt={savedAt} /></div>}>
       <Head title={`${section.label} — Ma candidature BIRNIN GOBE`} />
       <div className="grid min-h-[calc(100vh-76px)] lg:grid-cols-[260px_1fr]">
         <SectionStepsAside steps={steps} activeKey={section.key} />
