@@ -35,7 +35,12 @@ type Props = {
     completionPercent: number;
     currentStep: { key: string; label: string; position: number } | null;
     updatedAt: string | null;
+    submissionNumber: string | null;
+    submittedAt: string | null;
+    /** Null des que le dossier est depose : il ne se reprend plus. */
     continueUrl: string | null;
+    reviewUrl: string;
+    submittedUrl: string | null;
   } | null;
   steps: { key: string; label: string; position: number; state: Step['state']; implemented: boolean; onOpenPath: boolean }[];
   startUrl: string;
@@ -106,9 +111,18 @@ export default function CandidateDashboard({ campaign, application, steps, start
                 <div>
                   <div className="text-xs text-slate-500">Statut actuel</div>
                   <div className="text-2xl font-black" data-testid="statut-candidature">{application.statusLabel}</div>
-                  <div className="text-xs text-slate-500">
-                    {application.updatedAt ? `Dernière modification le ${dateCourte.format(new Date(application.updatedAt))}` : 'Aucune modification enregistrée'}
-                  </div>
+                  {/* Un dossier depose montre sa reference, pas sa derniere
+                      modification : c'est le numero que le candidat cherche. */}
+                  {application.submittedAt ? (
+                    <div className="text-xs text-slate-500" data-testid="depot-resume">
+                      <span className="font-mono font-bold text-brand-800">{application.submissionNumber}</span>
+                      {' — déposée le '}{dateCourte.format(new Date(application.submittedAt))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-500">
+                      {application.updatedAt ? `Dernière modification le ${dateCourte.format(new Date(application.updatedAt))}` : 'Aucune modification enregistrée'}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -155,7 +169,18 @@ export default function CandidateDashboard({ campaign, application, steps, start
         <Reveal delay={80}><Card className="mt-5 p-6">
           <SectionTitle
             title={`Progression de ma candidature (${steps.length} étapes)`}
-            aside={application?.continueUrl ? <Link className="text-xs font-bold text-brand-800" href={application.continueUrl}>Continuer ma candidature <ArrowRight className="inline" size={14}/></Link> : undefined}
+            aside={
+              application?.submittedUrl ? (
+                <Link className="text-xs font-bold text-brand-800" href={application.submittedUrl} data-testid="voir-accuse">
+                  Voir l’accusé de dépôt <ArrowRight className="inline" size={14} />
+                </Link>
+              ) : application?.continueUrl ? (
+                <span className="flex flex-wrap items-center gap-3">
+                  <Link className="text-xs font-bold text-brand-800" href={application.continueUrl}>Continuer ma candidature <ArrowRight className="inline" size={14}/></Link>
+                  <Link className="text-xs font-bold text-slate-500" href={application.reviewUrl} data-testid="aller-relecture">Relire et envoyer</Link>
+                </span>
+              ) : undefined
+            }
           />
           <ProgressSteps steps={steps.map(({ label, state }): Step => ({ label, state }))} />
         </Card></Reveal>

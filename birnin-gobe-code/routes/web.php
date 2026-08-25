@@ -15,7 +15,9 @@ use App\Http\Controllers\Candidate\EligibilitySectionController;
 use App\Http\Controllers\Candidate\ImpactSectionController;
 use App\Http\Controllers\Candidate\ImplementationSectionController;
 use App\Http\Controllers\Candidate\ProfileSectionController;
+use App\Http\Controllers\Candidate\ReviewController;
 use App\Http\Controllers\Candidate\SolutionSectionController;
+use App\Http\Controllers\Candidate\SubmittedController;
 use App\Http\Controllers\Candidate\SubmitApplicationController;
 use App\Http\Controllers\Candidate\TeamSectionController;
 use App\Http\Controllers\Public\HomeController;
@@ -210,6 +212,24 @@ Route::middleware(['auth', 'role:candidate'])
         // 1, ce qui convient a une navigation mais pas a un depot. Le refus doit
         // nommer son motif, et `SubmitApplication` le fait — eligibilite
         // comprise. Voir SubmissionReadiness.
+        // Etape 9 — relecture avant depot. Aucune ecriture : l'ecran projette
+        // ce que les etapes 1 a 8 ont deja enregistre, et interroge
+        // SubmissionReadiness pour savoir si le depot est possible.
+        //
+        // Pas de middleware `eligible`, comme pour la route de depot ci-dessous :
+        // il redirige vers l'etape 1, ce qui convient a une navigation mais pas a
+        // une relecture. Un candidat dont l'eligibilite bloque doit *lire* le
+        // motif sur cet ecran, pas etre renvoye ailleurs sans explication.
+        Route::get('/application/{application}/review', ReviewController::class)
+            ->middleware('can:view,application')
+            ->name('application.review');
+
+        // Accuse de depot. Consultable indefiniment : c'est la seule preuve que
+        // le candidat possede, aucun courriel n'etant envoye a ce stade.
+        Route::get('/application/{application}/submitted', SubmittedController::class)
+            ->middleware('can:view,application')
+            ->name('application.submitted');
+
         Route::post('/application/{application}/submit', SubmitApplicationController::class)
             ->middleware('can:update,application')
             ->name('application.submit');

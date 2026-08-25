@@ -193,7 +193,14 @@ final class AdminApplicationPresenter
      *
      * @return list<array<string, mixed>>
      */
-    private function sections(Application $application): array
+    /*
+     * Publique, et non plus privée : l'écran de relecture du candidat
+     * (étape 9) rend les mêmes réponses que le back-office. Deux mises en
+     * forme des mêmes données finiraient par diverger, et le candidat doit
+     * relire exactement ce que le vérificateur lira. Seule la visibilité
+     * change ; le corps de la méthode est inchangé.
+     */
+    public function sections(Application $application): array
     {
         return array_map(function (ApplicationSection $section) use ($application): array {
             $ligne = $application->sections->firstWhere('section', $section);

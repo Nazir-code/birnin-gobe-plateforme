@@ -47,6 +47,8 @@ final class SubmitApplicationController
                 return response()->json(['submission' => $verdict->toArray()], 422);
             }
 
+            // Retour à la relecture, qui recalcule la recevabilité et affichera
+            // donc le motif réel — pas celui d'il y a dix minutes.
             return back()->with('submissionRefusee', $verdict->toArray());
         }
 
@@ -59,7 +61,12 @@ final class SubmitApplicationController
             ]);
         }
 
-        return redirect()->route('candidate.dashboard');
+        // L'accusé de dépôt, et non le tableau de bord : un candidat qui vient
+        // de déposer attend son numéro, tout de suite et à l'écran. La route
+        // reste consultable ensuite, ce qui rend le geste rejouable — un
+        // rafraîchissement ou un second envoi aboutit au même accusé, puisque
+        // `SubmitApplication` est idempotent.
+        return redirect()->route('candidate.application.submitted', $application);
     }
 
     /**
