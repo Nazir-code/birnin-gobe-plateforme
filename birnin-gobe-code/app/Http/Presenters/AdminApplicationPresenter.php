@@ -10,6 +10,7 @@ use App\Domain\Application\ImpactSection;
 use App\Domain\Application\ImplementationSection;
 use App\Domain\Application\MaturityStage;
 use App\Domain\Application\ProfileSection;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Application\SolutionSection;
 use App\Domain\Application\TeamSection;
 use App\Domain\Application\TeamSectionAssessment;
@@ -77,6 +78,7 @@ final class AdminApplicationPresenter
      *     status: string, statusLabel: string,
      *     completionPercent: int, completedSections: int, totalSections: int,
      *     currentStep: string|null, currentStepLabel: string|null,
+     *     theme: string|null, themeLabel: string|null,
      *     candidateType: string|null, candidateTypeLabel: string|null,
      *     region: string|null, regionLabel: string|null,
      *     eligibility: array{outcome: string, label: string},
@@ -90,6 +92,7 @@ final class AdminApplicationPresenter
         $reponses = $this->reponsesEligibilite($application);
 
         $type = CandidateType::tryFrom((string) ($reponses[EligibilitySection::CANDIDATE_TYPE] ?? ''));
+        $theme = ProjectTheme::tryFrom((string) ($application->project_theme ?? ''));
         $zone = NigerRegion::tryFrom((string) ($reponses[EligibilitySection::INTERVENTION_REGION] ?? ''));
 
         // Le compte vient du `withCount` de la requête, donc de PostgreSQL, et
@@ -111,6 +114,11 @@ final class AdminApplicationPresenter
             'totalSections' => ApplicationSection::total(),
             'currentStep' => $application->current_step?->value,
             'currentStepLabel' => $application->current_step?->label(),
+            // Extraite par une sous-requête de `ApplicationIndexQuery`, et non
+            // de la section « Défi » chargée : la liste n'a pas à transporter
+            // trois champs de cinq cents caractères pour afficher un intitulé.
+            'theme' => $theme?->value,
+            'themeLabel' => $theme?->label(),
             'candidateType' => $type?->value,
             'candidateTypeLabel' => $type?->label(),
             'region' => $zone?->value,
@@ -386,6 +394,7 @@ final class AdminApplicationPresenter
     private function champsDefi(array $r): array
     {
         return [
+            ['label' => 'Thématique du projet', 'value' => $this->enum(ProjectTheme::class, $r[ChallengeSection::THEME_FIELD] ?? null)],
             ['label' => 'Problème principal', 'value' => $this->texte($r['main_challenge'] ?? null)],
             ['label' => 'Personnes touchées', 'value' => $this->texte($r['affected_people'] ?? null)],
             ['label' => 'Causes profondes', 'value' => $this->texte($r['root_causes'] ?? null)],

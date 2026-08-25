@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
+use App\Domain\Application\ChallengeSection;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Auth\UserRole;
 use App\Domain\Reference\NigerRegion;
 use App\Models\Application;
@@ -51,6 +53,7 @@ final class CandidatureCandidatTest extends TestCase
     private function reponsesCompletes(): array
     {
         return [
+            ChallengeSection::THEME_FIELD => ProjectTheme::URBAN_MANAGEMENT->value,
             'main_challenge' => 'L’accès à l’eau potable dans les quartiers périphériques.',
             'affected_people' => 'Les ménages non raccordés au réseau, en particulier les femmes.',
             'location' => NigerRegion::NIAMEY->value,

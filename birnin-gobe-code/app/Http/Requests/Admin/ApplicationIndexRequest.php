@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Domain\Application\ApplicationIndexQuery;
 use App\Domain\Application\ApplicationStatus;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Candidate\CandidateType;
 use App\Domain\Reference\NigerRegion;
 use Illuminate\Foundation\Http\FormRequest;
@@ -49,6 +50,7 @@ final class ApplicationIndexRequest extends FormRequest
             status: ApplicationStatus::tryFrom($this->chaine('status')),
             candidateType: CandidateType::tryFrom($this->chaine('type')),
             region: NigerRegion::tryFrom($this->chaine('region')),
+            theme: ProjectTheme::tryFrom($this->chaine('theme')),
             search: $this->recherche(),
             sort: in_array($this->chaine('sort'), ApplicationIndexQuery::SORTS, strict: true)
                 ? $this->chaine('sort')
@@ -63,7 +65,7 @@ final class ApplicationIndexRequest extends FormRequest
      * ce qui a été retenu, pas ce qui a été demandé. Un paramètre ignoré
      * réapparaît vide.
      *
-     * @return array{campaign: string, status: string, type: string, region: string, q: string, sort: string}
+     * @return array{campaign: string, status: string, type: string, region: string, theme: string, q: string, sort: string}
      */
     public function filters(): array
     {
@@ -74,6 +76,7 @@ final class ApplicationIndexRequest extends FormRequest
             'status' => $requete->status?->value ?? '',
             'type' => $requete->candidateType?->value ?? '',
             'region' => $requete->region?->value ?? '',
+            'theme' => $requete->theme?->value ?? '',
             'q' => $requete->search ?? '',
             'sort' => $requete->sort,
         ];

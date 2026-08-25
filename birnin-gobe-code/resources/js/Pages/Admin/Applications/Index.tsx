@@ -38,6 +38,8 @@ type Candidature = {
   totalSections: number;
   currentStep: string | null;
   currentStepLabel: string | null;
+  theme: string | null;
+  themeLabel: string | null;
   candidateType: string | null;
   candidateTypeLabel: string | null;
   region: string | null;
@@ -50,7 +52,7 @@ type Candidature = {
   showUrl: string;
 };
 
-type Filtres = { campaign: string; status: string; type: string; region: string; q: string; sort: string };
+type Filtres = { campaign: string; status: string; type: string; region: string; theme: string; q: string; sort: string };
 
 type Props = {
   applications: Candidature[];
@@ -71,6 +73,7 @@ type Props = {
     campaigns: Option[];
     statuses: Option[];
     types: Option[];
+    themes: Option[];
     regions: Option[];
     sorts: Option[];
   };
@@ -174,6 +177,7 @@ export default function ApplicationsIndex({
             <Filtre id="campaign" label="Campagne" value={saisie.campaign} options={options.campaigns} onChange={(v) => appliquer({ campaign: v })} vide="Toutes les campagnes" />
             <Filtre id="status" label="Statut" value={saisie.status} options={options.statuses} onChange={(v) => appliquer({ status: v })} vide="Tous les statuts" />
             <Filtre id="type" label="Forme de candidature" value={saisie.type} options={options.types} onChange={(v) => appliquer({ type: v })} vide="Toutes les formes" />
+            <Filtre id="theme" label="Thématique du projet" value={saisie.theme} options={options.themes} onChange={(v) => appliquer({ theme: v })} vide="Toutes les thématiques" />
             <Filtre id="region" label="Zone d’intervention" value={saisie.region} options={options.regions} onChange={(v) => appliquer({ region: v })} vide="Toutes les zones" />
 
             <div className="flex items-end">
@@ -254,6 +258,7 @@ export default function ApplicationsIndex({
                         <Donnee libelle="Statut" valeur={candidature.statusLabel} />
                         <Donnee libelle="N° de dépôt" valeur={candidature.submissionNumber ?? '—'} />
                         <Donnee libelle="Déposée" valeur={candidature.submittedAt === null ? '—' : dateCourte(candidature.submittedAt)} />
+                        <Donnee libelle="Thématique" valeur={candidature.themeLabel ?? '—'} />
                         <Donnee libelle="Forme" valeur={candidature.candidateTypeLabel ?? '—'} />
                         <Donnee libelle="Zone" valeur={candidature.regionLabel ?? '—'} />
                         <Donnee
@@ -268,7 +273,7 @@ export default function ApplicationsIndex({
               </ul>
 
               <div className="-mx-2 hidden overflow-x-auto px-2 lg:block">
-                <table className="w-full min-w-[960px] border-collapse text-sm">
+                <table className="w-full min-w-[1080px] border-collapse text-sm">
                   <caption className="sr-only">Candidatures, filtrées et triées par le serveur</caption>
                   <thead>
                     <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-400">
@@ -277,6 +282,7 @@ export default function ApplicationsIndex({
                       <th scope="col" className="py-2.5 pr-3 font-bold">Statut</th>
                       <th scope="col" className="py-2.5 pr-3 font-bold">Progression</th>
                       <th scope="col" className="py-2.5 pr-3 font-bold">Étape</th>
+                      <th scope="col" className="py-2.5 pr-3 font-bold">Thématique</th>
                       <th scope="col" className="py-2.5 pr-3 font-bold">Forme</th>
                       <th scope="col" className="py-2.5 pr-3 font-bold">Zone</th>
                       <th scope="col" className="py-2.5 pr-3 font-bold">Éligibilité</th>
@@ -323,6 +329,7 @@ export default function ApplicationsIndex({
                           </div>
                         </td>
                         <td className="py-3 pr-3 text-slate-600">{candidature.currentStepLabel ?? '—'}</td>
+                        <td className="py-3 pr-3 text-slate-600">{candidature.themeLabel ?? '—'}</td>
                         <td className="py-3 pr-3 text-slate-600">{candidature.candidateTypeLabel ?? '—'}</td>
                         <td className="py-3 pr-3 text-slate-600">{candidature.regionLabel ?? '—'}</td>
                         <td className="py-3 pr-3">

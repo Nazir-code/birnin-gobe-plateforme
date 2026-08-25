@@ -33,6 +33,7 @@ final class SaveChallengeSectionRequest extends FormRequest
             'affected_people' => 'personnes affectées',
             'location' => 'localisation',
             'root_causes' => 'causes profondes',
+            ChallengeSection::THEME_FIELD => 'thématique du projet',
         ];
     }
 

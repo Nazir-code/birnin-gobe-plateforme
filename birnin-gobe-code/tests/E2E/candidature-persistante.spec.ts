@@ -49,8 +49,9 @@ async function seDeconnecter(page: Page) {
   await expect(page).toHaveURL(/\/$/);
 }
 
-/** Les quatre champs reellement persistes de la section « Defi ». */
+/** Les cinq champs reellement persistes de la section « Defi ». */
 async function verifierLesReponses(page: Page) {
+  await expect(page.getByRole('radio', { name: 'Gestion urbaine et services de base' })).toBeChecked();
   await expect(page.getByLabel(/Quel est le défi principal/)).toHaveValue(REPONSES.defi);
   await expect(page.getByLabel(/Qui est le plus affecté/)).toHaveValue(REPONSES.affectes);
   await expect(page.getByLabel(/Où ce défi se pose-t-il/)).toHaveValue('NE-8');
@@ -86,7 +87,10 @@ test.describe('Candidature persistante', () => {
     await ouvrirLeDefi(page);
     const urlCandidature = page.url();
 
-    // — Saisie des quatre champs
+    // — Saisie des cinq champs
+    // La thematique ouvre l'etape : sans elle, la section « Defi » n'est pas
+    // achevee, quelles que soient les quatre autres reponses.
+    await page.getByRole('radio', { name: 'Gestion urbaine et services de base' }).check();
     await page.getByLabel(/Quel est le défi principal/).fill(REPONSES.defi);
     await page.getByLabel(/Qui est le plus affecté/).fill(REPONSES.affectes);
     await page.getByLabel(/Où ce défi se pose-t-il/).selectOption({ label: REPONSES.region });

@@ -8,11 +8,16 @@ use Illuminate\Validation\Rule;
 /**
  * Définition de la section « Défi ».
  *
- * Les quatre champs sont ceux réellement présents à l'écran, rien n'a été
- * ajouté pour les besoins des tests. Cette classe est la seule source : la
+ * Les cinq champs sont ceux réellement présents à l'écran, rien n'a été ajouté
+ * pour les besoins des tests. Cette classe est la seule source : la
  * `FormRequest` en dérive ses règles, l'action de sauvegarde en dérive les clés
  * conservées, et la complétude de la section en dérive sa condition. Ajouter un
  * champ ici suffit à le propager partout.
+ *
+ * La thématique ouvre la section parce qu'elle cadre tout le reste : le défi
+ * décrit ensuite se lit sous cette thématique. Un dossier soumis sans elle
+ * serait impossible à ranger parmi les quatre axes du concours — et c'est
+ * précisément ce que cette phase corrige.
  */
 final class ChallengeSection
 {
@@ -26,6 +31,15 @@ final class ChallengeSection
 
     /** Champ à valeurs contraintes : une région du référentiel, pas du texte libre. */
     public const REGION_FIELD = 'location';
+
+    /**
+     * Thématique officielle sous laquelle le projet concourt.
+     *
+     * Contrainte aux quatre codes de `ProjectTheme`, jamais du texte libre : la
+     * valeur sert à ranger et à dénombrer les dossiers, une saisie libre les
+     * rendrait incomparables.
+     */
+    public const THEME_FIELD = 'project_theme';
 
     /**
      * Règles appliquées à une sauvegarde de brouillon.
@@ -49,17 +63,35 @@ final class ChallengeSection
 
         $rules[self::REGION_FIELD] = ['nullable', 'string', Rule::enum(NigerRegion::class)];
 
+        // `nullable` comme les autres — un brouillon s'enregistre incomplet — mais
+        // toute valeur hors des quatre thématiques est refusée définitivement.
+        $rules[self::THEME_FIELD] = ['nullable', 'string', Rule::enum(ProjectTheme::class)];
+
         return $rules;
     }
 
-    /** @return list<string> */
+    /**
+     * Les champs de la section, dans l'ordre de l'écran.
+     *
+     * La thématique en tête : elle est demandée avant le récit du défi, et
+     * l'administration la lit en premier sur la fiche du dossier.
+     *
+     * @return list<string>
+     */
     public static function fields(): array
     {
-        return [...self::TEXT_FIELDS, self::REGION_FIELD];
+        return [self::THEME_FIELD, ...self::TEXT_FIELDS, self::REGION_FIELD];
     }
 
     /**
-     * La section est faite quand ses quatre réponses sont renseignées.
+     * La section est faite quand ses cinq réponses sont renseignées.
+     *
+     * Conséquence assumée pour les brouillons antérieurs à la thématique : ils
+     * se chargent et se modifient normalement, mais leur section « Défi »
+     * redevient incomplète tant que le candidat n'a pas choisi. Aucune valeur
+     * par défaut n'est inventée — attribuer d'office une thématique à un projet
+     * qu'on n'a pas lu serait une donnée fausse, et elle serait recopiée telle
+     * quelle dans le dossier soumis.
      *
      * @param  array<string, mixed>  $answers
      */

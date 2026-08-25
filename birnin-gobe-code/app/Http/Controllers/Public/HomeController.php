@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Public;
 
 use App\Domain\Application\ApplicationStatus;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Auth\UserRole;
 use App\Domain\Campaign\ActiveCampaign;
 use App\Models\Application;
@@ -88,44 +89,17 @@ final class HomeController
      * venaient de `data/demo.ts` et ne correspondaient à aucun document du
      * concours.
      *
-     * Elles vivent ici en attendant le CMS. Le jour où il existera, seule cette
-     * méthode changera : l'écran, lui, reçoit déjà la liste plutôt que de la
-     * connaître.
-     *
-     * Chaque entrée distingue ce que le candidat doit résoudre de ce qu'on
-     * attend qu'il produise. Mélanger les deux laisserait le candidat deviner où
-     * s'arrête le constat et où commence l'exigence.
+     * Le contenu lui-même a quitté ce contrôleur pour `ProjectTheme` : la
+     * candidature demande désormais au candidat sous quelle thématique il
+     * concourt, et deux listes séparées auraient fini par diverger. Le portail
+     * et le formulaire lisent la même enum ; l'ordre et les textes sont
+     * inchangés.
      *
      * @return list<array{key: string, title: string, problems: string, results: string}>
      */
     private function thematiques(): array
     {
-        return [
-            [
-                'key' => 'gestion-urbaine',
-                'title' => 'Gestion urbaine et services de base',
-                'problems' => 'Signalement et suivi des déchets, voirie, caniveaux, éclairage, équipements, interventions et relation citoyenne.',
-                'results' => 'Collecte terrain, priorisation, affectation, traçabilité et tableau de bord opérationnel.',
-            ],
-            [
-                'key' => 'foncier',
-                'title' => 'Gestion foncière et cadastrale',
-                'problems' => 'Dossiers dispersés, recherche lente, doublons, localisation difficile, faible suivi des étapes et litiges.',
-                'results' => 'Indexation sécurisée, recherche multicritère, suivi des demandes, cartographie interne et audit.',
-            ],
-            [
-                'key' => 'etat-civil',
-                'title' => 'État civil et services administratifs',
-                'problems' => 'Accueil, complétude, archivage, recherche, suivi des demandes, délais et statistiques.',
-                'results' => 'Orientation des usagers, suivi interne, alertes, archivage sécurisé et amélioration des délais.',
-            ],
-            [
-                'key' => 'cartographie',
-                'title' => 'Cartographie, géolocalisation, risques et résilience',
-                'problems' => 'Adressage, inventaire des actifs, zones inondables, ouvrages, ressources mobiles, alertes et décisions d’urgence.',
-                'results' => 'Données géoréférencées fiables, usages hors ligne, cartes opérationnelles et aide à la décision.',
-            ],
-        ];
+        return ProjectTheme::content();
     }
 
     /**

@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
+use App\Domain\Application\ChallengeSection;
 use App\Domain\Application\MaturityStage;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Application\SolutionSection;
 use App\Domain\Auth\UserRole;
 use App\Models\Application;
@@ -128,6 +130,7 @@ final class SolutionCandidatTest extends TestCase
         $id = $application->getKey();
 
         $this->actingAs($candidat)->patchJson("/candidate/application/{$id}/challenge", [
+            ChallengeSection::THEME_FIELD => ProjectTheme::URBAN_MANAGEMENT->value,
             'main_challenge' => 'Les bornes-fontaines en panne le restent des semaines.',
         ])->assertOk();
 
