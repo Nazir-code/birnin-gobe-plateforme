@@ -117,6 +117,10 @@ async function remplirLesSeptPremieresEtapes(page: Page) {
   // Etape 4
   await page.getByTestId('suivant').click();
   await expect(page).toHaveURL(/\/challenge$/);
+  // La thematique ouvre l'etape depuis l'integration de la branche « theme » :
+  // sans elle, le defi n'est pas acheve quelles que soient les quatre autres
+  // reponses, et le dossier n'atteindrait jamais 8/9.
+  await page.getByRole('radio', { name: 'Gestion urbaine et services de base' }).check();
   await page.getByLabel(/Quel est le défi principal/).fill('Les bornes-fontaines en panne le restent des semaines.');
   await page.getByLabel(/Qui est le plus affecté/).fill('Les ménages non raccordés des quartiers périphériques.');
   await page.getByLabel(/Où ce défi se pose-t-il/).selectOption({ label: 'Niamey' });

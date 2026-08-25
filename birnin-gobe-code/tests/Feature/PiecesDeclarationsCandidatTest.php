@@ -7,8 +7,10 @@ use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\AttachmentScanStatus;
 use App\Domain\Application\AttachmentsSection;
+use App\Domain\Application\ChallengeSection;
 use App\Domain\Application\DocumentType;
 use App\Domain\Application\EligibilitySection;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Application\StoreApplicationDocument;
 use App\Domain\Application\SubmissionBlocker;
 use App\Domain\Application\SubmissionReadiness;
@@ -1173,6 +1175,12 @@ final class PiecesDeclarationsCandidatTest extends TestCase
                 ] : [])
                 : [],
             'challenge' => [
+                // La thématique est devenue une réponse exigée de l'étape 4 à
+                // l'intégration de `feat/application-project-theme`. Sans elle,
+                // le défi reste inachevé et le dossier n'atteint jamais 8/9 —
+                // ce fichier testerait alors l'étape 8 sur un parcours que le
+                // candidat ne peut pas terminer.
+                ChallengeSection::THEME_FIELD => ProjectTheme::URBAN_MANAGEMENT->value,
                 'main_challenge' => 'Les bornes-fontaines en panne le restent des semaines.',
                 'affected_people' => 'Les ménages non raccordés des quartiers périphériques.',
                 'location' => NigerRegion::NIAMEY->value,
