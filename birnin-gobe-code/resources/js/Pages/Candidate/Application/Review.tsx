@@ -44,9 +44,37 @@ type Section = {
   fields: Champ[];
   members: Membre[] | null;
   team: { missing: string[] } | null;
+  /**
+   * Pieces jointes de l'etape 8. `null` pour toutes les autres sections.
+   *
+   * Un fichier ne se relit pas en couple libelle/valeur : ce que le candidat
+   * verifie ici, c'est qu'il a joint le bon document sous le bon intitule, et
+   * que son poids n'est pas celui d'un fichier vide. Le nom d'origine et la
+   * taille y suffisent — la page n'ouvre rien et ne telecharge rien d'elle-meme
+   * (§8.2).
+   */
+  documents: Piece[] | null;
   /** Null quand la section n'a pas encore d'ecran : pas de lien mort. */
   editUrl: string | null;
 };
+
+type Piece = { type: string; label: string; filename: string; size: number };
+
+/**
+ * Poids d'une piece, ecrit pour etre lu.
+ *
+ * Meme formatage que l'ecran de l'etape 8 : le candidat qui relit doit
+ * retrouver exactement le chiffre qu'il a vu en televersant, sinon il croit
+ * que le fichier a change. La fonction est recopiee plutot qu'importee — elle
+ * vit deja en double dans le depot (etape 8, detail administration), et
+ * l'extraire en utilitaire partage touche trois ecrans que cette integration
+ * n'a pas a rouvrir.
+ */
+function poids(octets: number): string {
+  if (octets < 1024) return `${octets} o`;
+  if (octets < 1024 * 1024) return `${Math.round(octets / 1024)} Ko`;
+  return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
+}
 
 type Submission = {
   ready: boolean;
@@ -237,7 +265,23 @@ export default function Review({ application, campaign, sections, submission, su
                   </ul>
                 ) : null}
 
-                {section.fields.length === 0 && (section.members?.length ?? 0) === 0 ? (
+                {section.documents && section.documents.length > 0 ? (
+                  <ul className="mt-3 grid gap-2" data-testid={`pieces-${section.key}`}>
+                    {section.documents.map((piece) => (
+                      <li key={piece.type} className="rounded-xl border border-slate-200 p-3">
+                        <div className="text-xs font-bold uppercase tracking-wide text-slate-400">{piece.label}</div>
+                        <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
+                          <span className="break-all text-sm font-semibold text-slate-800">{piece.filename}</span>
+                          <span className="text-xs text-slate-500">{poids(piece.size)}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                {section.fields.length === 0
+                  && (section.members?.length ?? 0) === 0
+                  && (section.documents?.length ?? 0) === 0 ? (
                   <p className="text-sm leading-6 text-slate-500">
                     {section.implemented
                       ? 'Rien n’est encore enregistré pour cette étape.'

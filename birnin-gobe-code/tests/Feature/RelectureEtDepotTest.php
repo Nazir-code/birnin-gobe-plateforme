@@ -100,7 +100,20 @@ final class RelectureEtDepotTest extends TestCase
         return $fabrique->create();
     }
 
-    /** Le même dossier, moins l'étape 8 : le cas courant tant qu'elle n'existe pas. */
+    /**
+     * Le même dossier, moins l'étape 8 : un dossier auquel il ne manque que ses
+     * pièces.
+     *
+     * L'exclusion est écrite ici, explicitement, et ne se déduit plus du
+     * parcours ouvert. Elle s'en déduisait tant que « Pièces / déclarations »
+     * n'avait pas d'écran : `openPath()` s'arrêtait avant elle, et le dossier
+     * ressortait incomplet sans qu'on ait à le dire. Le jour où l'étape 8 a été
+     * livrée, ce même code s'est mis à remplir la section qu'il prétendait
+     * omettre — un dossier « sans pièces » était devenu complet, et trois tests
+     * ont cessé de mesurer ce qu'ils annonçaient.
+     *
+     * D'où la règle : ce que le test veut absent, le test le nomme.
+     */
     private function dossierSansPieces(Campaign $campagne, ?User $candidat = null): Application
     {
         $fabrique = Application::factory()
@@ -108,6 +121,10 @@ final class RelectureEtDepotTest extends TestCase
             ->for($candidat ?? User::factory(), 'candidate');
 
         foreach (ApplicationSection::openPath() as $section) {
+            if ($section === ApplicationSection::ATTACHMENTS) {
+                continue;
+            }
+
             $fabrique = $fabrique->withSection(
                 $section,
                 $section === ApplicationSection::ELIGIBILITY
@@ -203,9 +220,12 @@ final class RelectureEtDepotTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('sections.0.editUrl', route('candidate.application.eligibility', $id))
                 ->where('sections.6.editUrl', route('candidate.application.implementation', $id))
-                // Étape 8 : pas encore d'écran, donc pas de lien mort. C'est le
-                // point de raccord avec la branche « Pièces / déclarations ».
-                ->where('sections.7.editUrl', null)
+                // Étape 8 : le raccord annoncé a eu lieu. Son écran existe, son
+                // lien de correction apparaît — et rien n'a eu à changer dans
+                // `ReviewController`, qui interroge `isImplemented()`.
+                ->where('sections.7.editUrl', route('candidate.application.attachments', $id))
+                // Étape 9 : la relecture ne se corrige pas elle-même, et elle
+                // n'a de toute façon aucune réponse à sa charge.
                 ->where('sections.8.editUrl', null));
     }
 

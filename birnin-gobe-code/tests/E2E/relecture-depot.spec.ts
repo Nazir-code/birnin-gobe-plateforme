@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
@@ -10,29 +9,29 @@ import { expect, test, type Page } from '@playwright/test';
  * son numero — aucun courriel n'etant envoye — et qu'il doit pouvoir le
  * retrouver.
  *
- * **L'etape 8 est la seule chose que ce spec fabrique**, et il le fait par la
- * commande `e2e:achever-section`. Son formulaire est developpe sur une autre
- * branche ; sans cette fixture, aucun dossier n'atteindrait la recevabilite et
- * le scenario le plus important de cette phase ne serait pas joue. Le jour ou
- * cet ecran existera, ces deux lignes seront remplacees par le vrai parcours
- * sans qu'aucune assertion ne bouge : `SubmissionReadiness` ne regarde que les
- * dates d'achevement.
+ * **Ce spec ne fabrique plus rien.** Il achevait l'etape 8 par une commande de
+ * fixture, parce que son formulaire vivait sur une autre branche. Cette branche
+ * est integree : le scenario televerse la piece exigee et coche les
+ * declarations par le vrai ecran, comme un candidat. La commande, devenue sans
+ * appelant, a ete retiree — c'est ce que son propre commentaire annoncait.
+ *
+ * Aucune assertion de depot n'a eu a bouger pour cela : `SubmissionReadiness`
+ * n'a jamais regarde que les dates d'achevement, ce qui etait exactement la
+ * promesse tenue par la fixture.
  */
-const ARTISAN = process.env.E2E_ARTISAN ?? 'docker compose exec -T app php artisan';
 const MOT_DE_PASSE = 'MotDePasseSolide!2026';
+
+/** La piece exigee d'un porteur individuel (§7.2, « Presentation du projet »). */
+const PDF = {
+  name: 'presentation-ruwa-link.pdf',
+  mimeType: 'application/pdf',
+  buffer: Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF'),
+};
 
 function compteUnique() {
   const jeton = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   return { nom: `Zeinabou Ali ${jeton}`, email: `relecture-${jeton}@example.test` };
-}
-
-/** Acheve l'etape 8 pour ce candidat : elle n'a pas encore d'ecran. */
-function acheverLesPieces(email: string) {
-  const [programme, ...args] = ARTISAN.split(' ');
-  execFileSync(programme, [...args, 'e2e:achever-section', email, 'attachments'], {
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
 }
 
 async function sInscrire(page: Page, nom: string, email: string) {
@@ -119,6 +118,10 @@ async function remplirLeDossier(page: Page) {
   const defi = attendreAchevement(page, '/challenge');
   await page.getByTestId('suivant').click();
   await expect(page).toHaveURL(/\/challenge$/);
+  // La thematique officielle acheve l'etape depuis l'integration de la branche
+  // « theme » : sans elle, le defi reste inacheve et le dossier n'atteint
+  // jamais la recevabilite.
+  await page.getByRole('radio', { name: 'Gestion urbaine et services de base' }).check();
   await page.getByLabel(/Quel est le défi principal/).fill('Les bornes-fontaines en panne le restent des semaines.');
   await page.getByLabel(/Qui est le plus affecté/).fill('Les ménages non raccordés des quartiers périphériques.');
   await page.getByLabel(/Où ce défi se pose-t-il/).selectOption({ label: 'Niamey' });
@@ -166,6 +169,33 @@ async function remplirLeDossier(page: Page) {
   await plan;
 }
 
+/**
+ * Etape 8, par son vrai ecran : la piece exigee, puis les declarations.
+ *
+ * Deux attentes distinctes, et dans cet ordre, parce que la section ne s'acheve
+ * qu'avec les deux : le televersement seul laisse les declarations en attente,
+ * et les declarations seules laissent la piece manquante.
+ */
+async function deposerLesPiecesEtDeclarations(page: Page) {
+  await page.getByTestId('suivant').click();
+  await expect(page).toHaveURL(/\/attachments$/);
+
+  const pieceDeposee = page.waitForResponse(
+    (r) => r.url().includes('/attachments/documents') && r.request().method() === 'POST' && r.status() === 200,
+    { timeout: 30_000 },
+  );
+  await page.getByTestId('piece-PROJECT_PRESENTATION').getByLabel(/téléverser/i).setInputFiles(PDF);
+  await pieceDeposee;
+
+  const sectionAchevee = attendreAchevement(page, '/attachments');
+  await page.getByLabel(/certifie l’exactitude/).check();
+  await page.getByLabel(/aucun contenu frauduleux/).check();
+  await page.getByLabel(/reconnais avoir pris connaissance/).check();
+  await page.getByLabel(/consens au traitement/).check();
+  await page.getByRole('button', { name: /^enregistrer$/i }).click();
+  await sectionAchevee;
+}
+
 async function allerALaRelecture(page: Page) {
   await page.goto('/candidate/dashboard');
   await page.getByTestId('aller-relecture').click();
@@ -178,23 +208,28 @@ test.describe('Étape 9 — relecture et dépôt', () => {
 
     await sInscrire(page, nom, email);
     await remplirLeDossier(page);
-    acheverLesPieces(email);
+    await deposerLesPiecesEtDeclarations(page);
 
     await allerALaRelecture(page);
 
     // — Les neuf etapes sont la, lisibles
     await expect(page.getByTestId('relecture-eligibility')).toHaveAttribute('data-etat', 'complete');
     await expect(page.getByTestId('relecture-implementation')).toHaveAttribute('data-etat', 'complete');
-    // L'etape 8 est presente et son contenu compte pour la recevabilite, mais son
-    // etat affiche reste « non-implementee » tant qu'elle n'a pas d'ecran :
-    // `etat()` classe d'abord sur ce que le produit propose, et c'est honnete.
-    // L'assertion porte donc sur sa presence, pas sur un etat qui changera le
-    // jour ou la branche « Pieces / declarations » sera integree.
-    await expect(page.getByTestId('relecture-attachments')).toBeVisible();
+    // L'etape 8 a desormais son ecran : elle est achevee comme les autres, et
+    // ce n'est plus une fixture qui l'affirme.
+    await expect(page.getByTestId('relecture-attachments')).toHaveAttribute('data-etat', 'complete');
     await expect(page.getByTestId('recevabilite')).toContainText('Votre dossier est complet');
     // Des libelles, jamais des cles techniques.
     await expect(page.getByTestId('relecture-solution')).toContainText('Ruwa Link');
     await expect(page.getByTestId('relecture-solution')).not.toContainText('solution_name');
+
+    // — Ce que les deux vagues integrees ajoutent a la relecture : la
+    //   thematique officielle, la piece deposee, les declarations acceptees.
+    await expect(page.getByTestId('relecture-challenge')).toContainText('Gestion urbaine et services de base');
+    await expect(page.getByTestId('relecture-challenge')).not.toContainText('project_theme');
+    await expect(page.getByTestId('pieces-attachments')).toContainText('Présentation du projet');
+    await expect(page.getByTestId('pieces-attachments')).toContainText(PDF.name);
+    await expect(page.getByTestId('relecture-attachments')).toContainText(/exactitude/i);
 
     // — Chaque etape developpee se corrige
     await expect(page.getByTestId('modifier-implementation')).toBeVisible();
