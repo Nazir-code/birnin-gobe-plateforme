@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
+use App\Domain\Application\ChallengeSection;
 use App\Domain\Application\EligibilitySection;
 use App\Domain\Application\ImpactSection;
 use App\Domain\Application\ImplementationSection;
 use App\Domain\Application\MaturityStage;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Application\SolutionSection;
 use App\Domain\Auth\UserRole;
 use App\Domain\Candidate\CandidateType;
@@ -566,6 +568,7 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
     private function defi(): array
     {
         return [
+            ChallengeSection::THEME_FIELD => ProjectTheme::URBAN_MANAGEMENT->value,
             'main_challenge' => 'Les bornes-fontaines en panne le restent des semaines.',
             'affected_people' => 'Les ménages non raccordés des quartiers périphériques.',
             'location' => NigerRegion::NIAMEY->value,

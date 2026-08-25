@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
+use App\Domain\Application\ChallengeSection;
 use App\Domain\Application\EligibilitySection;
 use App\Domain\Application\ProfileSection;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Application\TeamSection;
 use App\Domain\Auth\UserRole;
 use App\Domain\Candidate\CandidateType;
@@ -93,6 +95,7 @@ final class IntegrationStructureAdministrationTest extends TestCase
     private function defi(): array
     {
         return [
+            ChallengeSection::THEME_FIELD => ProjectTheme::URBAN_MANAGEMENT->value,
             'main_challenge' => 'L’accès à l’eau potable dans les quartiers périphériques.',
             'affected_people' => 'Les ménages non raccordés au réseau.',
             'root_causes' => 'Un réseau qui n’a pas suivi l’extension urbaine.',

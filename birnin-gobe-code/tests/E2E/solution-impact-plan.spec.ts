@@ -111,6 +111,7 @@ async function allerJusquAuDefi(page: Page) {
   await page.getByTestId('suivant').click();
   await expect(page).toHaveURL(/\/challenge$/);
 
+  await page.getByRole('radio', { name: 'Gestion urbaine et services de base' }).check();
   await page.getByLabel(/Quel est le défi principal/).fill('Les bornes-fontaines en panne le restent des semaines.');
   await page.getByLabel(/Qui est le plus affecté/).fill('Les ménages non raccordés des quartiers périphériques.');
   await page.getByLabel(/Où ce défi se pose-t-il/).selectOption({ label: 'Niamey' });

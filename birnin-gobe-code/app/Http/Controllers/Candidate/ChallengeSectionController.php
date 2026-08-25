@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Candidate;
 
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ChallengeSection;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Application\SaveApplicationSection;
 use App\Domain\Reference\NigerRegion;
 use App\Http\Presenters\ApplicationPresenter;
@@ -46,6 +47,9 @@ final class ChallengeSectionController
             // champ dès le premier rendu.
             'answers' => $this->reponses($reponses?->answers ?? []),
             'regions' => NigerRegion::options(),
+            // Les quatre thématiques viennent du domaine, comme les régions :
+            // l'écran n'en connaît aucune, il affiche ce qu'on lui donne.
+            'themes' => ProjectTheme::options(),
             'maxLength' => ChallengeSection::MAX_LENGTH,
             'saveUrl' => route('candidate.application.challenge.update', $application),
             // Navigation arriere sans perte. « Suivant » vaut `null` ici : la

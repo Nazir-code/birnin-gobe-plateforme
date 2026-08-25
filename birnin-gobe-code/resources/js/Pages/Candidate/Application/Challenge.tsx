@@ -19,6 +19,7 @@ const advice = [
 
 /** Champs réellement persistés, dans l’ordre de l’écran. */
 type Answers = {
+  project_theme: string;
   main_challenge: string;
   affected_people: string;
   location: string;
@@ -30,15 +31,21 @@ type Props = {
   section: { key: string; label: string; position: number; total: number; completedAt: string | null };
   answers: Record<keyof Answers, string | null>;
   regions: { value: string; label: string }[];
+  themes: { value: string; label: string }[];
   maxLength: number;
   saveUrl: string;
   previousUrl: string | null;
   nextUrl: string | null;
 };
 
-export default function Challenge({ steps, section, answers, regions, maxLength, saveUrl, previousUrl, nextUrl }: Props) {
+export default function Challenge({ steps, section, answers, regions, themes, maxLength, saveUrl, previousUrl, nextUrl }: Props) {
   const user = useAuthUser();
   const [values, setValues] = useState<Answers>({
+    // Un brouillon d'avant cette question n'a pas de thématique : la chaîne
+    // vide signifie « pas encore choisie », et aucune des quatre n'est
+    // présélectionnée — choisir à la place du candidat produirait une donnée
+    // fausse, recopiée telle quelle dans son dossier soumis.
+    project_theme: answers.project_theme ?? '',
     main_challenge: answers.main_challenge ?? '',
     affected_people: answers.affected_people ?? '',
     location: answers.location ?? '',
@@ -71,10 +78,11 @@ export default function Challenge({ steps, section, answers, regions, maxLength,
             <div className="md:hidden"><SaveIndicator state={state} savedAt={savedAt} /></div>
             <div className="mt-4 grid gap-6 xl:grid-cols-[1fr_340px]">
               <Reveal><Card className="p-6 sm:p-7">
-                <TextField index={1} name="main_challenge" label="Quel est le défi principal que vous souhaitez résoudre ?" placeholder="Décrivez clairement le défi en quelques phrases." max={maxLength} value={values.main_challenge} onChange={set('main_challenge')} onBlur={flush} error={errors.main_challenge} />
-                <TextField index={2} name="affected_people" label="Qui est le plus affecté par ce défi ?" placeholder="Décrivez les personnes ou communautés concernées." max={maxLength} value={values.affected_people} onChange={set('affected_people')} onBlur={flush} error={errors.affected_people} />
+                <ThemeField themes={themes} value={values.project_theme} onChange={(v) => { set('project_theme')(v); flush(); }} error={errors.project_theme} />
+                <TextField index={2} name="main_challenge" label="Quel est le défi principal que vous souhaitez résoudre ?" placeholder="Décrivez clairement le défi en quelques phrases." max={maxLength} value={values.main_challenge} onChange={set('main_challenge')} onBlur={flush} error={errors.main_challenge} />
+                <TextField index={3} name="affected_people" label="Qui est le plus affecté par ce défi ?" placeholder="Décrivez les personnes ou communautés concernées." max={maxLength} value={values.affected_people} onChange={set('affected_people')} onBlur={flush} error={errors.affected_people} />
                 <label className="mb-6 block" htmlFor="location">
-                  <span className="mb-2 block text-sm font-extrabold text-slate-800">3. Où ce défi se pose-t-il principalement ? <span className="text-red-500">*</span></span>
+                  <span className="mb-2 block text-sm font-extrabold text-slate-800">4. Où ce défi se pose-t-il principalement ? <span className="text-red-500">*</span></span>
                   <span className="mb-2 block text-xs text-slate-500">Précisez la région concernée.</span>
                   <select id="location" name="location" className="focus-ring min-h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-sm text-slate-800" value={values.location} onChange={(e) => { set('location')(e.target.value); }} onBlur={flush}>
                     <option value="">Sélectionnez une option</option>
@@ -82,7 +90,7 @@ export default function Challenge({ steps, section, answers, regions, maxLength,
                   </select>
                   {errors.location ? <span className="mt-1 block text-xs font-semibold text-red-600">{errors.location}</span> : null}
                 </label>
-                <TextField index={4} name="root_causes" label="Quelles sont les causes profondes de ce défi ?" placeholder="Expliquez les facteurs à l’origine de ce défi." max={maxLength} value={values.root_causes} onChange={set('root_causes')} onBlur={flush} error={errors.root_causes} />
+                <TextField index={5} name="root_causes" label="Quelles sont les causes profondes de ce défi ?" placeholder="Expliquez les facteurs à l’origine de ce défi." max={maxLength} value={values.root_causes} onChange={set('root_causes')} onBlur={flush} error={errors.root_causes} />
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3">
                     {/* Revenir en arriere sans rien perdre : la sauvegarde est
@@ -122,6 +130,57 @@ export default function Challenge({ steps, section, answers, regions, maxLength,
   );
 }
 
+/**
+ * Thematique officielle du projet — question 1 de l'etape.
+ *
+ * Des boutons radio et non une liste deroulante : les quatre intitules sont
+ * longs et se comparent, ce qu'un menu ferme empeche. Le choix est unique et
+ * obligatoire, et le candidat doit pouvoir lire les quatre avant de trancher.
+ *
+ * `fieldset` et `legend` en enfant direct : c'est le groupe qui porte la
+ * question, chaque bouton ne portant que sa propre reponse. Imbriquer la
+ * legende dans un `div` la retirerait du nom accessible du groupe, et un
+ * lecteur d'ecran annoncerait quatre options sans dire de quoi il s'agit.
+ *
+ * La selection declenche la sauvegarde immediatement — `flush()` — plutot que
+ * d'attendre une perte de focus : un bouton radio n'a pas de saisie a
+ * terminer, et rien ne justifie de differer.
+ */
+function ThemeField({ themes, value, onChange, error }: { themes: { value: string; label: string }[]; value: string; onChange: (v: string) => void; error?: string }) {
+  return (
+    <fieldset className="mb-6" aria-describedby={error ? 'project_theme-erreur' : undefined}>
+      <legend className="mb-2 block text-sm font-extrabold text-slate-800">
+        1. Thématique du projet <span className="text-red-500">*</span>
+      </legend>
+      <span className="mb-3 block text-xs text-slate-500">
+        Choisissez l’axe officiel du concours dans lequel s’inscrit votre projet. Un seul choix.
+      </span>
+      <div className="grid gap-2">
+        {themes.map((theme) => {
+          const choisi = value === theme.value;
+
+          return (
+            <label
+              key={theme.value}
+              className={`focus-within:ring-brand-700/40 flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors focus-within:ring-2 ${choisi ? 'border-brand-800 bg-brand-50 font-semibold text-brand-900' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'}`}
+            >
+              <input
+                type="radio"
+                name="project_theme"
+                value={theme.value}
+                checked={choisi}
+                onChange={() => { onChange(theme.value); }}
+                className="h-4 w-4 shrink-0 accent-brand-800"
+              />
+              {theme.label}
+            </label>
+          );
+        })}
+      </div>
+      {error ? <span id="project_theme-erreur" role="alert" className="mt-1 block text-xs font-semibold text-red-600">{error}</span> : null}
+    </fieldset>
+  );
+}
 function TextField({ index, name, label, placeholder, max, value, onChange, onBlur, error }: { index: number; name: string; label: string; placeholder: string; max: number; value: string; onChange: (v: string) => void; onBlur: () => void; error?: string }) {
   return (
     <label className="mb-6 block" htmlFor={name}>

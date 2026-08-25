@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domain\Application\ApplicationIndexQuery;
 use App\Domain\Application\ApplicationStatus;
+use App\Domain\Application\ProjectTheme;
 use App\Domain\Candidate\CandidateType;
 use App\Domain\Reference\NigerRegion;
 use App\Http\Presenters\AdminApplicationPresenter;
@@ -87,7 +88,7 @@ final class ApplicationController
      * croire à un écran cassé. La liste s'étoffera d'elle-même quand les
      * statuts apparaîtront.
      *
-     * @return array{campaigns: list<array{value: string, label: string}>, statuses: list<array{value: string, label: string}>, types: list<array{value: string, label: string}>, regions: list<array{value: string, label: string}>, sorts: list<array{value: string, label: string}>}
+     * @return array{campaigns: list<array{value: string, label: string}>, statuses: list<array{value: string, label: string}>, types: list<array{value: string, label: string}>, themes: list<array{value: string, label: string}>, regions: list<array{value: string, label: string}>, sorts: list<array{value: string, label: string}>}
      */
     private function options(): array
     {
@@ -115,6 +116,7 @@ final class ApplicationController
                 ->all(),
             'statuses' => $statuts,
             'types' => CandidateType::options(),
+            'themes' => ProjectTheme::options(),
             'regions' => NigerRegion::options(),
             'sorts' => [
                 ['value' => 'recent', 'label' => 'Modifiée récemment'],

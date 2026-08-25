@@ -5,6 +5,7 @@ namespace App\Domain\Application;
 use App\Domain\Candidate\CandidateType;
 use App\Domain\Reference\NigerRegion;
 use App\Models\Application;
+use App\Models\ApplicationSectionAnswers;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,6 +53,7 @@ final readonly class ApplicationIndexQuery
         public ?ApplicationStatus $status = null,
         public ?CandidateType $candidateType = null,
         public ?NigerRegion $region = null,
+        public ?ProjectTheme $theme = null,
         public ?string $search = null,
         public string $sort = 'recent',
     ) {}
@@ -86,7 +88,18 @@ final readonly class ApplicationIndexQuery
             ])
             // Le compte des sections achevées du parcours ouvert, en une seule
             // requête pour toute la page, avec la règle du candidat.
-            ->withCount(['sections as completed_sections_count' => ApplicationProgress::countConstraint()]);
+            ->withCount(['sections as completed_sections_count' => ApplicationProgress::countConstraint()])
+            // La thématique, extraite par une sous-requête scalaire plutôt qu'en
+            // chargeant la section « Défi » entière : la liste l'affiche, mais
+            // n'a que faire des trois récits de cinq cents caractères qui
+            // l'accompagnent. Une sous-requête, aucune requête supplémentaire
+            // par ligne.
+            ->addSelect(['project_theme' => ApplicationSectionAnswers::query()
+                ->selectRaw("answers->>'".ChallengeSection::THEME_FIELD."'")
+                ->whereColumn('application_id', 'applications.id')
+                ->where('section', ApplicationSection::CHALLENGE->value)
+                ->limit(1),
+            ]);
 
         $this->appliquerFiltres($requete);
         $this->appliquerRecherche($requete);
@@ -108,28 +121,44 @@ final readonly class ApplicationIndexQuery
             ->when(
                 $this->region !== null,
                 fn (Builder $q) => $this->filtrerSurUneReponse($q, EligibilitySection::INTERVENTION_REGION, $this->region->value),
+            )
+            // La thématique vit dans la section « Défi », pas dans l'étape 1 :
+            // c'est une propriété du projet, pas une condition d'éligibilité.
+            ->when(
+                $this->theme !== null,
+                fn (Builder $q) => $this->filtrerSurUneReponse(
+                    $q,
+                    ChallengeSection::THEME_FIELD,
+                    $this->theme->value,
+                    ApplicationSection::CHALLENGE,
+                ),
             );
     }
 
     /**
-     * Filtre sur une réponse de la section « Éligibilité ».
+     * Filtre sur une réponse d'une section, par défaut « Éligibilité ».
      *
-     * Le type de candidature et la zone d'intervention n'ont pas de colonne :
-     * ce sont des réponses, rangées dans le `jsonb` de la section. Le filtre est
-     * donc porté par PostgreSQL — `answers->>'champ' = ?` — à l'intérieur d'un
-     * `EXISTS` que l'index unique `(application_id, section)` sert directement.
+     * Le type de candidature, la zone d'intervention et la thématique n'ont pas
+     * de colonne : ce sont des réponses, rangées dans le `jsonb` de leur
+     * section. Le filtre est donc porté par PostgreSQL —
+     * `answers->>'champ' = ?` — à l'intérieur d'un `EXISTS` que l'index unique
+     * `(application_id, section)` sert directement.
      *
-     * Un dossier sans section « Éligibilité » ne remonte pas : c'est le bon
-     * comportement, il n'a pas encore répondu à la question posée.
+     * Un dossier qui n'a pas encore la section visée ne remonte pas : c'est le
+     * bon comportement, il n'a pas encore répondu à la question posée.
      *
      * @param  Builder<Application>  $requete
      */
-    private function filtrerSurUneReponse(Builder $requete, string $champ, string $valeur): Builder
-    {
+    private function filtrerSurUneReponse(
+        Builder $requete,
+        string $champ,
+        string $valeur,
+        ApplicationSection $section = ApplicationSection::ELIGIBILITY,
+    ): Builder {
         return $requete->whereHas(
             'sections',
             fn ($q) => $q
-                ->where('section', ApplicationSection::ELIGIBILITY->value)
+                ->where('section', $section->value)
                 ->where('answers->'.$champ, $valeur),
         );
     }
