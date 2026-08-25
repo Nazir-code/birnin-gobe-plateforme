@@ -49,7 +49,7 @@ function jetonCsrf(): string {
 /**
  * Sauvegarde automatique d'un formulaire vers une route Laravel.
  *
- * Trois problemes reels, trois reponses :
+ * Quatre problemes reels, quatre reponses :
  *
  * 1. Requetes concurrentes — une seule requete est en vol a la fois. Si le
  *    candidat continue de taper pendant l'envoi, la modification est marquee et
@@ -60,7 +60,14 @@ function jetonCsrf(): string {
  *    croissant, et une reponse dont le numero n'est plus le dernier est ignoree.
  *    L'affichage ne peut donc pas revenir en arriere.
  *
- * 3. Sauvegarde apres demontage — la requete en vol n'est pas annulee (annuler,
+ * 3. Etat affiche en avance sur l'ecriture — la reponse d'un envoi ne fait
+ *    passer l'indicateur a « Enregistre » que si la valeur courante est encore
+ *    celle qui a ete envoyee. Sans cette comparaison, la reponse d'une
+ *    sauvegarde anterieure ecrasait l'etat « non enregistre » d'une saisie plus
+ *    recente, et le candidat lisait « Enregistre » sur un texte que le serveur
+ *    n'avait pas.
+ *
+ * 4. Sauvegarde apres demontage — la requete en vol n'est pas annulee (annuler,
  *    ce serait perdre la saisie du candidat), mais plus aucun etat React n'est
  *    ecrit une fois le composant demonte.
  *
@@ -149,7 +156,13 @@ export function useAutosave<T extends Record<string, unknown>, R = unknown>(
         setErrors({});
         setSavedAt(corps.savedAt ?? null);
         setResponse(corps);
-        setState('saved');
+        // « Enregistre » ne vaut que pour la charge utile qui vient d'etre
+        // ecrite. Si la valeur courante a change depuis l'envoi — le candidat a
+        // continue de taper pendant que la requete etait en vol — une
+        // modification plus recente attend encore son tour, et l'annoncer
+        // enregistree serait un mensonge : c'est exactement ce qui faisait
+        // perdre la derniere saisie a un rechargement immediat.
+        setState(JSON.stringify(valuesRef.current) === empreinte ? 'saved' : 'dirty');
       }
     } catch {
       if (monteRef.current && seq >= dernierAppliqueRef.current) {

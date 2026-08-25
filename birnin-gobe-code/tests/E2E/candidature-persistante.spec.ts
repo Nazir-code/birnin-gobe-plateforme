@@ -124,6 +124,74 @@ test.describe('Candidature persistante', () => {
     await verifierLesReponses(page);
   });
 
+  /**
+   * « Enregistre » est une promesse faite au candidat : ce qui est a l'ecran
+   * est chez nous. Ce scenario la met a l'epreuve la ou elle cassait — la
+   * reponse d'un envoi ancien qui arrive alors que le candidat a, entre-temps,
+   * ecrit autre chose.
+   *
+   * Rien n'est laisse au minutage. La reponse du premier envoi est retenue
+   * jusqu'a ce que les causes profondes soient saisies, puis liberee : la
+   * saisie recente n'attend alors que son minuteur, et c'est exactement l'etat
+   * dans lequel l'indicateur annoncait « Enregistre » pour une charge utile qui
+   * ne la contenait pas. Un rechargement a cet instant perdait le champ.
+   */
+  test('« Enregistre » n’apparait pas tant qu’une saisie plus recente attend', async ({ page }) => {
+    const { nom, email } = compteUnique();
+    await sInscrire(page, nom, email);
+    await ouvrirLeDefi(page);
+
+    const indicateur = page.getByTestId('etat-sauvegarde').first();
+
+    await page.getByRole('radio', { name: 'Gestion urbaine et services de base' }).check();
+    await page.getByLabel(/Quel est le défi principal/).fill(REPONSES.defi);
+    await page.getByLabel(/Qui est le plus affecté/).fill(REPONSES.affectes);
+    await expect(indicateur).toContainText('Enregistré', { timeout: 15_000 });
+
+    // La reponse du prochain envoi est retenue jusqu'a ce que le test la
+    // libere. Le hook la croira simplement lente — elle l'est, sur un reseau
+    // ordinaire.
+    let saisieFaite = false;
+    let retenue = false;
+    await page.route('**/challenge', async (route) => {
+      const requete = route.request();
+      if (requete.method() !== 'PATCH' || retenue) return route.fallback();
+      retenue = true;
+      while (!saisieFaite) await new Promise((resoudre) => setTimeout(resoudre, 20));
+      return route.fallback();
+    });
+
+    // La region part des la sortie du champ : c'est cet envoi qui est retenu, et
+    // sa charge utile ne contient pas encore les causes profondes.
+    await page.getByLabel(/Où ce défi se pose-t-il/).selectOption({ label: REPONSES.region });
+    await page.getByRole('heading', { level: 1 }).first().click();
+    await expect(indicateur).toContainText('Enregistrement', { timeout: 10_000 });
+
+    // Le candidat continue d'ecrire pendant ce temps, sans quitter le champ.
+    const reponseRetenue = page.waitForResponse(
+      (reponse) => reponse.request().method() === 'PATCH' && reponse.url().includes('/challenge'),
+    );
+    await page.getByLabel(/Quelles sont les causes profondes/).fill(REPONSES.causes);
+    saisieFaite = true;
+    await reponseRetenue;
+
+    // La reponse est arrivee, mais elle ne dit rien des causes profondes : les
+    // annoncer enregistrees serait une promesse que PostgreSQL ne tient pas.
+    const observations: string[] = [];
+    for (let i = 0; i < 6; i += 1) {
+      observations.push((await indicateur.innerText()).replace(/\s+/g, ' ').trim());
+      await page.waitForTimeout(50);
+    }
+    expect(observations.filter((texte) => /Enregistré/.test(texte))).toEqual([]);
+
+    // Et l'attente ne s'eternise pas : le minuteur envoie la version courante,
+    // apres quoi la promesse redevient tenable — et verifiable.
+    await page.unroute('**/challenge');
+    await expect(indicateur).toContainText('Enregistré', { timeout: 15_000 });
+    await page.reload();
+    await verifierLesReponses(page);
+  });
+
   test('un candidat ne peut pas ouvrir la candidature d’un autre', async ({ page }) => {
     const proprietaire = compteUnique();
     await sInscrire(page, proprietaire.nom, proprietaire.email);
