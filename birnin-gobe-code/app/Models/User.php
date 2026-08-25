@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domain\Auth\UserRole;
+use App\Notifications\ReinitialisationMotDePasse;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -41,6 +42,17 @@ class User extends Authenticatable
     public function isCandidate(): bool
     {
         return $this->hasRole(UserRole::CANDIDATE);
+    }
+
+    /**
+     * Le courriel de réinitialisation, en français et vers l'écran Inertia.
+     *
+     * Laravel en enverrait un par défaut, en anglais et vers une route de son
+     * propre échafaudage, qui n'existe pas ici.
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new ReinitialisationMotDePasse($token));
     }
 
     /**
