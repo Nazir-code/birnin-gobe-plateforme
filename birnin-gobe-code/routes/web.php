@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CampaignEligibilityController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Candidate\ApplicationController;
 use App\Http\Controllers\Candidate\AttachmentsSectionController;
@@ -59,6 +61,21 @@ Route::middleware('guest')->group(function (): void {
     // La limitation est portée par le contrôleur, clé sur e-mail + IP
     // plutôt que sur la seule adresse : voir AuthenticatedSessionController.
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+
+    // Mot de passe oublié. Réservé aux visiteurs non connectés comme le reste
+    // du groupe : quelqu'un déjà authentifié change son mot de passe depuis
+    // son espace, il n'a pas besoin d'un lien par courriel.
+    //
+    // Les deux écrans répondent la même chose quel que soit le compte visé —
+    // voir PasswordResetLinkController : un formulaire public ne doit pas
+    // permettre d'établir la liste des personnes inscrites.
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
+
+    // Le jeton voyage dans le chemin, l'adresse en paramètre : c'est ce
+    // qu'attend le vérificateur de Laravel, et ce que porte le lien du courriel.
+    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.update');
 });
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
