@@ -39,6 +39,8 @@ vendor/
 !**/storage/framework/sessions/.gitkeep
 **/storage/framework/views/*
 !**/storage/framework/views/.gitkeep
+# Disque temporaire cree par `Storage::fake()` a chaque execution des tests.
+**/storage/framework/testing/
 # Les sauvegardes produites par scripts/backup-database.sh : une copie de la
 # base entiere, donnees personnelles comprises.
 **/storage/backups/

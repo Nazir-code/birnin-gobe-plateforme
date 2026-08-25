@@ -502,6 +502,7 @@ final class ProfilCandidatTest extends TestCase
                     ApplicationSection::SOLUTION,
                     ApplicationSection::IMPACT,
                     ApplicationSection::IMPLEMENTATION,
+                    ApplicationSection::ATTACHMENTS,
                 ] as $section) {
                     $this->assertTrue(
                         $etapes->firstWhere('key', $section->value)['onOpenPath'],
@@ -509,8 +510,8 @@ final class ProfilCandidatTest extends TestCase
                     );
                 }
 
-                // L'étape 8 n'est pas développée : le parcours s'arrête là.
-                $this->assertFalse($etapes->firstWhere('key', ApplicationSection::ATTACHMENTS->value)['onOpenPath']);
+                // L'étape 9 n'est pas développée : le parcours s'arrête là.
+                $this->assertFalse($etapes->firstWhere('key', ApplicationSection::REVIEW->value)['onOpenPath']);
                 $this->assertSame('done', $etapes->firstWhere('key', ApplicationSection::CHALLENGE->value)['state']);
             });
     }

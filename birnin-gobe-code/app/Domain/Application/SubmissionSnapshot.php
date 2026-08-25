@@ -5,6 +5,7 @@ namespace App\Domain\Application;
 use App\Domain\Eligibility\EligibilityAssessment;
 use App\Models\Application;
 use App\Models\ApplicationSectionAnswers;
+use App\Models\Attachment;
 
 /**
  * Ce qui a été officiellement déposé, figé à l'instant du dépôt.
@@ -29,6 +30,19 @@ use App\Models\ApplicationSectionAnswers;
  * Ce que la copie ne contient pas : aucun mot de passe, aucun jeton, aucun
  * identifiant de session, aucune adresse IP. L'identité du déposant se limite à
  * ce qu'un accusé de dépôt porte — un nom et une adresse de contact.
+ *
+ * Elle ne contient pas davantage le **contenu** des pièces jointes. Recopier
+ * des mégaoctets de PDF dans une colonne `jsonb` rendrait chaque lecture de
+ * dossier — et chaque sauvegarde de la base — proportionnelle au poids des
+ * fichiers, pour reproduire ce que le disque des pièces conserve déjà. Ce que
+ * la copie retient d'une pièce, c'est de quoi l'**identifier** : sa nature, son
+ * nom d'origine, son poids et son empreinte. L'empreinte est ce qui compte le
+ * jour d'une contestation — elle seule dit si le fichier lu aujourd'hui est
+ * bien celui qui a été déposé, ce qu'aucun nom de fichier ne prouve.
+ *
+ * `storage_key` en est volontairement absent : l'emplacement d'un fichier est
+ * une donnée d'exploitation qui peut changer — un déménagement vers S3 la
+ * réécrirait — et une copie figée ne doit rien contenir qui puisse devenir faux.
  */
 final readonly class SubmissionSnapshot
 {
@@ -38,8 +52,13 @@ final readonly class SubmissionSnapshot
      * Une copie destinée à être relue dans deux ans doit dire de quel format
      * elle est : le jour où le contenu changera, un lecteur devra pouvoir
      * distinguer un champ absent d'un champ jamais écrit.
+     *
+     * Version 2 : ajout de `documents`, à l'ouverture de l'étape 8. Une copie en
+     * version 1 n'a pas de pièces parce que la plateforme n'en recevait pas
+     * encore — ce qui n'est pas la même chose qu'un dépôt sans pièce jointe, et
+     * c'est exactement la distinction que ce numéro permet de faire.
      */
-    public const SCHEMA_VERSION = 1;
+    public const SCHEMA_VERSION = 2;
 
     /**
      * @return array<string, mixed>
@@ -73,8 +92,54 @@ final readonly class SubmissionSnapshot
                 'closes_at' => $application->campaign?->closes_at?->toIso8601String(),
             ],
             'sections' => self::sections($application),
+            'documents' => self::documents($application),
             'eligibility' => $eligibility->toArray(),
         ];
+    }
+
+    /**
+     * Les pièces officielles du dossier, telles qu'elles étaient au dépôt.
+     *
+     * Même principe que les sections : toutes les pièces présentes sont
+     * copiées, y compris celles que le dépôt n'exigeait pas. Ce que le candidat
+     * a joint fait partie de ce qu'il a déposé.
+     *
+     * L'ordre est celui du §7.2, et non celui des téléversements : une copie se
+     * relit à côté du tableau du cahier des charges, pas à côté du journal
+     * d'activité du candidat.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function documents(Application $application): array
+    {
+        $deposees = $application->attachments()
+            ->whereNotNull('type')
+            ->get()
+            ->keyBy(static fn (Attachment $piece): string => $piece->type->value);
+
+        $copiees = [];
+
+        foreach (DocumentType::cases() as $type) {
+            $piece = $deposees->get($type->value);
+
+            if ($piece === null) {
+                continue;
+            }
+
+            $copiees[] = [
+                'type' => $type->value,
+                'label' => $type->label(),
+                'filename' => $piece->original_filename,
+                'mime_type' => $piece->mime_type,
+                'size' => (int) $piece->size,
+                // Ce qui permet, plus tard, d'affirmer que le fichier servi est
+                // bien celui qui a été déposé.
+                'checksum' => $piece->checksum,
+                'uploaded_at' => $piece->created_at?->toIso8601String(),
+            ];
+        }
+
+        return $copiees;
     }
 
     /**

@@ -90,13 +90,14 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
         $this->assertSame(ApplicationSection::IMPLEMENTATION, ApplicationSection::IMPACT->nextOnOpenPath());
         $this->assertSame(ApplicationSection::IMPACT, ApplicationSection::IMPLEMENTATION->previousImplemented());
 
-        // Le parcours s'arrête honnêtement ici : l'étape 8 n'existe pas encore.
-        $this->assertNull(ApplicationSection::IMPLEMENTATION->nextOnOpenPath());
-        $this->assertFalse(ApplicationSection::ATTACHMENTS->isImplemented());
+        // L'étape 8 a ouvert depuis : le plan n'est plus le terminus.
+        $this->assertSame(ApplicationSection::ATTACHMENTS, ApplicationSection::IMPLEMENTATION->nextOnOpenPath());
+        $this->assertTrue(ApplicationSection::ATTACHMENTS->isImplemented());
+        // « Relecture / envoi » reste fermée : c'est là que le parcours s'arrête.
         $this->assertFalse(ApplicationSection::REVIEW->isImplemented());
     }
 
-    public function test_le_parcours_ouvert_compte_sept_etapes_dans_l_ordre(): void
+    public function test_le_parcours_ouvert_compte_huit_etapes_dans_l_ordre(): void
     {
         $this->assertSame(
             [
@@ -107,12 +108,18 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
                 ApplicationSection::SOLUTION,
                 ApplicationSection::IMPACT,
                 ApplicationSection::IMPLEMENTATION,
+                ApplicationSection::ATTACHMENTS,
             ],
             ApplicationSection::openPath(),
         );
     }
 
-    public function test_l_ecran_n_annonce_aucune_etape_suivante(): void
+    /**
+     * L'écran annonçait un cul-de-sac tant que l'étape 8 n'existait pas ; il
+     * annonce désormais la suite. Ce qu'il vérifie n'a pas changé : la
+     * navigation vient du serveur, pas d'un lien écrit en dur dans la page.
+     */
+    public function test_l_ecran_annonce_la_navigation_calculee_par_le_serveur(): void
     {
         $candidat = $this->candidat();
         $application = $this->brouillon($candidat, $this->campagne());
@@ -123,7 +130,7 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Candidate/Application/Implementation')
                 ->where('previousUrl', url("/candidate/application/{$id}/impact"))
-                ->where('nextUrl', null));
+                ->where('nextUrl', url("/candidate/application/{$id}/attachments")));
     }
 
     // — Lecture ————————————————————————————————————————————————————
