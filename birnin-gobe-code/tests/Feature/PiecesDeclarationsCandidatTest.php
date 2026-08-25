@@ -12,6 +12,7 @@ use App\Domain\Application\EligibilitySection;
 use App\Domain\Application\StoreApplicationDocument;
 use App\Domain\Application\SubmissionBlocker;
 use App\Domain\Application\SubmissionReadiness;
+use App\Domain\Application\SubmissionSnapshot;
 use App\Domain\Auth\UserRole;
 use App\Domain\Candidate\CandidateType;
 use App\Domain\Eligibility\EvaluateEligibility;
@@ -754,6 +755,88 @@ final class PiecesDeclarationsCandidatTest extends TestCase
         $this->assertTrue($apres->ready);
         $this->assertSame([], $apres->blockers);
         $this->assertSame([], $apres->missingSections);
+    }
+
+    /**
+     * La copie figée identifie les pièces officielles du dossier.
+     *
+     * Un dépôt se conteste. Le jour où quelqu'un affirme que la présentation
+     * lue par le jury n'est pas celle qu'il avait envoyée, la seule réponse
+     * possible est une empreinte prise à l'instant du dépôt — un nom de fichier
+     * ne prouve rien, et le fichier sur le disque, lui, ne dit pas de quand il
+     * date. C'est ce que `documents` porte.
+     *
+     * Ce qu'il ne porte pas, et le test l'exige aussi : aucun contenu binaire,
+     * aucun emplacement de stockage. Le premier ferait grossir la base au poids
+     * des PDF, le second deviendrait faux au premier déménagement de disque.
+     */
+    public function test_la_copie_figee_identifie_les_pieces_deposees(): void
+    {
+        $candidat = $this->candidat();
+        $application = $this->dossierPresqueComplet($candidat, CandidateType::STARTUP);
+
+        $this->actingAs($candidat)
+            ->postJson("/candidate/application/{$application->getKey()}/submit")
+            ->assertOk();
+
+        $copie = $application->fresh()->submitted_snapshot;
+
+        $this->assertSame(SubmissionSnapshot::SCHEMA_VERSION, $copie['schema_version']);
+        $this->assertArrayHasKey('documents', $copie);
+
+        // Les trois pièces qu'une startup doit joindre, dans l'ordre du §7.2.
+        $this->assertSame(
+            array_map(
+                static fn (DocumentType $piece): string => $piece->value,
+                DocumentType::requiredFor(CandidateType::STARTUP),
+            ),
+            array_column($copie['documents'], 'type'),
+        );
+
+        $presentation = $copie['documents'][0];
+        $ligne = $application->attachments()
+            ->where('type', DocumentType::PROJECT_PRESENTATION->value)
+            ->firstOrFail();
+
+        $this->assertSame(DocumentType::PROJECT_PRESENTATION->label(), $presentation['label']);
+        $this->assertSame($ligne->original_filename, $presentation['filename']);
+        $this->assertSame((int) $ligne->size, $presentation['size']);
+        $this->assertSame($ligne->checksum, $presentation['checksum']);
+        $this->assertNotSame('', $presentation['checksum']);
+        $this->assertNotNull($presentation['uploaded_at']);
+
+        // Ni le contenu, ni l'emplacement.
+        $this->assertArrayNotHasKey('storage_key', $presentation);
+        $this->assertArrayNotHasKey('contents', $presentation);
+        $this->assertStringNotContainsString($ligne->storage_key, json_encode($copie, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Une déclaration facultative refusée n'ampute pas la copie.
+     *
+     * Les déclarations vivent dans `application_sections` et sont donc déjà
+     * copiées par `sections`. Le test le constate plutôt que de le supposer :
+     * c'est la moitié de l'étape 8 que la copie doit porter, et elle passe par
+     * un chemin différent de celui des pièces.
+     */
+    public function test_la_copie_figee_porte_les_declarations_acceptees(): void
+    {
+        $candidat = $this->candidat();
+        $application = $this->dossierPresqueComplet($candidat);
+
+        $this->actingAs($candidat)
+            ->postJson("/candidate/application/{$application->getKey()}/submit")
+            ->assertOk();
+
+        $copie = $application->fresh()->submitted_snapshot;
+
+        $etape8 = collect($copie['sections'])
+            ->firstWhere('key', ApplicationSection::ATTACHMENTS->value);
+
+        $this->assertNotNull($etape8);
+        $this->assertTrue($etape8['answers'][AttachmentsSection::ACCURACY]);
+        $this->assertTrue($etape8['answers'][AttachmentsSection::DATA_PROCESSING_CONSENT]);
+        $this->assertNotNull($etape8['completed_at']);
     }
 
     public function test_une_piece_exigee_manquante_rend_le_dossier_non_deposable(): void
