@@ -30,9 +30,10 @@ use Tests\TestCase;
  *    après le délai de `config/auth.php`, et refusé pour une autre adresse que
  *    la sienne.
  *
- * 3. **Réinitialiser déconnecte ailleurs.** Quelqu'un qui réinitialise parce
- *    qu'il soupçonne un accès indésirable attend que les sessions ouvertes
- *    avec l'ancien mot de passe cessent de valoir.
+ * 3. **Réinitialiser coupe les connexions persistantes.** Le jeton « rester
+ *    connecté » change, donc les cookies émis avant le changement cessent de
+ *    valoir. Les sessions serveur déjà ouvertes ailleurs, elles, ne sont pas
+ *    révoquées par ce seul geste — voir `NewPasswordController`.
  *
  * Aucun serveur SMTP n'est nécessaire : `phpunit.xml` impose le transport
  * `array`, et les notifications sont interceptées.
@@ -359,8 +360,11 @@ final class ReinitialisationMotDePasseTest extends TestCase
     }
 
     /**
-     * Le jeton « rester connecté » change : les sessions ouvertes ailleurs
-     * avec l'ancien mot de passe cessent d'être valides.
+     * Le jeton « rester connecté » change : les cookies persistants émis avant
+     * la réinitialisation ne valent plus rien.
+     *
+     * Ce test ne prouve que cela, et c'est tout ce que le code fait : une
+     * session serveur déjà ouverte ailleurs n'est pas révoquée par ce geste.
      */
     public function test_la_reinitialisation_invalide_les_sessions_persistantes(): void
     {

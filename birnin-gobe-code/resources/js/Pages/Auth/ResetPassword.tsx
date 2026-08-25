@@ -83,7 +83,8 @@ export default function ResetPassword({ token, email }: { token: string; email: 
       </form>
 
       <p className="mt-5 text-xs leading-5 text-slate-500">
-        Au moins 8 caractères. Enregistrer un nouveau mot de passe déconnecte les autres appareils.
+        Au moins 8 caractères. Les appareils où vous aviez coché « Rester connecté » devront ressaisir le
+        mot de passe.
       </p>
     </AuthShell>
   );

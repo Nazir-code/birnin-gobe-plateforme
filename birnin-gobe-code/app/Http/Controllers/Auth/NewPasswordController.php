@@ -24,11 +24,17 @@ use Inertia\Response;
  *
  * Ce que fait cette classe autour de cela, et qui compte autant :
  *
- * - **Le mot de passe est réellement changé, pas seulement enregistré.** Le
- *   jeton de « rester connecté » est régénéré : les sessions ouvertes ailleurs
- *   avec l'ancien mot de passe cessent d'être valides. Quelqu'un qui
- *   réinitialise parce qu'il soupçonne un accès indésirable attend exactement
- *   cela.
+ * - **Les connexions persistantes sont coupées.** Le jeton de « rester
+ *   connecté » est régénéré : les cookies émis avant le changement ne valent
+ *   plus rien, et les navigateurs qui s'y fiaient devront ressaisir le mot de
+ *   passe.
+ *
+ *   Ce n'est pas, à soi seul, une révocation garantie de **toutes** les
+ *   sessions déjà ouvertes. Une session serveur déjà établie ailleurs reste
+ *   valide jusqu'à son expiration : rien ici ne la relie au mot de passe. La
+ *   lier demanderait le middleware `AuthenticateSession`, qui n'est pas activé
+ *   sur cette application — et l'écrire autrement dans ce commentaire
+ *   laisserait croire à une protection qui n'existe pas.
  *
  * - **Un échec ne dit pas pourquoi.** Jeton faux, jeton expiré, adresse
  *   inconnue : un seul message. Distinguer « ce jeton a expiré » de « cette

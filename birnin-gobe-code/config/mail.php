@@ -18,9 +18,15 @@
  *            parcours vérifiable sans serveur SMTP ;
  *   `smtp`   production — le serveur fourni par Niger Télécom.
  *
- * Le défaut est `log` et non `smtp` : un environnement mal configuré doit
- * échouer visiblement dans les journaux, jamais tenter d'écrire à de vraies
- * personnes avec des réglages approximatifs.
+ * Le défaut du fichier est `log`, et c'est un choix : un poste de travail qui
+ * n'a rien configuré écrit dans ses journaux au lieu d'essayer d'atteindre de
+ * vraies personnes avec des réglages approximatifs. Ce défaut n'a rien d'un
+ * état d'erreur — c'est le réglage attendu en développement.
+ *
+ * En production, `MAIL_MAILER=smtp` est en revanche obligatoire, et c'est
+ * `.env.production.example` qui le pose. Laissé à `log`, le lien de
+ * réinitialisation partirait dans les journaux du serveur sans qu'aucune erreur
+ * ne soit levée : la panne la plus difficile à voir est celle qui n'échoue pas.
  */
 
 return [

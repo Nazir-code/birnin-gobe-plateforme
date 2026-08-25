@@ -51,7 +51,8 @@ git checkout <tag ou commit de lancement>
 
 # 2. Configurer l'environnement
 cp .env.production.example .env
-${EDITOR:-nano} .env      # renseigner SITE_ADDRESS, APP_URL, DB_PASSWORD, ACME_EMAIL
+${EDITOR:-nano} .env      # SITE_ADDRESS, APP_URL, DB_PASSWORD, ACME_EMAIL,
+                          # et le bloc MAIL_* (voir §6 bis)
 
 # 3. Générer la clé applicative — une seule fois, jamais versionnée.
 #    `--show` affiche la clé sans l'écrire : l'image ne contient aucun `.env`
@@ -218,6 +219,67 @@ base que l'on veut effectivement écraser.
 
 ---
 
+## 6 bis. Courriels
+
+La plateforme n'envoie aujourd'hui qu'un seul message, et il est
+indispensable : le **lien de réinitialisation de mot de passe**. Sans lui, un
+candidat qui oublie son mot de passe perd l'accès à son dossier, et personne
+ne peut le lui rendre.
+
+### Un transport par environnement
+
+| Environnement | `MAIL_MAILER` | Ce qui se passe |
+|---|---|---|
+| Développement | `log` | Le message s'écrit dans `storage/logs`, en clair. On relit le lien sans serveur SMTP, et aucun courriel ne peut atteindre une vraie adresse. |
+| Test | `array` | Imposé par `phpunit.xml`. Les messages restent en mémoire et sont vérifiés par la suite ; rien ne part. |
+| **Production** | **`smtp`** | **Obligatoire.** C'est le seul transport qui atteint une boîte de réception. |
+
+> `log` et `array` ne sont pas des erreurs de configuration : ce sont les
+> réglages attendus hors production. `log` ne devient un défaut qu'ici, et il
+> est particulièrement traître — laissé en production, le lien part dans les
+> journaux du serveur, le candidat ne le reçoit jamais, et **aucune erreur
+> n'est levée**. Rien dans les journaux applicatifs ne signalera l'incident.
+
+### Variables à renseigner
+
+| Variable | Nature | Remarque |
+|---|---|---|
+| `MAIL_MAILER` | obligatoire | `smtp` |
+| `MAIL_HOST` | fourni par Niger Télécom | serveur d'envoi |
+| `MAIL_PORT` / `MAIL_SCHEME` | obligatoire | 587 avec `smtp` (STARTTLS) **ou** 465 avec `smtps` (TLS implicite) — les deux vont par paire |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | **secrets** | compte d'envoi |
+| `MAIL_FROM_ADDRESS` | fourni | doit appartenir à un domaine que le relais est autorisé à utiliser, sans quoi les messages finissent en indésirables |
+| `MAIL_FROM_NAME` | obligatoire | |
+| `MAIL_EHLO_DOMAIN` | facultatif | si le relais refuse un `HELO` non concordant |
+
+### Vérification de l'envoi réel — obligatoire
+
+**À faire après chaque déploiement qui touche à `MAIL_*`, et avant d'ouvrir le
+trafic.** Une configuration SMTP qui n'a jamais servi n'est pas une
+configuration vérifiée : c'est une hypothèse.
+
+1. Créer un compte candidat de test avec une adresse réellement relevable.
+2. Sur `https://LE-DOMAINE/forgot-password`, demander un lien pour cette adresse.
+3. **Vérifier la réception effective**, en n'oubliant pas les indésirables —
+   c'est le point qui échoue le plus souvent, et il tient à `MAIL_FROM_ADDRESS`.
+4. Suivre le lien, choisir un nouveau mot de passe, se connecter avec.
+5. En cas de non-réception, lire les journaux du conteneur applicatif :
+
+```bash
+bg logs --tail 100 app | grep -i mail
+```
+
+Un message resté dans les journaux au lieu de partir signale un `MAIL_MAILER`
+encore à `log`. Une erreur d'authentification ou de connexion signale, elle,
+un problème d'identifiants, de port ou de `MAIL_SCHEME`.
+
+> L'écran de demande répond la même chose que l'adresse existe ou non — c'est
+> voulu, pour qu'un formulaire public ne permette pas d'établir la liste des
+> personnes inscrites. Il ne faut donc **pas** se fier à son message de
+> confirmation pour conclure que l'envoi a fonctionné : seule la réception
+> effective le prouve.
+
+---
 ## 7. Checklist de fumée après déploiement
 
 À dérouler **avant** d'ouvrir le trafic. Le script `./scripts/production-smoke.sh`
@@ -243,6 +305,8 @@ couvre les points non authentifiés ; le reste se fait au navigateur.
 | 16 | Candidat sur `/admin/applications` | **403** |
 | 17 | `/admin/applications/999999` en administrateur | **404** |
 | 18 | Persistance : `bg restart` puis rechargement | les données sont intactes |
+| 19 | Mot de passe oublié : demande sur une adresse réelle | **courriel effectivement reçu** (voir §6 bis) |
+| 20 | Le lien reçu mène à l'écran, le mot de passe change | connexion possible avec le nouveau |
 
 > Les étapes « Solution / Impact / Plan » et la soumission des dossiers ne
 > figurent pas encore ici : elles seront ajoutées à cette checklist quand elles
@@ -321,4 +385,5 @@ modification de `.env`, refaire `config:cache`, ou ne pas l'activer du tout.
 | Limitation des inscriptions | les deux écrans de connexion sont protégés ; l'inscription ne l'est pas encore |
 | Table `failed_jobs` | déclarée par `config/queue.php`, absente des migrations ; sans effet tant qu'aucune tâche n'est mise en file |
 | Pièces justificatives | `minio` et `clamav` attendent derrière le profil `fichiers` |
-| Courriels | aucun envoi n'est configuré : ni vérification d'adresse, ni réinitialisation de mot de passe |
+| Vérification d'adresse e-mail | pas encore implémentée ; l'inscription n'exige aucune confirmation |
+| Autres courriels | seul le lien de réinitialisation part aujourd'hui : ni accusé de soumission, ni notification d'admissibilité |
