@@ -593,11 +593,11 @@ final class AdministrationCandidaturesTest extends TestCase
                 ->where('application.sections.2.key', ApplicationSection::TEAM->value)
                 ->where('application.sections.2.state', 'non-commencee')
                 ->where('application.sections.2.implemented', true)
-                // La premiere etape encore fermee est desormais la huitieme :
-                // l'ouverture des etapes 5 a 7 a repousse la frontiere, et cet
-                // ecran la suit sans qu'aucune ligne du presentateur change.
-                ->where('application.sections.7.key', ApplicationSection::ATTACHMENTS->value)
-                ->where('application.sections.7.state', 'non-implementee'));
+                // La premiere etape encore fermee est desormais la neuvieme :
+                // l'ouverture de l'etape 8 a repousse la frontiere, et cet ecran
+                // la suit sans qu'aucune ligne du presentateur change.
+                ->where('application.sections.8.key', ApplicationSection::REVIEW->value)
+                ->where('application.sections.8.state', 'non-implementee'));
     }
 
     /** Les réponses sortent en couples lisibles, jamais en JSON brut. */
@@ -737,12 +737,12 @@ final class AdministrationCandidaturesTest extends TestCase
         $campagne = $this->campagne(ouverte: true);
         $dossier = Application::factory()->for($campagne)->for(User::factory(), 'candidate')->create();
         $dossier->sections()->create([
-            'section' => ApplicationSection::ATTACHMENTS->value,
+            'section' => ApplicationSection::REVIEW->value,
             'answers' => ['esquisse' => 'Forage solaire'],
             'completed_at' => now(),
         ]);
 
-        $this->assertFalse(ApplicationSection::ATTACHMENTS->isOnOpenPath());
+        $this->assertFalse(ApplicationSection::REVIEW->isOnOpenPath());
 
         $this->actingAs($this->admin())
             ->get('/admin/applications')

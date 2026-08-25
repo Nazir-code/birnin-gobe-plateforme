@@ -219,9 +219,10 @@ test.describe('Étapes 5 à 7 — Solution, Impact, Plan', () => {
     await expect(page.getByTestId('etat-section')).toContainText('Étape complète');
     await expect(page.getByTestId('budget-lisible')).toContainText('FCFA');
 
-    // Le parcours s'arrete honnetement ici : l'etape 8 n'est pas ouverte.
-    await expect(page.getByTestId('suivant')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^suivant/i })).toBeDisabled();
+    // Le parcours ne s'arrete plus ici : l'etape 8 a ouvert depuis, et « Plan »
+    // y mene. Ce que ce scenario verifie reste la navigation calculee par le
+    // serveur, pas un lien ecrit en dur dans la page.
+    await expect(page.getByTestId('suivant')).toHaveAttribute('href', /\/attachments$/);
 
     // — Aller-retour sans perte
     await page.getByTestId('precedent').click();

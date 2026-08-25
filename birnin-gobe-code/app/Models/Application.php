@@ -47,6 +47,16 @@ class Application extends Model
         return $this->hasMany(ApplicationSectionAnswers::class);
     }
 
+    /**
+     * Les pieces jointes du dossier (etape 8).
+     *
+     * @return HasMany<Attachment, $this>
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(Attachment::class);
+    }
+
     public function sectionAnswers(ApplicationSection $section): ?ApplicationSectionAnswers
     {
         return $this->sections()->where('section', $section->value)->first();

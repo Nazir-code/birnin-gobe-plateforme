@@ -4,6 +4,7 @@ namespace App\Http\Presenters;
 
 use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
+use App\Domain\Application\AttachmentsSection;
 use App\Domain\Application\ChallengeSection;
 use App\Domain\Application\EligibilitySection;
 use App\Domain\Application\ImpactSection;
@@ -11,6 +12,7 @@ use App\Domain\Application\ImplementationSection;
 use App\Domain\Application\MaturityStage;
 use App\Domain\Application\ProfileSection;
 use App\Domain\Application\SolutionSection;
+use App\Domain\Application\StoreApplicationDocument;
 use App\Domain\Application\TeamSection;
 use App\Domain\Application\TeamSectionAssessment;
 use App\Domain\Candidate\CandidateType;
@@ -209,6 +211,10 @@ final class AdminApplicationPresenter
                 // la complétude de cette section.
                 'members' => $section === ApplicationSection::TEAM ? $this->membres($reponses) : null,
                 'team' => $section === ApplicationSection::TEAM ? $this->syntheseEquipe($application, $reponses) : null,
+                // Clé propre à « Pièces / déclarations » : un fichier ne se
+                // présente pas en couple libellé/valeur. Lecture seule, comme
+                // tout ce que voit cet écran.
+                'documents' => $section === ApplicationSection::ATTACHMENTS ? $this->pieces($application) : null,
             ];
         }, ApplicationSection::cases());
     }
@@ -251,6 +257,7 @@ final class AdminApplicationPresenter
             ApplicationSection::SOLUTION => $this->champsSolution($reponses),
             ApplicationSection::IMPACT => $this->champsImpact($reponses),
             ApplicationSection::IMPLEMENTATION => $this->champsPlan($reponses),
+            ApplicationSection::ATTACHMENTS => $this->champsDeclarations($reponses),
             // Section ajoutée par une phase ultérieure : son état et son nombre
             // de réponses sont dits, ses champs attendent leurs libellés.
             default => [],
@@ -454,6 +461,61 @@ final class AdminApplicationPresenter
             ['label' => 'Budget indicatif', 'value' => is_int($budget) ? number_format($budget, 0, ',', ' ').' FCFA' : ''],
             ['label' => 'Répartition du budget', 'value' => $this->texte($r[ImplementationSection::BUDGET_BREAKDOWN] ?? null)],
         ];
+    }
+
+    /**
+     * Les pièces d'un dossier, décrites sans jamais nommer leur emplacement.
+     *
+     * Le §8.1 range les « pièces illisibles » parmi ce que le contrôle avant
+     * soumission doit signaler : l'administration doit donc pouvoir ouvrir un
+     * fichier pour vérifier qu'il en est un. Cela s'arrête là — pas de
+     * remplacement, pas de suppression, pas de validation documentaire. Le
+     * dossier appartient au candidat tant qu'il n'est pas déposé, et après le
+     * dépôt il n'appartient plus à personne.
+     *
+     * Ni `storage_key` ni empreinte ne sortent : l'écran reçoit de quoi lire, et
+     * le téléchargement repasse par une route qui revérifie le rôle.
+     *
+     * @return list<array{type: string, label: string, filename: string, size: int, uploadedAt: string|null, downloadUrl: string}>
+     */
+    private function pieces(Application $application): array
+    {
+        $pieces = [];
+
+        foreach (StoreApplicationDocument::existingFor($application) as $cle => $piece) {
+            $pieces[] = [
+                'type' => $cle,
+                'label' => $piece->type->label(),
+                'filename' => $piece->original_filename,
+                'size' => (int) $piece->size,
+                'uploadedAt' => $piece->created_at?->toIso8601String(),
+                'downloadUrl' => route('admin.applications.documents.download', [$application, $cle]),
+            ];
+        }
+
+        return $pieces;
+    }
+
+    /**
+     * @param  array<string, mixed>  $r
+     * @return list<array{label: string, value: string}>
+     */
+    private function champsDeclarations(array $r): array
+    {
+        $champs = [];
+
+        foreach (AttachmentsSection::fields() as $declaration) {
+            $valeur = $r[$declaration] ?? null;
+
+            // Une déclaration jamais vue et une déclaration refusée se lisent
+            // toutes deux « Non » : ni l'une ni l'autre n'engage le candidat.
+            $champs[] = [
+                'label' => ucfirst(AttachmentsSection::label($declaration)),
+                'value' => $valeur === null ? '' : $this->booleen($valeur === true),
+            ];
+        }
+
+        return $champs;
     }
 
     /**

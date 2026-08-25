@@ -25,6 +25,14 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
+        <!--
+            Les pieces de l'etape 8 s'ecrivent sur le disque `documents`, prive
+            et local. Fixe ici pour que la suite ne depende ni du `.env` de la
+            machine ni d'un MinIO demarre : les tests fakent ce disque, la CI n'a
+            aucun objet a deployer.
+        -->
+        <env name="FILESYSTEM_DISK" value="local"/>
+        <env name="DOCUMENTS_DISK" value="documents"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

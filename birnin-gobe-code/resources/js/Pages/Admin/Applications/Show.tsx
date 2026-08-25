@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { AlertTriangle, ArrowLeft, CheckCircle2, CircleDashed, HelpCircle, Lock } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, CircleDashed, FileText, HelpCircle, Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { DarkSidebarLayout } from '@/Layouts/DarkSidebarLayout';
 import { ADMIN_LOGOUT, adminNav } from '@/Layouts/adminNav';
@@ -37,6 +37,17 @@ type Section = {
   fields: Champ[];
   members: Membre[] | null;
   team: SyntheseEquipe | null;
+  documents: Piece[] | null;
+};
+
+/** Une piece jointe, en lecture seule : ni chemin de stockage ni empreinte. */
+type Piece = {
+  type: string;
+  label: string;
+  filename: string;
+  size: number;
+  uploadedAt: string | null;
+  downloadUrl: string;
 };
 
 /** Fiche d'un membre d'equipe, en lecture seule. */
@@ -237,6 +248,8 @@ export default function ApplicationShow({ application, backUrl }: Props) {
 
                 {section.team ? <Equipe synthese={section.team} membres={section.members ?? []} /> : null}
 
+                {section.documents ? <Pieces pieces={section.documents} /> : null}
+
                 {section.fields.length > 0 ? (
                   <dl className="mt-3 grid gap-3 sm:grid-cols-2">
                     {section.fields.map((champ) => (
@@ -347,4 +360,45 @@ function Donnee({ libelle, valeur, aide }: { libelle: string; valeur: string; ai
       {aide ? <p className="mt-0.5 text-[11px] leading-4 text-slate-400">{aide}</p> : null}
     </div>
   );
+}
+
+/**
+ * Les pieces jointes d'un dossier, en lecture seule.
+ *
+ * Le §8.1 demande que le controle avant soumission signale les « pieces
+ * illisibles » : l'administration doit donc pouvoir ouvrir un fichier. C'est la
+ * seule action offerte — aucun remplacement, aucune suppression, aucun statut de
+ * validation, faute de workflow documentaire arbitre.
+ *
+ * Rien n'est prechargé : la page affiche un nom et un poids, et ne telecharge un
+ * fichier que si un agent clique.
+ */
+function Pieces({ pieces }: { pieces: Piece[] }) {
+  if (pieces.length === 0) {
+    return <p className="mt-1.5 text-xs leading-5 text-slate-500">Aucune pièce déposée.</p>;
+  }
+
+  return (
+    <ul className="mt-3 space-y-2" data-testid="pieces-jointes">
+      {pieces.map((piece) => (
+        <li key={piece.type} className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 p-3" data-testid={`piece-${piece.type}`}>
+          <FileText size={16} className="shrink-0 text-slate-500" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wide text-slate-400">{piece.label}</div>
+            <a href={piece.downloadUrl} className="focus-ring block truncate text-sm font-semibold text-brand-900 underline underline-offset-2">
+              {piece.filename}
+            </a>
+          </div>
+          <span className="shrink-0 text-[11px] text-slate-500">{poidsLisible(piece.size)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Poids lisible. Le fichier n'est jamais lu pour l'afficher. */
+function poidsLisible(octets: number): string {
+  if (octets < 1024) return `${octets} o`;
+  if (octets < 1024 * 1024) return `${Math.round(octets / 1024)} Ko`;
+  return `${(octets / (1024 * 1024)).toFixed(1)} Mo`;
 }

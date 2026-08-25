@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domain\Application\ApplicationIndexQuery;
 use App\Domain\Application\ApplicationStatus;
+use App\Domain\Application\DocumentType;
+use App\Domain\Application\StoreApplicationDocument;
 use App\Domain\Candidate\CandidateType;
 use App\Domain\Reference\NigerRegion;
 use App\Http\Presenters\AdminApplicationPresenter;
@@ -12,6 +14,7 @@ use App\Models\Application;
 use App\Models\Campaign;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Consultation des candidatures par l'administration (Admin Phase 3).
@@ -76,6 +79,40 @@ final class ApplicationController
             'application' => $presenter->detail($application),
             'backUrl' => route('admin.applications.index'),
         ]);
+    }
+
+    /**
+     * Téléchargement d'une pièce par l'administration — lecture seule.
+     *
+     * Le §8.1 demande que le contrôle avant soumission signale les « pièces
+     * illisibles » : encore faut-il pouvoir les ouvrir. C'est tout ce que fait
+     * cette action. Aucune écriture n'existe côté administration sur les pièces
+     * — ni remplacement, ni suppression, ni statut de validation — parce
+     * qu'aucun workflow documentaire n'a été arbitré, et qu'inventer le premier
+     * geste d'un workflow revient à l'arbitrer.
+     *
+     * L'accès est porté par le groupe de routes (`auth`, `role:admin`) ; la
+     * pièce est désignée par son type, jamais par son emplacement.
+     */
+    public function downloadDocument(Application $application, string $type): StreamedResponse
+    {
+        $piece = DocumentType::tryFrom($type);
+
+        if ($piece === null) {
+            abort(404);
+        }
+
+        $ligne = $application->attachments()->where('type', $piece->value)->first();
+
+        if ($ligne === null) {
+            abort(404);
+        }
+
+        return StoreApplicationDocument::disk()->download(
+            $ligne->storage_key,
+            $ligne->original_filename,
+            ['Content-Type' => $ligne->mime_type],
+        );
     }
 
     /**

@@ -56,15 +56,17 @@ enum ApplicationSection: string
     /**
      * Section effectivement persistée aujourd'hui.
      *
-     * Sept sections sont branchées, et elles se suivent sans trou :
+     * Huit sections sont branchées, et elles se suivent sans trou :
      * « Éligibilité » (1), « Profil » (2), « Structure / équipe » (3),
-     * « Défi » (4), « Solution » (5), « Impact / viabilité » (6) et
-     * « Plan de mise en œuvre » (7). Ouvrir une autre section, c'est l'ajouter
-     * ici en même temps que son écran et sa validation — pas avant.
+     * « Défi » (4), « Solution » (5), « Impact / viabilité » (6),
+     * « Plan de mise en œuvre » (7) et « Pièces / déclarations » (8). Ouvrir
+     * une autre section, c'est l'ajouter ici en même temps que son écran et sa
+     * validation — pas avant.
      *
-     * Restent fermées « Pièces / déclarations » (8), qui attend le téléversement
-     * et l'analyse antivirus, et « Relecture / envoi » (9), qui attend la
-     * soumission.
+     * Reste fermée « Relecture / envoi » (9), qui attend l'écran de dépôt.
+     * L'étape 8 a été livrée sans elle et sans l'analyse antivirus : les pièces
+     * sont stockées sur un disque privé et `attachments.scan_status` dit
+     * qu'aucun analyseur ne les a vues, plutôt que de laisser croire l'inverse.
      */
     public function isImplemented(): bool
     {
@@ -76,6 +78,7 @@ enum ApplicationSection: string
             self::SOLUTION,
             self::IMPACT,
             self::IMPLEMENTATION,
+            self::ATTACHMENTS,
         ], strict: true);
     }
 
@@ -83,8 +86,8 @@ enum ApplicationSection: string
      * Section atteignable sans sauter d'étape depuis l'étape 1.
      *
      * Le parcours s'arrête à la première étape non développée : aujourd'hui
-     * « Pièces / déclarations » (étape 8). Les sept premières sont donc toutes
-     * sur le parcours ouvert.
+     * « Relecture / envoi » (étape 9). Les huit premières sont donc toutes sur
+     * le parcours ouvert.
      *
      * C'est ce qui empêche l'écran d'annoncer un parcours que le produit ne
      * tient pas, et la progression de compter une étape que le candidat n'aurait

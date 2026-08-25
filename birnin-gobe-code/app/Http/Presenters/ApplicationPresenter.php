@@ -187,6 +187,7 @@ final class ApplicationPresenter
             ApplicationSection::SOLUTION => route('candidate.application.solution', $application),
             ApplicationSection::IMPACT => route('candidate.application.impact', $application),
             ApplicationSection::IMPLEMENTATION => route('candidate.application.implementation', $application),
+            ApplicationSection::ATTACHMENTS => route('candidate.application.attachments', $application),
             default => null,
         };
     }
