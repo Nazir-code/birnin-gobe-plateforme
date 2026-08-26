@@ -55,6 +55,7 @@ export default function AdminLogin() {
           onChange={(v) => setData('password', v)}
           erreur={errors.password}
           autoComplete="current-password"
+          basculeDeVisibilite
         />
 
         {/* Pas de « rester connecté » : une session interne ne survit pas au
