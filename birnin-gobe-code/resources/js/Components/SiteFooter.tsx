@@ -223,7 +223,6 @@ function PublicFooter() {
             ))}
           </ul>
         </div>
-        <p className="pb-8 text-[11px] leading-5 text-white/60">{t.footer.pendingNote}</p>
       </div>
     </footer>
   );

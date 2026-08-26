@@ -27,7 +27,6 @@ export const fr = {
     contact: 'Contact',
     rights: 'Tous droits réservés.',
     comingSoon: 'Bientôt',
-    pendingNote: 'Les rubriques grisées ou signalées « bientôt » ne sont pas encore publiées : elles seront activées depuis le CMS de la plateforme.',
     links: {
       home: 'Accueil',
       about: 'À propos',
