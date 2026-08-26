@@ -316,7 +316,7 @@ export default function Home({ campaign, stats, themes, criteria }: {
       </section>
 
       {/* ——— Thématiques officielles ——— */}
-      <section className="mx-auto max-w-[1500px] px-6 py-12 lg:px-12 xl:px-16" id="thématiques">
+      <section className="mx-auto max-w-[1500px] px-6 py-12 lg:px-12 xl:px-16" id="thematiques">
         <SectionTitle eyebrow="Nos thématiques" title="Quatre domaines, des défis concrets" />
         <div className="grid gap-4 md:grid-cols-2">
           {themes.map(({ key, title, problems, results }, index) => {
@@ -347,7 +347,7 @@ export default function Home({ campaign, stats, themes, criteria }: {
       </section>
 
       {/* ——— Critères d'évaluation ——— */}
-      <section className="border-y border-slate-100 bg-slate-50/60" id="critères">
+      <section className="border-y border-slate-100 bg-slate-50/60" id="criteres">
         <div className="mx-auto max-w-[1500px] px-6 py-12 lg:px-12 xl:px-16">
           <SectionTitle eyebrow="Comment les dossiers sont jugés" title="Critères d’évaluation" />
           <p className="-mt-2 mb-5 max-w-3xl text-sm leading-6 text-slate-600">
@@ -375,7 +375,7 @@ export default function Home({ campaign, stats, themes, criteria }: {
       {/* ——— Éligibilité et calendrier ——— */}
       <section className="mx-auto max-w-[1500px] px-6 py-12 lg:px-12 xl:px-16">
         <div className="grid gap-5 lg:grid-cols-2">
-          <Reveal id="éligibilité"><Card className="h-full p-6">
+          <Reveal id="eligibilite"><Card className="h-full p-6">
             <SectionTitle eyebrow="Qui peut candidater ?" title="L'éligibilité en un coup d'œil" />
             <ul className="space-y-3 text-sm leading-6 text-slate-700">
               {[

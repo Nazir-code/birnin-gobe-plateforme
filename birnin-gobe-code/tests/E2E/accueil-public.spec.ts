@@ -45,10 +45,10 @@ test.describe('Page d’accueil publique', () => {
     }
     await expect(page.getByTestId('critere-1')).toContainText('Pertinence');
     await expect(page.getByTestId('critere-8')).toContainText('Équipe et pitch');
-    await expect(page.locator('#critères')).toContainText('Critères d’évaluation');
+    await expect(page.locator('#criteres')).toContainText('Critères d’évaluation');
     // La distinction avec l'eligibilite doit etre ecrite : sans elle, un candidat
     // croira devoir satisfaire les huit pour avoir le droit de deposer.
-    await expect(page.locator('#critères')).toContainText('Ils ne décident pas');
+    await expect(page.locator('#criteres')).toContainText('Ils ne décident pas');
 
     // — Aucune valeur de maquette
     const texte = await page.locator('body').innerText();
@@ -135,22 +135,70 @@ test.describe('Page d’accueil publique', () => {
     await expect(section.getByRole('heading', { name: /Comment candidater/i })).toBeInViewport();
   });
 
-  test('la navigation mène aux sections de la page', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await accueil(page);
+  /**
+   * Les cinq rubriques de la navigation, et le titre qu'on doit lire en
+   * arrivant.
+   *
+   * Le titre compte autant que la section : une ancre qui amene la bonne
+   * section sous l'en-tete collant a l'air de marcher et ne montre rien.
+   */
+  const RUBRIQUES = [
+    ['Thématiques', '#thematiques', /Quatre domaines, des défis concrets/i],
+    // Les titres portent des apostrophes — droites ici, typographiques la — et
+    // un editeur en change sans prevenir. Les motifs s'arretent avant, plutot
+    // que de faire dependre le test d'un caractere invisible a la relecture.
+    ['Critères', '#criteres', /Critères d/i],
+    ['Éligibilité', '#eligibilite', /éligibilité en un coup d/i],
+    ['Calendrier', '#calendrier', /Les dates de l/i],
+    ['Le processus', '#processus', /Comment candidater/i],
+  ] as const;
 
-    for (const [libelle, ancre] of [
-      ['Thématiques', '#thématiques'],
-      ['Critères', '#critères'],
-      ['Éligibilité', '#éligibilité'],
-      ['Calendrier', '#calendrier'],
-      ['Le processus', '#processus'],
-    ] as const) {
-      const lien = page.getByRole('navigation', { name: 'Navigation principale' }).getByRole('link', { name: libelle });
-      await expect(lien, `le menu ne porte pas « ${libelle} »`).toBeVisible();
-      await expect(lien).toHaveAttribute('href', new RegExp(`${ancre.slice(1)}$`));
-    }
-  });
+  for (const { nom, largeur, hauteur } of [TAILLES[0], TAILLES[2]] as const) {
+    /**
+     * Ce test clique, il ne lit pas un attribut.
+     *
+     * Verifier `href="#..."` ne prouvait rien : les trois ancres accentuees
+     * portaient l'attribut attendu et n'amenaient nulle part. Seul le
+     * deplacement reel du viewport dit si la navigation fonctionne.
+     */
+    test(`la navigation mène réellement aux sections — ${nom}`, async ({ page }) => {
+      await page.setViewportSize({ width: largeur, height: hauteur });
+      await accueil(page);
+
+      const surMobile = largeur < 1280;
+
+      for (const [libelle, ancre, titre] of RUBRIQUES) {
+        // Sous `xl`, la navigation vit dans le panneau deplie.
+        if (surMobile) {
+          await page.getByRole('button', { name: /ouvrir le menu/i }).click();
+        }
+
+        const menu = page.getByRole('navigation', {
+          name: surMobile ? 'Navigation principale (mobile)' : 'Navigation principale',
+        });
+        const lien = menu.getByRole('link', { name: libelle });
+
+        await expect(lien, `le menu ne porte pas « ${libelle} »`).toBeVisible();
+        await lien.click();
+
+        // Le panneau mobile se referme sur la selection, sinon il masque la
+        // section qu'on vient de demander.
+        if (surMobile) {
+          await expect(menu, `le menu mobile reste ouvert apres « ${libelle} »`).toBeHidden();
+        }
+
+        // L'URL porte l'ancre, et la page n'a pas ete rechargee.
+        await expect(page).toHaveURL(new RegExp(`${ancre.slice(1)}$`));
+
+        const section = page.locator(ancre);
+        await expect(section, `« ${libelle} » n'amene pas sa section`).toBeInViewport();
+        await expect(
+          section.getByRole('heading', { name: titre }),
+          `le titre de « ${libelle} » est masque par l'en-tete collant`,
+        ).toBeInViewport();
+      }
+    });
+  }
 
   for (const { nom, largeur, hauteur } of TAILLES) {
     test(`aucun débordement horizontal en ${nom}`, async ({ page }) => {
