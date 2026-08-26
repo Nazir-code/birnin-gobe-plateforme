@@ -189,7 +189,7 @@ final class IntegrationStructureAdministrationTest extends TestCase
      * n'a pas changé : le parcours est continu, et la première étape encore
      * fermée en marque honnêtement la fin.
      */
-    public function test_le_parcours_ouvert_va_de_l_etape_1_a_l_etape_7(): void
+    public function test_le_parcours_ouvert_va_de_l_etape_1_a_l_etape_9(): void
     {
         $this->assertSame(
             [
@@ -201,12 +201,14 @@ final class IntegrationStructureAdministrationTest extends TestCase
                 ApplicationSection::IMPACT,
                 ApplicationSection::IMPLEMENTATION,
                 ApplicationSection::ATTACHMENTS,
+                ApplicationSection::REVIEW,
             ],
             ApplicationSection::openPath(),
         );
 
-        $this->assertFalse(ApplicationSection::REVIEW->isOnOpenPath());
-        $this->assertFalse(ApplicationSection::REVIEW->isImplemented());
+        // La relecture ferme le parcours : elle a un écran, et rien ne la suit.
+        $this->assertTrue(ApplicationSection::REVIEW->isOnOpenPath());
+        $this->assertNull(ApplicationSection::REVIEW->nextOnOpenPath());
     }
 
     // — Structure vue par l'administration ————————————————————————

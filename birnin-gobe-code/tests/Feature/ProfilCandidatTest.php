@@ -510,8 +510,9 @@ final class ProfilCandidatTest extends TestCase
                     );
                 }
 
-                // L'étape 9 n'est pas développée : le parcours s'arrête là.
-                $this->assertFalse($etapes->firstWhere('key', ApplicationSection::REVIEW->value)['onOpenPath']);
+                // L'étape 9 a son écran depuis le correctif de la relecture :
+                // le parcours va jusqu'à elle, sans qu'elle enregistre rien.
+                $this->assertTrue($etapes->firstWhere('key', ApplicationSection::REVIEW->value)['onOpenPath']);
                 $this->assertSame('done', $etapes->firstWhere('key', ApplicationSection::CHALLENGE->value)['state']);
             });
     }

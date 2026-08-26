@@ -93,11 +93,12 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
         // L'étape 8 a ouvert depuis : le plan n'est plus le terminus.
         $this->assertSame(ApplicationSection::ATTACHMENTS, ApplicationSection::IMPLEMENTATION->nextOnOpenPath());
         $this->assertTrue(ApplicationSection::ATTACHMENTS->isImplemented());
-        // « Relecture / envoi » reste fermée : c'est là que le parcours s'arrête.
-        $this->assertFalse(ApplicationSection::REVIEW->isImplemented());
+        // « Relecture / envoi » est ouverte à son tour : le parcours va
+        // désormais jusqu'à elle. Voir RelectureOuverteTest.
+        $this->assertTrue(ApplicationSection::REVIEW->isImplemented());
     }
 
-    public function test_le_parcours_ouvert_compte_huit_etapes_dans_l_ordre(): void
+    public function test_le_parcours_ouvert_compte_neuf_etapes_dans_l_ordre(): void
     {
         $this->assertSame(
             [
@@ -109,6 +110,7 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
                 ApplicationSection::IMPACT,
                 ApplicationSection::IMPLEMENTATION,
                 ApplicationSection::ATTACHMENTS,
+                ApplicationSection::REVIEW,
             ],
             ApplicationSection::openPath(),
         );
