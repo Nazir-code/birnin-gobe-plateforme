@@ -45,7 +45,7 @@ export default function Login() {
         }}
       >
         <Champ id="email" label="Adresse e-mail" type="email" value={data.email} onChange={(v) => setData('email', v)} erreur={errors.email} autoComplete="email" autoFocus />
-        <Champ id="password" label="Mot de passe" type="password" value={data.password} onChange={(v) => setData('password', v)} erreur={errors.password} autoComplete="current-password" />
+        <Champ id="password" label="Mot de passe" type="password" value={data.password} onChange={(v) => setData('password', v)} erreur={errors.password} autoComplete="current-password" basculeDeVisibilite />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <label className="flex items-center gap-2.5 text-sm text-slate-600">
