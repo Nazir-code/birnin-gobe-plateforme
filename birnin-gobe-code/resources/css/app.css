@@ -84,6 +84,91 @@
   transition: width 900ms var(--ease-out);
 }
 
+/* ——— Titre du hero : une entrée, puis plus rien ———————————————————————
+
+   Trois éléments arrivent l'un après l'autre — la première moitié de la
+   phrase, la seconde, puis le trait vert-orange qui la souligne — et tout est
+   figé avant la seconde. Aucune boucle, aucun clignotement : c'est un titre
+   institutionnel, pas une accroche publicitaire.
+
+   **L'état par défaut est l'état final.** L'animation n'existe que dans le
+   `@media (prefers-reduced-motion: no-preference)` ci-dessous. Le filet global
+   plus haut ramène bien les durées à 0,01 ms, mais il ne touche pas
+   `animation-delay` : un titre qui partirait d'`opacity: 0` resterait donc
+   invisible pendant son délai, précisément pour les personnes qui ont demandé
+   moins de mouvement. Partir de l'état final évite ce piège, et laisse aussi le
+   titre lisible si la feuille de style n'arrive jamais.
+
+   Le trait est un `background-image` sur le texte lui-même, et non un élément
+   posé dessous. Deux raisons, toutes deux visibles à l'écran : un élément en
+   plus ajouterait de la hauteur au hero, et un `inline-block` — le seul moyen
+   de le positionner — empêcherait la phrase de se couper naturellement en fin
+   de ligne, donc déborderait sur mobile. Là, le trait suit le texte, y compris
+   quand il passe à la ligne, et ne coûte pas un pixel de mise en page. */
+.hero-part-1,
+.hero-part-2 {
+  opacity: 1;
+  transform: none;
+  /* Amplitude du glissement. Portée par une variable plutôt que par une
+     seconde définition de `@keyframes` sous media query : deux blocs du même
+     nom se remplacent globalement dès que la requête s'applique, ce qui marche
+     mais se relit mal et se casse au premier déplacement de règle. */
+  --hero-shift: 16px;
+}
+
+.hero-part-2 {
+  background-image: linear-gradient(90deg, var(--color-brand-700), var(--color-gold-500));
+  background-repeat: no-repeat;
+  /* Sous la ligne de base, assez fin pour souligner sans surligner. */
+  background-position: 0 calc(100% - 0.02em);
+  background-size: 100% 3px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero-part-1 {
+    animation: hero-monte 700ms var(--ease-out) 150ms both;
+  }
+
+  .hero-part-2 {
+    /* Part après la première moitié, pas avec elle : 200 ms d'écart suffisent
+       à faire lire la phrase en deux temps. */
+    animation:
+      hero-monte 600ms var(--ease-out) 350ms both,
+      hero-trait 420ms var(--ease-standard) 700ms both;
+  }
+}
+
+@keyframes hero-monte {
+  from {
+    opacity: 0;
+    transform: translateY(var(--hero-shift));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Le trait se dessine de la gauche vers la droite, puis reste. */
+@keyframes hero-trait {
+  from {
+    background-size: 0 3px;
+  }
+  to {
+    background-size: 100% 3px;
+  }
+}
+
+/* Sur petit écran, le même mouvement en plus discret : la phrase y occupe
+   plusieurs lignes, et un déplacement ample donnerait l'impression que le bloc
+   saute. */
+@media (max-width: 640px) {
+  .hero-part-1,
+  .hero-part-2 {
+    --hero-shift: 10px;
+  }
+}
+
 /* Carrousel du hero : les photos sont empilées et seule l'opacité change, donc
    le fond n'apparaît jamais entre deux visuels (pas de flash) et la hauteur du
    hero ne bouge pas. Le zoom lent est porté par le <img> et non par la couche :

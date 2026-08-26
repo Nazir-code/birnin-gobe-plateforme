@@ -136,11 +136,52 @@ test.describe('Page d’accueil publique', () => {
   });
 
   /**
+   * Le titre du hero arrive en deux temps, puis ne bouge plus.
+   *
+   * Ce test ne mesure aucune duree : une assertion sur un timing depend de la
+   * machine qui l execute et finit par clignoter en CI. Il verifie ce qui doit
+   * rester vrai une fois l animation finie — la phrase, mot pour mot, et le
+   * trait qui souligne sa seconde moitie.
+   */
+  test('le titre du hero est intact et souligné', async ({ page }) => {
+    await accueil(page);
+
+    const titre = page.getByRole('heading', { level: 1 });
+    await expect(titre).toHaveText('La plateforme nationale qui propulse les jeunes innovateurs du Niger.');
+
+    const accent = page.getByTestId('hero-accent');
+    await expect(accent).toBeVisible();
+    await expect(accent).toHaveText('jeunes innovateurs du Niger.');
+
+    const fond = await accent.evaluate((n) => getComputedStyle(n).backgroundImage);
+    expect(fond, 'le trait vert-orange doit etre un degrade').toContain('gradient');
+  });
+
+  test('le titre du hero reste visible sans animation', async ({ page }) => {
+    // Mouvement reduit : le contenu doit etre la tout de suite, jamais masque
+    // par une opacite de depart ni retarde par un delai.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await accueil(page);
+
+    const accent = page.getByTestId('hero-accent');
+    await expect(accent).toBeVisible();
+    await expect(accent).toHaveCSS('opacity', '1');
+    await expect(page.locator('.hero-part-1')).toHaveCSS('opacity', '1');
+    await expect(page.getByRole('heading', { level: 1 }))
+      .toContainText('propulse les jeunes innovateurs du Niger.');
+  });
+
+  /**
    * Les cinq rubriques de la navigation, et le titre qu'on doit lire en
    * arrivant.
    *
    * Le titre compte autant que la section : une ancre qui amene la bonne
    * section sous l'en-tete collant a l'air de marcher et ne montre rien.
+   *
+   * L'ancien test de cette navigation lisait `href="#..."` et vivait ici ; la
+   * branche « ancres » l'a remplace par la boucle qui clique, plus bas. La
+   * fusion le ramenait, a moitie, depuis la branche « hero » qui ne l'avait pas
+   * touche : il est ecarte, pas reintroduit.
    */
   const RUBRIQUES = [
     ['Thématiques', '#thematiques', /Quatre domaines, des défis concrets/i],

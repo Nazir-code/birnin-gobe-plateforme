@@ -180,7 +180,14 @@ export default function Home({ campaign, stats, themes, criteria }: {
           <div className="relative z-10 flex min-h-[470px] flex-col justify-center px-6 py-12 lg:px-12 xl:px-16">
             <div className="kicker">Innover aujourd'hui, transformer demain</div>
             <h1 className="mt-5 max-w-3xl text-[2.7rem] font-black leading-[1.02] tracking-[-.045em] text-brand-950 sm:text-6xl xl:text-[4.35rem]">
-              La plateforme nationale qui propulse les jeunes <span className="text-gold-600">innovateurs du Niger.</span>
+              {/* La phrase est inchangee, mot pour mot. Elle est seulement
+                  coupee en deux pour arriver en deux temps, et le trait
+                  vert-orange souligne la seconde moitie. Voir `.hero-part-*`
+                  dans app.css. */}
+              <span className="hero-part-1">La plateforme nationale qui propulse les </span>
+              <span className="hero-part-2" data-testid="hero-accent">
+                <span className="text-brand-700">jeunes innovateurs</span> <span className="text-gold-600">du Niger.</span>
+              </span>
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
               BIRNIN GOBE accompagne les jeunes talents et leurs idées innovantes pour bâtir un Niger créatif,
