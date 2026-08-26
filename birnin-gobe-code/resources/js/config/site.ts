@@ -21,9 +21,9 @@ export type SiteLink = { key: FooterLinkKey; href: string | null };
 export const quickLinks: SiteLink[] = [
   { key: 'home', href: '/' },
   { key: 'about', href: null },
-  { key: 'themes', href: '/#thématiques' },
-  { key: 'criteria', href: '/#critères' },
-  { key: 'eligibility', href: '/#éligibilité' },
+  { key: 'themes', href: '/#thematiques' },
+  { key: 'criteria', href: '/#criteres' },
+  { key: 'eligibility', href: '/#eligibilite' },
   { key: 'calendar', href: '/#calendrier' },
   { key: 'process', href: '/#processus' },
   { key: 'howToApply', href: null },
