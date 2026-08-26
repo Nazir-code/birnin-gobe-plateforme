@@ -204,13 +204,14 @@ final class PiecesDeclarationsCandidatTest extends TestCase
         $this->assertSame(ApplicationSection::ATTACHMENTS, ApplicationSection::IMPLEMENTATION->nextOnOpenPath());
         $this->assertSame(ApplicationSection::IMPLEMENTATION, ApplicationSection::ATTACHMENTS->previousImplemented());
 
-        // « Relecture / envoi » appartient à une autre branche : le parcours
-        // s'arrête honnêtement ici.
-        $this->assertNull(ApplicationSection::ATTACHMENTS->nextOnOpenPath());
-        $this->assertFalse(ApplicationSection::REVIEW->isImplemented());
+        // « Relecture / envoi » est livrée : le parcours continue jusqu'à elle.
+        // Voir RelectureOuverteTest, qui fixe ce raccord et ce qu'il ne change
+        // pas — ni la progression, ni la recevabilité.
+        $this->assertSame(ApplicationSection::REVIEW, ApplicationSection::ATTACHMENTS->nextOnOpenPath());
+        $this->assertTrue(ApplicationSection::REVIEW->isImplemented());
     }
 
-    public function test_le_parcours_ouvert_compte_huit_etapes_dans_l_ordre(): void
+    public function test_le_parcours_ouvert_compte_neuf_etapes_dans_l_ordre(): void
     {
         $this->assertSame(
             [
@@ -222,6 +223,7 @@ final class PiecesDeclarationsCandidatTest extends TestCase
                 ApplicationSection::IMPACT,
                 ApplicationSection::IMPLEMENTATION,
                 ApplicationSection::ATTACHMENTS,
+                ApplicationSection::REVIEW,
             ],
             ApplicationSection::openPath(),
         );
@@ -242,8 +244,9 @@ final class PiecesDeclarationsCandidatTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('Candidate/Application/Attachments')
                 ->where('previousUrl', url("/candidate/application/{$id}/implementation"))
-                // Aucun bouton de dépôt sur cet écran : l'étape 9 vit ailleurs.
-                ->where('nextUrl', null)
+                // « Suivant » mène à la relecture. Le dépôt, lui, ne se fait
+                // toujours pas ici : c'est l'étape 9 qui porte le bouton.
+                ->where('nextUrl', url("/candidate/application/{$id}/review"))
                 ->where('section.position', 8));
     }
 

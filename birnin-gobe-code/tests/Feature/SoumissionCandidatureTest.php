@@ -271,9 +271,10 @@ final class SoumissionCandidatureTest extends TestCase
         $candidat = User::factory()->create();
         $dossier = $this->dossierSansPieces($campagne, $candidat);
 
-        // Le parcours ouvert compte désormais huit étapes ; ce dossier en a
-        // rempli sept.
-        $this->assertCount(8, ApplicationSection::openPath());
+        // Le parcours ouvert compte les neuf étapes depuis que la relecture y
+        // figure ; ce dossier en a rempli sept, et la neuvième ne s'y remplit
+        // pas — elle ne persiste rien.
+        $this->assertCount(9, ApplicationSection::openPath());
         $this->assertSame(7, app(ApplicationProgress::class)->completedOnOpenPath($dossier));
 
         $verdict = SubmissionReadiness::for($dossier, app(EvaluateEligibility::class));

@@ -54,19 +54,30 @@ enum ApplicationSection: string
     }
 
     /**
-     * Section effectivement persistée aujourd'hui.
+     * Section que le produit propose réellement au candidat.
      *
-     * Huit sections sont branchées, et elles se suivent sans trou :
-     * « Éligibilité » (1), « Profil » (2), « Structure / équipe » (3),
-     * « Défi » (4), « Solution » (5), « Impact / viabilité » (6),
-     * « Plan de mise en œuvre » (7) et « Pièces / déclarations » (8). Ouvrir
-     * une autre section, c'est l'ajouter ici en même temps que son écran et sa
-     * validation — pas avant.
+     * Les neuf y sont désormais. Les huit premières parce qu'elles ont un
+     * écran, des champs et une validation ; la neuvième parce qu'elle a un
+     * écran — sa route, `ReviewController` et `Review.tsx` sont livrés.
      *
-     * Reste fermée « Relecture / envoi » (9), qui attend l'écran de dépôt.
-     * L'étape 8 a été livrée sans elle et sans l'analyse antivirus : les pièces
-     * sont stockées sur un disque privé et `attachments.scan_status` dit
-     * qu'aucun analyseur ne les a vues, plutôt que de laisser croire l'inverse.
+     * **« Implementée » ne veut pas dire « persistée ».** « Relecture / envoi »
+     * n'écrit aucune ligne dans `application_sections`, et ne doit jamais en
+     * écrire : c'est une projection en lecture de ce que les huit précédentes
+     * ont enregistré. Elle est listée ici parce que cette méthode répond à
+     * « le candidat peut-il y aller ? », pas à « a-t-il quelque chose à y
+     * remplir ? ».
+     *
+     * Elle en était absente, et l'oubli se voyait à l'écran : `steps()`
+     * annonçait l'étape 9 comme indisponible, et `nextOnOpenPath()` rendait
+     * `null` depuis l'étape 8 — un dossier recevable n'avait plus de bouton
+     * « Suivant » et le parcours s'arrêtait net, alors que la route répondait
+     * 200. La branche qui a livré l'étape 9 n'a pas touché ce fichier, et la
+     * fusion ne pouvait pas le signaler.
+     *
+     * Ce que l'ajout ne change pas, et qui a été vérifié : la progression, qui
+     * compte des `completed_at` et n'en trouvera jamais pour « Relecture » ; et
+     * la recevabilité, dont `SubmissionReadiness::requiredSections()` exclut
+     * explicitement cette section.
      */
     public function isImplemented(): bool
     {
@@ -79,6 +90,7 @@ enum ApplicationSection: string
             self::IMPACT,
             self::IMPLEMENTATION,
             self::ATTACHMENTS,
+            self::REVIEW,
         ], strict: true);
     }
 

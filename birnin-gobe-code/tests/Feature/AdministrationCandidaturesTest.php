@@ -593,11 +593,13 @@ final class AdministrationCandidaturesTest extends TestCase
                 ->where('application.sections.2.key', ApplicationSection::TEAM->value)
                 ->where('application.sections.2.state', 'non-commencee')
                 ->where('application.sections.2.implemented', true)
-                // La premiere etape encore fermee est desormais la neuvieme :
-                // l'ouverture de l'etape 8 a repousse la frontiere, et cet ecran
-                // la suit sans qu'aucune ligne du presentateur change.
+                // Plus aucune etape n'est fermee : la neuvieme a son ecran
+                // depuis le correctif de la relecture. Elle ressort donc
+                // « non commencee » — elle n'enregistre rien, et n'aura jamais
+                // de ligne à son nom.
                 ->where('application.sections.8.key', ApplicationSection::REVIEW->value)
-                ->where('application.sections.8.state', 'non-implementee'));
+                ->where('application.sections.8.implemented', true)
+                ->where('application.sections.8.state', 'non-commencee'));
     }
 
     /** Les réponses sortent en couples lisibles, jamais en JSON brut. */
@@ -732,17 +734,24 @@ final class AdministrationCandidaturesTest extends TestCase
      * fermée est « Pièces / déclarations », la huitième — des réponses qui s'y
      * trouveraient ne doivent rien ajouter.
      */
-    public function test_une_section_hors_parcours_ne_gonfle_pas_la_progression(): void
+    /**
+     * Une section commencée mais non achevée ne gonfle pas la progression.
+     *
+     * Ce test protégeait au départ un autre cas : une section **hors parcours
+     * ouvert** ne devait pas compter. Ce cas n'existe plus, les neuf étapes
+     * étant désormais sur le parcours. La garantie qui reste, et qui vaut
+     * autant, est celle-ci : `completed_at` est la seule preuve qu'une section
+     * est faite, et des réponses partielles n'en sont pas une.
+     */
+    public function test_une_section_inachevee_ne_gonfle_pas_la_progression(): void
     {
         $campagne = $this->campagne(ouverte: true);
         $dossier = Application::factory()->for($campagne)->for(User::factory(), 'candidate')->create();
         $dossier->sections()->create([
-            'section' => ApplicationSection::REVIEW->value,
+            'section' => ApplicationSection::CHALLENGE->value,
             'answers' => ['esquisse' => 'Forage solaire'],
-            'completed_at' => now(),
+            'completed_at' => null,
         ]);
-
-        $this->assertFalse(ApplicationSection::REVIEW->isOnOpenPath());
 
         $this->actingAs($this->admin())
             ->get('/admin/applications')
