@@ -57,22 +57,6 @@ test.describe('Page d’accueil publique', () => {
     }
   });
 
-  test('les chiffres clés sont des nombres, pas des slogans', async ({ page }) => {
-    await accueil(page);
-
-    const bloc = page.getByTestId('chiffres-cles');
-    await expect(bloc).toBeVisible();
-    await expect(bloc).toContainText('Candidats inscrits');
-    await expect(bloc).toContainText('Candidatures en cours');
-    await expect(bloc).toContainText('Candidatures soumises');
-    await expect(bloc).toContainText('Thématiques');
-
-    // Quatre nombres, tous entiers : aucun « + », aucun arrondi.
-    const nombres = (await bloc.innerText()).match(/^\d+$/gm) ?? [];
-    expect(nombres.length).toBe(4);
-    expect(await bloc.innerText()).not.toContain('+');
-  });
-
   test('le libellé de clôture est exact et accompagné du verrou', async ({ page }) => {
     await accueil(page);
 
@@ -112,27 +96,71 @@ test.describe('Page d’accueil publique', () => {
     if (ouvert > 0) {
       await expect(page.getByTestId('cta-candidater')).toHaveAttribute('href', '/register');
       await expect(page.getByTestId('cta-candidater')).toContainText('Commencer ma candidature');
-      await expect(page.getByTestId('cta-final')).toHaveAttribute('href', '/register');
     } else {
-      await expect(page.getByTestId('cta-candidater-ferme')).toBeDisabled();
+      // Hors periode, plus de bouton eteint : seule la raison reste ecrite.
+      await expect(page.getByTestId('cta-candidater')).toHaveCount(0);
       await expect(page.getByTestId('aucune-campagne')).toContainText('ne sont pas ouvertes');
     }
   });
 
-  test('« Découvrir le processus » amène réellement à la section', async ({ page }) => {
+  /**
+   * Ce que la page ne doit plus porter.
+   *
+   * Une suppression se verifie par l'absence, pas par la relecture du diff :
+   * un bloc retire d'un composant mais toujours servi par une autre branche du
+   * rendu ne se voit qu'ici.
+   */
+  test('les blocs retires ne sont plus rendus', async ({ page }) => {
+    await accueil(page);
+    const corps = await page.locator('body').innerText();
+
+    for (const trace of [
+      // Hero et appel a l'action final
+      'Candidatures fermees', 'Candidatures fermées', 'Decouvrir le processus', 'Découvrir le processus',
+      'Pret a presenter votre projet', 'Prêt à présenter votre projet', 'J’ai deja un compte', 'J’ai déjà un compte',
+      // Chiffres cles
+      'Candidats inscrits', 'Candidatures en cours', 'Candidatures soumises',
+      // Bloc en quatre points
+      'Un dossier en 9 étapes', 'Un dépôt officiel', 'Une évaluation annoncée', 'Des données protégées',
+      // Texte explicatif du parcours
+      'Vous remplissez votre dossier en neuf étapes',
+      // Descriptions sous « Resultats attendus »
+      'Collecte terrain', 'Indexation sécurisée', 'Orientation des usagers', 'Données géoréférencées',
+      // Colonnes de pied de page
+      'Liens rapides', 'Centre d’aide',
+    ]) {
+      expect(corps, `« ${trace} » est encore affiché`).not.toContain(trace);
+    }
+
+    await expect(page.getByTestId('chiffres-cles')).toHaveCount(0);
+    await expect(page.getByTestId('cta-final')).toHaveCount(0);
+    await expect(page.getByTestId('lien-processus')).toHaveCount(0);
+  });
+
+  test('les cinq conditions d’éligibilité sont affichées, dans l’ordre', async ({ page }) => {
     await accueil(page);
 
-    const lien = page.getByTestId('lien-processus');
-    await expect(lien).toHaveAttribute('href', '#processus');
+    const conditions = page.getByTestId('criteres-eligibilite').getByRole('listitem');
+    await expect(conditions).toHaveCount(5);
+    await expect(conditions.nth(0)).toContainText('18 à 35 ans');
+    await expect(conditions.nth(1)).toContainText('nationalité nigérienne');
+    await expect(conditions.nth(2)).toContainText('solution numérique innovante');
+    await expect(conditions.nth(3)).toContainText('complet, sincère et conforme');
+    await expect(conditions.nth(4)).toContainText('toutes les étapes de la compétition');
 
-    await lien.click();
-    await expect(page).toHaveURL(/#processus$/);
+    // Les criteres d'evaluation, eux, n'ont pas bouge.
+    await expect(page.getByTestId('critere-1')).toContainText('Pertinence');
+    await expect(page.getByTestId('critere-8')).toContainText('Équipe et pitch');
+  });
 
-    // La section est atteinte, et degagee de l'en-tete collant : son titre doit
-    // etre visible, pas cache sous la barre.
-    const section = page.locator('#processus');
-    await expect(section).toBeInViewport();
-    await expect(section.getByRole('heading', { name: /Comment candidater/i })).toBeInViewport();
+  test('le pied de page ne garde ni colonne vide ni centre d’aide', async ({ page }) => {
+    await accueil(page);
+    const pied = page.locator('footer');
+
+    await expect(pied).toContainText('Besoin d’Aide ?');
+    await expect(pied.getByRole('link', { name: '+227 99 99 93 19' })).toHaveAttribute('href', 'tel:+22799999319');
+    await expect(pied.getByRole('link', { name: 'hello@birningobe.ne' })).toHaveAttribute('href', 'mailto:hello@birningobe.ne');
+    await expect(pied).toContainText('Email :');
   });
 
   /**

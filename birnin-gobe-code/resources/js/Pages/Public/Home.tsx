@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowRight, Building2, CalendarDays, CheckCircle2, FileText, Lock, Map, MapPinned, PlayCircle, UserRound } from 'lucide-react';
+import { ArrowRight, Building2, CalendarDays, CheckCircle2, FileText, Lock, Map, MapPinned, UserRound } from 'lucide-react';
 import { PublicLayout } from '@/Layouts/PublicLayout';
-import { Button, Card, SectionTitle } from '@/Components/Ui';
+import { Card, SectionTitle } from '@/Components/Ui';
 import { AnimatedCounter } from '@/Components/AnimatedCounter';
 import { Reveal } from '@/Components/Reveal';
 import { HeroCarousel, type HeroImage } from '@/Components/HeroCarousel';
@@ -147,7 +147,7 @@ function clotureLisible(closesAt: string, timezone: string): string {
   return `${date} (${timezone})`;
 }
 
-export default function Home({ campaign, stats, themes, criteria }: {
+export default function Home({ campaign, themes, criteria }: {
   campaign: Campagne | null;
   stats: Chiffres;
   themes: Thematique[];
@@ -155,20 +155,6 @@ export default function Home({ campaign, stats, themes, criteria }: {
 }) {
   const restant = useCompteARebours(campaign?.closesAt ?? null);
   const depotOuvert = campaign !== null && restant !== null;
-
-  /**
-   * Les chiffres cles, tels que la base les compte.
-   *
-   * Aucun n'est arrondi, aucun n'est embelli, et zero s'affiche zero. « 5 000+
-   * jeunes impactes » et ses voisins ne mesuraient rien ; ceux-ci viennent de
-   * trois `count()` en PostgreSQL.
-   */
-  const chiffres = [
-    { valeur: stats.candidates, label: 'Candidats inscrits', aide: 'Comptes candidats créés' },
-    { valeur: stats.draftApplications, label: 'Candidatures en cours', aide: 'Dossiers commencés, non déposés' },
-    { valeur: stats.submittedApplications, label: 'Candidatures soumises', aide: 'Dossiers officiellement déposés' },
-    { valeur: stats.themes, label: 'Thématiques', aide: 'Domaines ouverts au concours' },
-  ];
 
   return (
     <PublicLayout>
@@ -194,10 +180,9 @@ export default function Home({ campaign, stats, themes, criteria }: {
               inclusif et durable.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3" id="candidater">
-              {/* Le bouton ne promet une candidature que s'il y en a une à
-                  déposer. Hors période, il est désactivé et la raison est dite —
-                  un lien qui mène à un formulaire fermé est pire qu'un bouton
-                  éteint. */}
+              {/* Le bouton ne promet une candidature que s'il y en a une a
+                  deposer. Hors periode il disparait, et la raison est dite
+                  juste en dessous. */}
               {depotOuvert ? (
                 <Link
                   href="/register"
@@ -206,20 +191,7 @@ export default function Home({ campaign, stats, themes, criteria }: {
                 >
                   Commencer ma candidature <ArrowRight size={17} />
                 </Link>
-              ) : (
-                <Button className="min-w-56" disabled data-testid="cta-candidater-ferme">Candidatures fermées</Button>
-              )}
-              {/* Une ancre native, pas un bouton décoratif : elle défile vers la
-                  section, se met en signet, s'ouvre dans un onglet et reste
-                  atteignable au clavier. Le défilement doux et le dégagement de
-                  l'en-tête collant sont dans app.css. */}
-              <a
-                href="#processus"
-                className="focus-ring press-feedback inline-flex min-h-11 min-w-48 items-center justify-center gap-2 rounded-xl border border-brand-900/35 bg-white px-5 text-sm font-bold text-brand-900 transition-colors hover:bg-slate-50"
-                data-testid="lien-processus"
-              >
-                <PlayCircle size={17} /> Découvrir le processus
-              </a>
+              ) : null}
             </div>
             {depotOuvert ? null : (
               <p className="mt-3 text-sm font-semibold text-slate-500" data-testid="aucune-campagne">
@@ -278,25 +250,10 @@ export default function Home({ campaign, stats, themes, criteria }: {
         </div>
       </section>
 
-      {/* ——— Chiffres clés ——— */}
-      <section className="mx-auto max-w-[1500px] px-6 py-10 lg:px-12 xl:px-16" id="chiffres">
-        <Reveal>
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 sm:grid-cols-4" data-testid="chiffres-cles">
-            {chiffres.map(({ valeur, label, aide }) => (
-              <div key={label} className="hover-lift bg-white px-4 py-5 text-center">
-                <div className="text-3xl font-black text-brand-800"><AnimatedCounter value={String(valeur)} /></div>
-                <div className="mt-1 text-[12px] font-bold text-slate-700">{label}</div>
-                <div className="mt-0.5 text-[11px] leading-4 text-slate-400">{aide}</div>
-              </div>
-            ))}
-          </div>
-        </Reveal>
-      </section>
 
-      {/* ——— À propos ——— */}
       <section className="border-y border-slate-100 bg-slate-50/60" id="à-propos">
         <div className="mx-auto max-w-[1500px] px-6 py-12 lg:px-12 xl:px-16">
-          <div className="grid gap-8 lg:grid-cols-[1fr_1fr]">
+          <div className="grid gap-8">
             <div>
               <SectionTitle eyebrow="À propos" title="Un concours national pour des services publics plus efficaces" />
               <p className="text-base leading-7 text-slate-600">
@@ -304,19 +261,6 @@ export default function Home({ campaign, stats, themes, criteria }: {
                 collectivités et les administrations. Les candidatures sont déposées, examinées puis évaluées
                 sur cette plateforme, selon un calendrier et des critères publiés à l’avance.
               </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                ['Un dossier en 9 étapes', 'Éligibilité, profil, équipe, défi, solution, impact, plan, pièces, relecture.'],
-                ['Un dépôt officiel', 'Numéro de candidature et date de dépôt, conservés et opposables.'],
-                ['Une évaluation annoncée', 'Huit critères connus dès le dépôt, publiés plus bas sur cette page.'],
-                ['Des données protégées', 'Accès selon le rôle, journalisation des décisions, hébergement au Niger.'],
-              ].map(([titre, texte]) => (
-                <Card key={titre} className="p-4">
-                  <div className="text-sm font-extrabold text-brand-950">{titre}</div>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">{texte}</p>
-                </Card>
-              ))}
             </div>
           </div>
         </div>
@@ -326,7 +270,7 @@ export default function Home({ campaign, stats, themes, criteria }: {
       <section className="mx-auto max-w-[1500px] px-6 py-12 lg:px-12 xl:px-16" id="thematiques">
         <SectionTitle eyebrow="Nos thématiques" title="Quatre domaines, des défis concrets" />
         <div className="grid gap-4 md:grid-cols-2">
-          {themes.map(({ key, title, problems, results }, index) => {
+          {themes.map(({ key, title, problems }, index) => {
             const Icone = iconesThematiques[key] ?? Building2;
 
             return (
@@ -343,7 +287,6 @@ export default function Home({ campaign, stats, themes, criteria }: {
                     </div>
                     <div>
                       <dt className="text-[11px] font-bold uppercase tracking-wide text-brand-700">Résultats attendus</dt>
-                      <dd className="mt-1 text-sm leading-6 text-slate-600">{results}</dd>
                     </div>
                   </dl>
                 </Card>
@@ -384,11 +327,17 @@ export default function Home({ campaign, stats, themes, criteria }: {
         <div className="grid gap-5 lg:grid-cols-2">
           <Reveal id="eligibilite"><Card className="h-full p-6">
             <SectionTitle eyebrow="Qui peut candidater ?" title="L'éligibilité en un coup d'œil" />
-            <ul className="space-y-3 text-sm leading-6 text-slate-700">
+            {/* Les cinq conditions officielles de l'edition, dans leur ordre et
+                leur formulation arretee. Contenu d'affichage : le moteur
+                d'eligibilite du serveur, les validations et les parametres
+                d'administration ne lisent rien d'ici. */}
+            <ul className="space-y-3 text-sm leading-6 text-slate-700" data-testid="criteres-eligibilite">
               {[
-                'Jeunes répondant aux règles de la campagne',
-                'Porteurs d’idées ou de projets innovants',
-                'Candidature individuelle, équipe ou startup',
+                'Être âgé(e) de 18 à 35 ans à la date de clôture des candidatures.',
+                'Être de nationalité nigérienne et résider au Niger.',
+                'Proposer une solution numérique innovante répondant à un défi des collectivités territoriales dans l’une des thématiques de Birnin Gobe.',
+                'Soumettre un dossier de candidature complet, sincère et conforme dans les délais fixés.',
+                'Être disponible et s’engager à participer à toutes les étapes de la compétition, individuellement ou au sein d’une équipe/start-up.',
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3">
                   <CheckCircle2 className="mt-0.5 shrink-0 text-brand-700" size={18} />{item}
@@ -453,44 +402,7 @@ export default function Home({ campaign, stats, themes, criteria }: {
               </li>
             ))}
           </ol>
-          <p className="mt-5 max-w-3xl text-sm leading-6 text-slate-600">
-            Vous remplissez votre dossier en neuf étapes, à votre rythme : tout est enregistré au fur et à
-            mesure. À la dernière étape, vous relisez l’ensemble puis déposez. Le dépôt est définitif et vous
-            recevez un numéro de candidature.
-          </p>
         </div>
-      </section>
-
-      {/* ——— Appel à l'action final ——— */}
-      <section className="mx-auto max-w-[1500px] px-6 py-14 lg:px-12 xl:px-16">
-        <Card className="p-7 text-center sm:p-10">
-          <h2 className="text-2xl font-black tracking-tight text-brand-950 sm:text-3xl">
-            Prêt à présenter votre projet ?
-          </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-            Créez votre compte, puis remplissez votre dossier étape par étape. Vous pourrez le reprendre autant
-            de fois que nécessaire avant de le déposer.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            {depotOuvert ? (
-              <Link
-                href="/register"
-                className="focus-ring press-feedback inline-flex min-h-11 min-w-56 items-center justify-center gap-2 rounded-xl bg-gold-500 px-5 text-sm font-bold text-ink-950 transition-colors hover:bg-gold-600"
-                data-testid="cta-final"
-              >
-                Commencer ma candidature <ArrowRight size={17} />
-              </Link>
-            ) : (
-              <Button className="min-w-56" disabled data-testid="cta-final-ferme">Candidatures fermées</Button>
-            )}
-            <Link
-              href="/login"
-              className="focus-ring press-feedback inline-flex min-h-11 min-w-44 items-center justify-center gap-2 rounded-xl border border-brand-900/35 bg-white px-5 text-sm font-bold text-brand-900 transition-colors hover:bg-slate-50"
-            >
-              <UserRound size={17} /> J’ai déjà un compte
-            </Link>
-          </div>
-        </Card>
       </section>
     </PublicLayout>
   );

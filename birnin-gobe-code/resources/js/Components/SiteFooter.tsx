@@ -1,9 +1,8 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { Link } from '@inertiajs/react';
-import { ArrowRight, ChevronDown, Clock3, Mail, MapPin, Phone } from 'lucide-react';
+import { ArrowRight, Clock3, Mail, MapPin, Phone } from 'lucide-react';
 import { BrandLogo } from '@/Components/Brand';
 import { Reveal } from '@/Components/Reveal';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useI18n } from '@/i18n';
 import {
   institutionalPartners,
@@ -11,8 +10,6 @@ import {
   legalLinks,
   prototypeApplyTarget,
   publicSiteLink,
-  quickLinks,
-  resourceLinks,
   supportLink,
   useSiteData,
   type SiteLink,
@@ -65,47 +62,6 @@ function FooterLink({ link, tone = 'column' }: { link: SiteLink; tone?: 'column'
   );
 }
 
-/** Colonne de liens : titre simple sur desktop, accordéon accessible sur mobile. */
-function FooterColumn({ title, links }: { title: string; links: SiteLink[] }) {
-  const isDesktop = useMediaQuery('(min-width: 768px)');
-  const [open, setOpen] = useState(false);
-  const panelId = useId();
-  const expanded = isDesktop || open;
-
-  const heading = <span className="text-[12px] font-extrabold uppercase tracking-[.16em] text-white">{title}</span>;
-
-  return (
-    <div className="border-b border-white/10 pb-3 md:border-0 md:pb-0">
-      {isDesktop ? (
-        <h3 className="py-1">{heading}</h3>
-      ) : (
-        <h3>
-          <button
-            type="button"
-            className="focus-ring flex min-h-11 w-full items-center justify-between gap-3 rounded-md text-left"
-            aria-expanded={open}
-            aria-controls={panelId}
-            onClick={() => setOpen((value) => !value)}
-          >
-            {heading}
-            <ChevronDown size={18} className={`shrink-0 text-white/60 transition-transform ${open ? 'rotate-180' : ''}`} />
-          </button>
-        </h3>
-      )}
-      <div id={panelId} className="footer-collapse" data-open={expanded} inert={!expanded}>
-        <div>
-          <ul className="flex flex-col gap-3 pb-1 pt-3 md:pt-5">
-            {links.map((link) => (
-              <li key={link.key}>
-                <FooterLink link={link} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ApplyCta() {
   const t = useI18n();
@@ -204,7 +160,7 @@ function PublicFooter() {
           <ApplyCta />
         </Reveal>
 
-        <div className="grid gap-x-10 gap-y-6 py-10 md:grid-cols-2 md:gap-y-10 lg:grid-cols-[1.7fr_1fr_1fr_1.2fr] lg:py-14">
+        <div className="grid gap-x-10 gap-y-6 py-10 md:grid-cols-2 md:gap-y-10 lg:grid-cols-[1.7fr_1.2fr] lg:py-14">
           <Reveal>
             <div className="inline-flex rounded-2xl bg-white p-3">
               <BrandLogo size="footer" />
@@ -213,34 +169,20 @@ function PublicFooter() {
             <ContactBlock />
           </Reveal>
 
-          <Reveal delay={80}>
-            <FooterColumn title={t.footer.quickLinks} links={quickLinks} />
-          </Reveal>
-          <Reveal delay={140}>
-            <FooterColumn title={t.footer.resources} links={resourceLinks} />
-          </Reveal>
-
           <Reveal delay={200}>
             <h3 className="text-[12px] font-extrabold uppercase tracking-[.16em] text-white">{t.footer.help}</h3>
-            <p className="mt-4 text-sm leading-6 text-white/75">{t.footer.helpText}</p>
-            <div className="mt-4">
-              {supportLink.href ? (
-                <a
-                  href={supportLink.href}
-                  className="focus-ring group inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/25 px-5 text-sm font-bold text-white transition-colors hover:border-gold-500 hover:text-gold-500"
-                >
-                  {t.footer.helpCta}
-                  <ArrowRight size={16} className="transition-transform duration-200 group-hover:translate-x-1" />
-                </a>
-              ) : (
-                <span className="inline-flex flex-wrap items-center gap-2 text-sm text-white/60">
-                  {t.footer.helpCta}
-                  <span className="rounded-full border border-white/25 px-2 py-px text-[10px] font-semibold uppercase tracking-wide">
-                    {t.footer.comingSoon}
-                  </span>
-                </span>
-              )}
-            </div>
+            <p className="mt-4 text-sm leading-6 text-white/75">
+              {t.footer.helpText}{' '}
+              <a href={`tel:${t.footer.helpPhone.replace(/\s/g, '')}`} className="focus-ring rounded-sm font-bold text-white hover:text-gold-500">
+                {t.footer.helpPhone}
+              </a>
+            </p>
+            <p className="mt-3 text-sm leading-6 text-white/75">
+              {t.footer.helpEmailLabel}{' '}
+              <a href={`mailto:${t.footer.helpEmail}`} className="focus-ring rounded-sm font-bold text-white hover:text-gold-500">
+                {t.footer.helpEmail}
+              </a>
+            </p>
           </Reveal>
         </div>
 
