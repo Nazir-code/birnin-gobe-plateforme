@@ -200,6 +200,10 @@ final class ApplicationPresenter
             ApplicationSection::IMPACT => route('candidate.application.impact', $application),
             ApplicationSection::IMPLEMENTATION => route('candidate.application.implementation', $application),
             ApplicationSection::ATTACHMENTS => route('candidate.application.attachments', $application),
+            // Sans cette ligne, l'enum a beau declarer l'etape 9 ouverte, le
+            // bouton « Suivant » de l'etape 8 recevrait `null` et resterait
+            // absent : `navigation()` passe par ici pour resoudre la cible.
+            ApplicationSection::REVIEW => route('candidate.application.review', $application),
             default => null,
         };
     }

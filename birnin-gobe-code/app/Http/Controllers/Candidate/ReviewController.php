@@ -100,7 +100,17 @@ final class ReviewController
 
                 return [
                     ...$section,
-                    'editUrl' => $cas->isImplemented() ? $presenter->sectionUrl($application, $cas) : null,
+                    // « Modifier » renvoie vers les réponses d'une étape. La
+                    // relecture n'en enregistre aucune, et l'écran est celui
+                    // qu'on est en train de lire : lui donner un lien
+                    // reviendrait à proposer au candidat de se corriger
+                    // lui-même. Elle est donc écartée ici, et non dans
+                    // `sectionUrl()`, qui répond à une autre question — où
+                    // vit cette étape — et dont dépend le bouton « Suivant »
+                    // de l'étape 8.
+                    'editUrl' => $cas->isImplemented() && $cas !== ApplicationSection::REVIEW
+                        ? $presenter->sectionUrl($application, $cas)
+                        : null,
                 ];
             },
             $lecture->sections($application),

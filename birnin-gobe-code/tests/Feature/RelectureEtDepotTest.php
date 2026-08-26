@@ -120,7 +120,11 @@ final class RelectureEtDepotTest extends TestCase
             ->for($campagne)
             ->for($candidat ?? User::factory(), 'candidate');
 
-        foreach (ApplicationSection::openPath() as $section) {
+        // Les sections de **contenu**, pas le parcours ouvert : depuis que
+        // l'étape 9 y figure, itérer `openPath()` écrirait une ligne
+        // « review » que rien n'écrit jamais en vrai. `requiredSections()`
+        // décrit exactement ce qu'un dossier doit porter, et elle l'exclut.
+        foreach (SubmissionReadiness::requiredSections() as $section) {
             if ($section === ApplicationSection::ATTACHMENTS) {
                 continue;
             }

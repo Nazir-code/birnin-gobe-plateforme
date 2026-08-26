@@ -190,10 +190,10 @@ test.describe('Étape 8 — Pièces / déclarations', () => {
     await expect(page).toHaveURL(/\/candidate\/application\/\d+\/attachments$/);
     const urlPieces = page.url();
 
-    // Le parcours s'arrete honnetement ici : l'etape 9 n'est pas ouverte, et
-    // aucun bouton de depot ne vit sur cet ecran.
-    await expect(page.getByTestId('suivant')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^suivant/i })).toBeDisabled();
+    // Le parcours continue vers la relecture : « Suivant » y mene. Ce qui reste
+    // vrai, en revanche, c'est qu'aucun bouton de depot ne vit sur cet ecran —
+    // deposer appartient a l'etape 9.
+    await expect(page.getByTestId('suivant')).toHaveAttribute('href', /\/review$/);
     await expect(page.getByRole('button', { name: /soumettre|déposer/i })).toHaveCount(0);
 
     // Six pieces proposees ; une seule exigee d'un porteur individuel.
