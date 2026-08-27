@@ -102,7 +102,7 @@ final class ThematiqueProjetTest extends TestCase
 
         $this->assertSame([
             'Gestion urbaine et services de base',
-            'Gestion foncière et cadastrale',
+            'Gestion cadastrale',
             'État civil et services administratifs',
             'Cartographie, géolocalisation, risques et résilience',
         ], array_map(static fn (ProjectTheme $t): string => $t->label(), ProjectTheme::cases()));
@@ -175,7 +175,7 @@ final class ThematiqueProjetTest extends TestCase
     {
         return [
             'thématique inventée' => ['agroalimentaire'],
-            'libellé officiel au lieu du code' => ['Gestion foncière et cadastrale'],
+            'libellé officiel au lieu du code' => ['Gestion cadastrale'],
             'code approchant' => ['gestion_urbaine'],
             'casse différente' => ['FONCIER'],
             'chaîne arbitraire' => ['<script>alert(1)</script>'],
@@ -351,7 +351,7 @@ final class ThematiqueProjetTest extends TestCase
                 ->where('themes.0.problems', 'Signalement et suivi des déchets, voirie, caniveaux, éclairage, équipements, interventions et relation citoyenne.')
                 ->where('themes.0.results', 'Collecte terrain, priorisation, affectation, traçabilité et tableau de bord opérationnel.')
                 ->where('themes.1.key', 'foncier')
-                ->where('themes.1.title', 'Gestion foncière et cadastrale')
+                ->where('themes.1.title', 'Gestion cadastrale')
                 ->where('themes.2.key', 'etat-civil')
                 ->where('themes.2.title', 'État civil et services administratifs')
                 ->where('themes.3.key', 'cartographie')

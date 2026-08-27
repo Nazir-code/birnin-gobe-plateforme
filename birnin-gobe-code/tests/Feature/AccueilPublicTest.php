@@ -218,7 +218,7 @@ final class AccueilPublicTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->has('themes', 4)
                 ->where('themes.0.title', 'Gestion urbaine et services de base')
-                ->where('themes.1.title', 'Gestion foncière et cadastrale')
+                ->where('themes.1.title', 'Gestion cadastrale')
                 ->where('themes.2.title', 'État civil et services administratifs')
                 ->where('themes.3.title', 'Cartographie, géolocalisation, risques et résilience')
                 // Les deux volets restent distincts, et le premier est cité au mot près.

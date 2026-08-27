@@ -17,9 +17,9 @@ namespace App\Domain\Application;
  * cette enum. Il n'y a plus qu'un endroit à modifier, et il est typé.
  *
  * **Les valeurs persistées sont des codes stables**, jamais les libellés. Un
- * dossier enregistre `foncier`, pas « Gestion foncière et cadastrale » : le
- * libellé peut être reformulé sans réécrire une seule ligne en base, et le
- * contrat du dépôt — aucun libellé français comme valeur métier — est tenu.
+ * dossier enregistre `foncier`, pas « Gestion cadastrale » : le libellé peut
+ * être reformulé sans réécrire une seule ligne en base, et le contrat du
+ * dépôt — aucun libellé français comme valeur métier — est tenu.
  * Ces quatre codes sont exactement ceux que le portail servait déjà : les
  * changer aurait modifié le contenu public, ce que cette phase s'interdit.
  *
@@ -43,7 +43,7 @@ enum ProjectTheme: string
     {
         return match ($this) {
             self::URBAN_MANAGEMENT => 'Gestion urbaine et services de base',
-            self::LAND_REGISTRY => 'Gestion foncière et cadastrale',
+            self::LAND_REGISTRY => 'Gestion cadastrale',
             self::CIVIL_REGISTRY => 'État civil et services administratifs',
             self::MAPPING_RESILIENCE => 'Cartographie, géolocalisation, risques et résilience',
         };
