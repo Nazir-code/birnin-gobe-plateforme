@@ -13,6 +13,7 @@ use App\Domain\Application\ProjectTheme;
 use App\Domain\Application\SolutionSection;
 use App\Domain\Auth\UserRole;
 use App\Domain\Candidate\CandidateType;
+use App\Domain\Candidate\Gender;
 use App\Domain\Reference\NigerRegion;
 use App\Models\Application;
 use App\Models\ApplicationSectionAnswers;
@@ -564,6 +565,7 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
     {
         return [
             'birth_place' => 'Niamey',
+            'gender' => Gender::FEMALE->value,
             'phone_primary' => '90 12 34 56',
             'preferred_channel' => 'SMS',
             'residence_region' => NigerRegion::NIAMEY->value,
@@ -594,7 +596,6 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
             SolutionSection::KEY_FEATURES => 'Signalement SMS, tableau de bord communal, alerte au technicien.',
             SolutionSection::INNOVATION => 'Les signalements se perdent aujourd’hui ; ici tout est tracé.',
             SolutionSection::MATURITY_STAGE => MaturityStage::PROTOTYPE->value,
-            SolutionSection::PROTOTYPE_STATUS => 'Une version SMS tourne depuis trois mois sur deux quartiers.',
             SolutionSection::TECHNOLOGIES => 'Passerelle SMS, PostgreSQL, interface web légère.',
         ];
     }

@@ -162,9 +162,12 @@ function PublicFooter() {
 
         <div className="grid gap-x-10 gap-y-6 py-10 md:grid-cols-2 md:gap-y-10 lg:grid-cols-[1.7fr_1.2fr] lg:py-14">
           <Reveal>
-            <div className="inline-flex rounded-2xl bg-white p-3">
+            {/* Comme dans l'en-tete : le logo ramene a l'accueil public.
+                `aria-label` nomme la destination — le texte alternatif de
+                l'image decrit la marque, pas ou le lien mene. */}
+            <Link href="/" className="focus-ring inline-flex rounded-2xl bg-white p-3" aria-label="Retour à l'accueil BIRNIN GOBE">
               <BrandLogo size="footer" />
-            </div>
+            </Link>
             <p className="mt-5 max-w-md text-sm leading-6 text-white/75">{t.footer.about}</p>
             <ContactBlock />
           </Reveal>

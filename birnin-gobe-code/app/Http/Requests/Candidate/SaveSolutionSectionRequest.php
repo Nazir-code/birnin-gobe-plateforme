@@ -35,7 +35,6 @@ final class SaveSolutionSectionRequest extends FormRequest
             SolutionSection::USAGE_SCENARIO => 'scénario d’usage',
             SolutionSection::INNOVATION => 'caractère innovant',
             SolutionSection::MATURITY_STAGE => 'stade de maturité',
-            SolutionSection::PROTOTYPE_STATUS => 'état du prototype',
             SolutionSection::TECHNOLOGIES => 'technologies',
             SolutionSection::INTEROPERABILITY => 'interopérabilité',
         ];

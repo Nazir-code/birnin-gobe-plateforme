@@ -5,6 +5,7 @@ import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
 import { SaveIndicator } from '@/Components/SaveIndicator';
+import { SaveConfirmation } from '@/Components/SaveConfirmation';
 import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAside';
 import { BarreNavigation, Champ, DejaRenseigne, EnteteSection, EtatSection, Groupe, Redaction, saisie } from '@/Components/SectionForm';
 import { useAuthUser } from '@/hooks/useAuth';
@@ -50,7 +51,7 @@ export default function Implementation({
   const user = useAuthUser();
   const [values, setValues] = useState<Answers>(answers);
 
-  const { state, savedAt, errors, flush, save } = useAutosave<Answers>(saveUrl, values);
+  const { state, savedAt, errors, confirmation, flush, save, acquitter } = useAutosave<Answers>(saveUrl, values);
 
   const set = (champ: keyof Answers) => (valeur: string) => setValues((v) => ({ ...v, [champ]: valeur }));
   const requis = (champ: keyof Answers) => requiredFields.includes(champ);
@@ -107,7 +108,7 @@ export default function Implementation({
                 </Card></Reveal>
 
                 <Reveal delay={60}><Card className="p-6 sm:p-7">
-                  <Groupe icone={<Boxes size={18} />} titre="Moyens et partenaires" aide="Ce dont vous disposez, et sur qui vous vous appuyez." />
+                  <Groupe icone={<Boxes size={18} />} titre="Moyens et partenaires" />
 
                   <Redaction nom="resources" label="De quels moyens avez-vous besoin ?"
                     aide="Matériel, locaux, connectivité, compétences externes. Votre équipe a été décrite à l’étape 3, inutile de la reprendre ici."
@@ -187,6 +188,7 @@ export default function Implementation({
           </div>
         </div>
       </div>
+      <SaveConfirmation confirmation={confirmation} onAcquitter={acquitter} />
     </CandidateLayout>
   );
 }

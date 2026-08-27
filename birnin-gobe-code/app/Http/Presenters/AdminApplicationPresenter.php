@@ -429,7 +429,6 @@ final class AdminApplicationPresenter
             ['label' => 'Scénario d’usage', 'value' => $this->texte($r[SolutionSection::USAGE_SCENARIO] ?? null)],
             ['label' => 'Différenciation', 'value' => $this->texte($r[SolutionSection::INNOVATION] ?? null)],
             ['label' => 'Stade de maturité', 'value' => $this->enum(MaturityStage::class, $r[SolutionSection::MATURITY_STAGE] ?? null)],
-            ['label' => 'État du prototype', 'value' => $this->texte($r[SolutionSection::PROTOTYPE_STATUS] ?? null)],
             ['label' => 'Technologies', 'value' => $this->texte($r[SolutionSection::TECHNOLOGIES] ?? null)],
             ['label' => 'Interopérabilité', 'value' => $this->texte($r[SolutionSection::INTEROPERABILITY] ?? null)],
         ];

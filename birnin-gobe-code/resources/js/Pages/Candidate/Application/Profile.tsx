@@ -5,6 +5,7 @@ import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Button, Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
 import { SaveIndicator } from '@/Components/SaveIndicator';
+import { SaveConfirmation } from '@/Components/SaveConfirmation';
 import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAside';
 import { useAuthUser } from '@/hooks/useAuth';
 import { useAutosave } from '@/hooks/useAutosave';
@@ -71,7 +72,7 @@ export default function Profile({
   const user = useAuthUser();
   const [values, setValues] = useState<Answers>(answers);
 
-  const { state, savedAt, errors, flush } = useAutosave<Answers>(saveUrl, values);
+  const { state, savedAt, errors, confirmation, flush, save, acquitter } = useAutosave<Answers>(saveUrl, values);
 
   const set = (champ: keyof Answers) => (valeur: string) => setValues((v) => ({ ...v, [champ]: valeur }));
   const requis = (champ: keyof Answers) => requiredFields.includes(champ);
@@ -108,10 +109,10 @@ export default function Profile({
                       onChange={(e) => set('birth_place')(e.target.value)} onBlur={flush} />
                   </Champ>
 
-                  <Champ nom="gender" label="Sexe" aide="Facultatif. Utilisé uniquement pour le suivi statistique de l’inclusion, jamais pour la notation." requis={false} erreur={errors.gender}>
+                  <Champ nom="gender" label="Sexe" aide="Utilisé uniquement pour le suivi statistique de l’inclusion, jamais pour la notation." requis={requis('gender')} erreur={errors.gender}>
                     <select id="gender" name="gender" className={saisie(errors.gender)} value={values.gender}
                       onChange={(e) => { set('gender')(e.target.value); }} onBlur={flush}>
-                      <option value="">Ne pas renseigner</option>
+                      <option value="">Sélectionnez une option</option>
                       {genders.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </Champ>
@@ -184,7 +185,7 @@ export default function Profile({
                 </Card></Reveal>
 
                 <Reveal delay={240}><Card className="p-6 sm:p-7">
-                  <Groupe icone={<Accessibility size={18} />} titre="Accessibilité" aide="Facultatif, et visible uniquement par l’équipe d’assistance." />
+                  <Groupe icone={<Accessibility size={18} />} titre="Handicap" aide="Facultatif, et visible uniquement par l’équipe d’assistance." />
 
                   <Champ nom="accessibility_need" label="Avez-vous besoin d’un aménagement particulier ?" aide="Pour déposer votre dossier, échanger avec l’équipe ou présenter votre projet." requis={false} erreur={errors.accessibility_need}>
                     <textarea id="accessibility_need" name="accessibility_need" maxLength={longTextMax}
@@ -202,7 +203,7 @@ export default function Profile({
                         <ArrowLeft size={16} /> Précédent
                       </Link>
                     ) : null}
-                    <Button variant="ghost" type="button" onClick={flush}><Save size={17} /> Enregistrer</Button>
+                    <Button variant="ghost" type="button" onClick={save}><Save size={17} /> Enregistrer</Button>
                   </div>
                   {nextUrl ? (
                     <Link href={nextUrl} onClick={flush} data-testid="suivant"
@@ -262,6 +263,7 @@ export default function Profile({
           </div>
         </div>
       </div>
+      <SaveConfirmation confirmation={confirmation} onAcquitter={acquitter} />
     </CandidateLayout>
   );
 }

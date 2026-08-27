@@ -27,12 +27,18 @@ export function PublicLayout({ children }: PropsWithChildren) {
     <div className="flex min-h-screen flex-col bg-white">
       <header className="sticky top-0 z-40 border-b border-black/5 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-[104px] max-w-[1500px] items-center justify-between gap-5 px-5 lg:px-10">
-          <BrandLogo size="header" />
+          {/* Meme geste que sur les ecrans d'authentification : le logo ramène
+              à l'accueil public. `aria-label` porte le nom accessible du lien —
+              sans lui, un lecteur d'ecran lirait le seul texte alternatif de
+              l'image, qui decrit la marque et non la destination. */}
+          <Link href="/" className="focus-ring rounded-lg" aria-label="Retour à l'accueil BIRNIN GOBE">
+            <BrandLogo size="header" />
+          </Link>
           <nav className="hidden items-center gap-6 xl:flex" aria-label="Navigation principale">
             {/* Mêmes destinations que le pied de page (config/site.ts) : une rubrique
                 sans route réelle n'apparaît pas, plutôt que de pointer vers une ancre morte. */}
             {navLinks.map((link, index) => (
-              <a key={link.key} href={link.href} className={`focus-ring whitespace-nowrap rounded-md text-[15px] font-semibold ${index === 0 ? 'text-brand-800' : 'text-slate-700 hover:text-brand-800'}`}>
+              <a key={link.key} href={link.href} className={`focus-ring nav-souligne whitespace-nowrap rounded-md text-[15px] font-semibold ${index === 0 ? 'text-brand-800' : 'text-slate-700 hover:text-brand-800'}`}>
                 {t.footer.links[link.key]}
               </a>
             ))}
@@ -70,10 +76,10 @@ export function PublicLayout({ children }: PropsWithChildren) {
                 <li key={link.key}>
                   <a
                     href={link.href}
-                    className="focus-ring flex min-h-12 items-center rounded-lg px-3 text-base font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-900"
+                    className="focus-ring nav-souligne-parent flex min-h-12 items-center rounded-lg px-3 text-base font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-900"
                     onClick={() => setMenuOpen(false)}
                   >
-                    {t.footer.links[link.key]}
+                    <span className="nav-souligne">{t.footer.links[link.key]}</span>
                   </a>
                 </li>
               ))}

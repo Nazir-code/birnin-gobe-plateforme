@@ -12,23 +12,22 @@ namespace App\Domain\Candidate;
  * question, conformément au §6 (« tout champ sensible devra être justifié par
  * une finalité précise »).
  *
- * D'où `NOT_DISCLOSED` : le champ reste facultatif et le refus de répondre est
- * une réponse à part entière, pas un vide qu'on interpréterait. Le §11 rappelle
- * d'ailleurs que ces données ne servent qu'agrégées, et le §6.2 qu'« aucune
+ * Deux valeurs, et aucun troisième cas pour refuser de répondre : le champ est
+ * obligatoire, et la section « Profil » n'est complète qu'une fois renseigné
+ * (voir ProfileSection::REQUIRED_FIELDS). Ce que cela ne change pas : le §11
+ * rappelle que ces données ne servent qu'agrégées, et le §6.2 qu'« aucune
  * décision automatisée défavorable » ne peut s'y appuyer.
  */
 enum Gender: string
 {
     case FEMALE = 'FEMALE';
     case MALE = 'MALE';
-    case NOT_DISCLOSED = 'NOT_DISCLOSED';
 
     public function label(): string
     {
         return match ($this) {
             self::FEMALE => 'Femme',
             self::MALE => 'Homme',
-            self::NOT_DISCLOSED => 'Je préfère ne pas répondre',
         };
     }
 

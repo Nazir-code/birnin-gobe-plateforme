@@ -98,6 +98,7 @@ async function remplirLeDossier(page: Page) {
   await page.getByTestId('suivant').click();
   await expect(page).toHaveURL(/\/profile$/);
   await page.getByLabel(/Où êtes-vous né/).fill('Niamey');
+  await page.getByLabel(/^Sexe/).selectOption({ label: 'Femme' });
   await page.getByLabel('Téléphone principal').fill('90 12 34 56');
   await page.getByLabel(/Comment préférez-vous être contacté/).selectOption({ label: 'SMS' });
   await page.getByLabel('Région de résidence').selectOption({ label: 'Niamey' });
@@ -137,7 +138,6 @@ async function remplirLeDossier(page: Page) {
   await page.getByLabel(/fonctionnalités principales/).fill('Signalement SMS, tableau de bord communal, alerte au technicien.');
   await page.getByLabel(/distingue de ce qui existe/).fill('Les signalements se perdent aujourd’hui ; ici tout est tracé.');
   await page.getByLabel(/À quel stade en êtes-vous/).selectOption({ label: 'Prototype — une première version existe' });
-  await page.getByLabel(/où en est concrètement votre prototype/i).fill('Une version SMS tourne depuis trois mois sur deux quartiers.');
   await page.getByLabel(/quelles technologies repose/i).fill('Passerelle SMS, PostgreSQL, interface web légère.');
   await page.getByLabel(/quelles technologies repose/i).blur();
   await solution;

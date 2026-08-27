@@ -75,15 +75,21 @@ final class ProfileSection
     /**
      * Champs sans lesquels la section n'est pas faite.
      *
-     * Le sexe et le besoin d'accessibilité en sont volontairement absents :
-     * le premier est conditionnel (§6.1 « si requis pour statistiques »), le
-     * second explicitement facultatif (§6.1 « champ facultatif »). Le téléphone
-     * secondaire et la spécialité sont, eux, des compléments.
+     * Le besoin d'accessibilité en est volontairement absent : le §6.1 le dit
+     * explicitement facultatif (« champ facultatif »). Le téléphone secondaire et
+     * la spécialité sont, eux, des compléments.
+     *
+     * Le sexe, lui, y figure. Le §6.1 le pose sous condition (« si requis pour
+     * statistiques ») et la condition est remplie : le tableau de bord de campagne
+     * suit les candidatures féminines (§9.1) et le reporting agrège par sexe
+     * (§11). `Gender` n'offre donc plus de refus de répondre : deux valeurs, et
+     * une réponse attendue.
      *
      * @var list<string>
      */
     public const REQUIRED_FIELDS = [
         self::BIRTH_PLACE,
+        self::GENDER,
         self::PHONE_PRIMARY,
         self::PREFERRED_CHANNEL,
         self::RESIDENCE_REGION,

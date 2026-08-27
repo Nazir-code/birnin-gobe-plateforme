@@ -5,6 +5,7 @@ import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Button, Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
 import { SaveIndicator } from '@/Components/SaveIndicator';
+import { SaveConfirmation } from '@/Components/SaveConfirmation';
 import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAside';
 import { useAuthUser } from '@/hooks/useAuth';
 import { useAutosave } from '@/hooks/useAutosave';
@@ -55,7 +56,7 @@ export default function Challenge({ steps, section, answers, regions, themes, ma
   // `values` vient de `useState` : son identite ne change qu'a la saisie, donc
   // le minuteur de la sauvegarde automatique n'est relance que sur une vraie
   // modification, pas a chaque rendu.
-  const { state, savedAt, errors, flush } = useAutosave<Answers>(saveUrl, values);
+  const { state, savedAt, errors, confirmation, flush, save, acquitter } = useAutosave<Answers>(saveUrl, values);
 
   const set = (champ: keyof Answers) => (valeur: string) => setValues((v) => ({ ...v, [champ]: valeur }));
 
@@ -101,7 +102,7 @@ export default function Challenge({ steps, section, answers, regions, themes, ma
                         <ArrowLeft size={16} /> Précédent
                       </Link>
                     ) : null}
-                    <Button variant="ghost" type="button" onClick={flush}><Save size={17}/> Enregistrer</Button>
+                    <Button variant="ghost" type="button" onClick={save}><Save size={17}/> Enregistrer</Button>
                   </div>
                   {/* Cette section a ete developpee avant l'etape 3 : elle vit
                       hors du parcours propose, et rien ne la suit encore. Un
@@ -126,6 +127,7 @@ export default function Challenge({ steps, section, answers, regions, themes, ma
           </div>
         </div>
       </div>
+      <SaveConfirmation confirmation={confirmation} onAcquitter={acquitter} />
     </CandidateLayout>
   );
 }

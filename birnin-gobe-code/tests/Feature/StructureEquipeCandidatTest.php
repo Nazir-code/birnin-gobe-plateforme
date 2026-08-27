@@ -10,6 +10,7 @@ use App\Domain\Application\ProjectTheme;
 use App\Domain\Application\TeamSection;
 use App\Domain\Auth\UserRole;
 use App\Domain\Candidate\CandidateType;
+use App\Domain\Candidate\Gender;
 use App\Domain\Reference\NigerRegion;
 use App\Models\Application;
 use App\Models\ApplicationSectionAnswers;
@@ -818,6 +819,7 @@ final class StructureEquipeCandidatTest extends TestCase
     {
         return [
             'birth_place' => 'Tahoua',
+            'gender' => Gender::FEMALE->value,
             'phone_primary' => '90 12 34 56',
             'preferred_channel' => 'SMS',
             'residence_region' => NigerRegion::NIAMEY->value,

@@ -16,14 +16,17 @@ use Illuminate\Validation\Rule;
  *     scénario d'usage, architecture simplifiée, différenciation et état du
  *     prototype ».
  *
- * Deux allocations méritent d'être dites, parce qu'elles évitent de poser deux
+ * Trois allocations méritent d'être dites, parce qu'elles évitent de poser deux
  * fois la même question au candidat :
  *
  *   « utilisateurs » (§7.1 Solution) n'est pas redemandé ici. L'étape 4 recueille
  *     déjà qui subit le défi, et l'étape 6 demande qui bénéficiera de la solution
  *     — une troisième variante de la même question n'apporterait rien ;
  *   « architecture simplifiée » n'est pas un champ de texte : c'est un schéma,
- *     qui relève des pièces jointes du §7.2 — donc de l'étape 8.
+ *     qui relève des pièces jointes du §7.2 — donc de l'étape 8 ;
+ *   « état du prototype » (§7.1 Solution) n'est plus un champ : le stade de
+ *     maturité, juste au-dessus, situe déjà le projet, et la pièce
+ *     « Prototype / démonstration » de l'étape 8 en porte la preuve.
  *
  * Le reste de la rubrique Technique du §7.1 — hébergement, connectivité, mode
  * hors ligne, sécurité, données manipulées, dépendances, propriété
@@ -57,9 +60,6 @@ final class SolutionSection
     /** Stade de maturité (§5.2 étape 5 ; §7.1 Identification). Liste contrôlée. */
     public const MATURITY_STAGE = 'maturity_stage';
 
-    /** État du prototype (§5.2 étape 5 ; §7.1 Solution). */
-    public const PROTOTYPE_STATUS = 'prototype_status';
-
     /** Technologies employées (§5.2 étape 5 ; §7.1 Technique). */
     public const TECHNOLOGIES = 'technologies';
 
@@ -90,7 +90,6 @@ final class SolutionSection
         self::KEY_FEATURES,
         self::INNOVATION,
         self::MATURITY_STAGE,
-        self::PROTOTYPE_STATUS,
         self::TECHNOLOGIES,
     ];
 
@@ -104,7 +103,6 @@ final class SolutionSection
             self::USAGE_SCENARIO,
             self::INNOVATION,
             self::MATURITY_STAGE,
-            self::PROTOTYPE_STATUS,
             self::TECHNOLOGIES,
             self::INTEROPERABILITY,
         ];
@@ -135,7 +133,6 @@ final class SolutionSection
             self::USAGE_SCENARIO => $texteLong,
             self::INNOVATION => $texteLong,
             self::MATURITY_STAGE => ['nullable', 'string', Rule::enum(MaturityStage::class)],
-            self::PROTOTYPE_STATUS => $texteLong,
             self::TECHNOLOGIES => $texteLong,
             self::INTEROPERABILITY => $texteLong,
         ];

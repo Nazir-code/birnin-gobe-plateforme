@@ -130,6 +130,7 @@ async function allerJusquAuDefi(page: Page) {
 async function remplirProfil(page: Page) {
   await attendreSection(page, 'profile', true, async () => {
     await page.getByLabel(/Où êtes-vous né/).fill('Niamey');
+    await page.getByLabel(/^Sexe/).selectOption({ label: 'Femme' });
     await page.getByLabel('Téléphone principal').fill('90 12 34 56');
     await page.getByLabel(/Comment préférez-vous être contacté/).selectOption({ label: 'SMS' });
     await page.getByLabel('Région de résidence').selectOption({ label: 'Niamey' });
@@ -146,7 +147,6 @@ async function remplirSolution(page: Page) {
   await page.getByLabel(/fonctionnalités principales/).fill('Signalement SMS, tableau de bord communal, alerte au technicien.');
   await page.getByLabel(/distingue de ce qui existe/).fill('Les signalements se perdent aujourd’hui ; ici tout est tracé.');
   await page.getByLabel(/À quel stade en êtes-vous/).selectOption({ label: 'Prototype — une première version existe' });
-  await page.getByLabel(/où en est concrètement votre prototype/i).fill('Une version SMS tourne depuis trois mois sur deux quartiers.');
   await page.getByLabel(/quelles technologies repose/i).fill('Passerelle SMS, PostgreSQL, interface web légère.');
 }
 
@@ -199,9 +199,8 @@ test.describe('Étapes 5 à 7 — Solution, Impact, Plan', () => {
     await expect(page).toHaveURL(/\/candidate\/application\/\d+\/impact$/);
     const urlImpact = page.url();
 
-    // Le nom de la solution vient de l'etape 5, et l'ecran dit qu'il ne note rien.
+    // Le nom de la solution vient de l'etape 5.
     await expect(page.getByTestId('deja-renseigne')).toContainText('Ruwa Link');
-    await expect(page.getByTestId('pas-de-notation')).toContainText('ne vous note pas');
 
     await remplirImpact(page);
     await enregistrerEtAttendre(page, 'impact', true);

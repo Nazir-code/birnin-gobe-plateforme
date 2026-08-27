@@ -5,6 +5,7 @@ import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
 import { SaveIndicator } from '@/Components/SaveIndicator';
+import { SaveConfirmation } from '@/Components/SaveConfirmation';
 import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAside';
 import { BarreNavigation, EnteteSection, Groupe } from '@/Components/SectionForm';
 import { useAuthUser } from '@/hooks/useAuth';
@@ -86,7 +87,7 @@ export default function Attachments({
   const [etats, setEtats] = useState<Record<string, EtatPiece>>({});
   const [erreurs, setErreurs] = useState<Record<string, string>>({});
 
-  const { state, savedAt, errors, flush, save } = useAutosave<Declarations, {
+  const { state, savedAt, errors, confirmation, flush, save, acquitter } = useAutosave<Declarations, {
     documents: Record<string, StoredDocument>;
     missing: { documents: string[]; declarations: string[] };
   }>(saveUrl, values);
@@ -269,6 +270,7 @@ export default function Attachments({
           </div>
         </div>
       </div>
+      <SaveConfirmation confirmation={confirmation} onAcquitter={acquitter} />
     </CandidateLayout>
   );
 }

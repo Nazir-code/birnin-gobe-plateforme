@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { AlertTriangle, Check, ChevronDown, CircleAlert, CircleHelp, Info, Save, UserCircle2 } from 'lucide-react';
+import { Check, ChevronDown, Save, UserCircle2 } from 'lucide-react';
 import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Button, Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
 import { SaveIndicator } from '@/Components/SaveIndicator';
+import { SaveConfirmation } from '@/Components/SaveConfirmation';
 import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAside';
 import { useAuthUser } from '@/hooks/useAuth';
 import { useAutosave } from '@/hooks/useAutosave';
-import { useI18n } from '@/i18n';
 
 /** Champs reellement persistes, dans l'ordre de l'ecran. */
 type Answers = {
@@ -43,26 +43,11 @@ type Props = {
 
 type SaveResponse = { eligibility?: Eligibility };
 
-const tonesParResultat = {
-  INCOMPLETE: { card: 'border-slate-200 bg-slate-50', icon: CircleHelp, iconTone: 'bg-slate-100 text-slate-600' },
-  ELIGIBLE: { card: 'border-emerald-200 bg-emerald-50/60', icon: Check, iconTone: 'bg-emerald-100 text-emerald-700' },
-  TO_CONFIRM: { card: 'border-amber-200 bg-[#fffdf5]', icon: Info, iconTone: 'bg-amber-100 text-amber-700' },
-  INELIGIBLE: { card: 'border-red-200 bg-red-50/60', icon: AlertTriangle, iconTone: 'bg-red-100 text-red-700' },
-} as const;
-
-const tonesParRegle: Record<RuleStatus, string> = {
-  SATISFIED: 'text-emerald-700',
-  BLOCKING: 'text-red-700',
-  NOT_CONFIGURED: 'text-amber-700',
-  UNANSWERED: 'text-slate-500',
-};
-
 export default function Eligibility({ steps, section, answers, regions, candidateTypes, eligibility, saveUrl, previousUrl, nextUrl }: Props) {
   const user = useAuthUser();
-  const t = useI18n();
   const [values, setValues] = useState<Answers>(answers);
 
-  const { state, savedAt, errors, response, flush } = useAutosave<Answers, SaveResponse>(saveUrl, values);
+  const { state, savedAt, errors, response, confirmation, flush, save, acquitter } = useAutosave<Answers, SaveResponse>(saveUrl, values);
 
   /**
    * Le verdict vient toujours du serveur : celui du dernier enregistrement
@@ -74,8 +59,6 @@ export default function Eligibility({ steps, section, answers, regions, candidat
 
   const set = (champ: keyof Answers) => (valeur: string) => setValues((v) => ({ ...v, [champ]: valeur }));
 
-  const apparence = tonesParResultat[verdict.outcome];
-  const Icone = apparence.icon;
 
   return (
     <CandidateLayout active="Ma candidature" topSlot={<div className="hidden md:flex"><SaveIndicator state={state} savedAt={savedAt} /></div>}>
@@ -95,7 +78,7 @@ export default function Eligibility({ steps, section, answers, regions, candidat
             </div>
             <div className="md:hidden"><SaveIndicator state={state} savedAt={savedAt} /></div>
 
-            <div className="mt-4 grid gap-6 xl:grid-cols-[1fr_340px]">
+            <div className="mt-4">
               <Reveal><Card className="p-6 sm:p-7">
                 <Field index={1} htmlFor="birth_date" label="Quelle est votre date de naissance ?" hint="Votre âge est calculé à la date de référence de la campagne." error={errors.birth_date}>
                   <input
@@ -144,7 +127,7 @@ export default function Eligibility({ steps, section, answers, regions, candidat
                 ) : null}
 
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                  <Button variant="ghost" type="button" onClick={flush}><Save size={17} /> Enregistrer</Button>
+                  <Button variant="ghost" type="button" onClick={save}><Save size={17} /> Enregistrer</Button>
                   {nextUrl && !verdict.blocksNextSections ? (
                     <Link href={nextUrl} onClick={flush} className="focus-ring press-feedback inline-flex min-h-11 min-w-44 items-center justify-center gap-2 rounded-xl bg-gold-500 px-5 text-sm font-bold text-ink-950 transition-colors hover:bg-gold-600" data-testid="suivant">
                       Suivant <span aria-hidden>→</span>
@@ -156,37 +139,13 @@ export default function Eligibility({ steps, section, answers, regions, candidat
                   )}
                 </div>
               </Card></Reveal>
-
-              <Reveal delay={100}>
-                <Card className={`self-start p-6 ${apparence.card}`} data-testid="resultat-eligibilite">
-                  <div className="flex items-center gap-3">
-                    <div className={`grid h-10 w-10 place-items-center rounded-full ${apparence.iconTone}`}><Icone size={22} /></div>
-                    <h2 className="text-lg font-black leading-tight text-brand-950" data-testid="resultat-libelle">{verdict.label}</h2>
-                  </div>
-
-                  <ul className="mt-5 space-y-3">
-                    {verdict.findings.map((constat) => (
-                      <li key={constat.rule} className="flex gap-3">
-                        <CircleAlert size={16} className={`mt-0.5 shrink-0 ${tonesParRegle[constat.status]}`} aria-hidden />
-                        <div>
-                          <div className="text-xs font-extrabold uppercase tracking-wide text-slate-500">{constat.label}</div>
-                          <p className={`mt-0.5 text-xs leading-5 ${constat.status === 'BLOCKING' ? 'font-semibold text-red-700' : 'text-slate-600'}`}>{constat.message}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* Contrat UX deja porte par le dictionnaire : le resultat est
-                      indicatif et ne prejuge pas du controle administratif. */}
-                  <p className="mt-5 border-t border-black/5 pt-4 text-[11px] leading-5 text-slate-500">{t.eligibility.warning}</p>
-                </Card>
-              </Reveal>
             </div>
 
             <div className="mt-6 flex items-center gap-2 text-xs text-slate-500"><Check className="text-brand-700" size={16} /> Vos réponses sont enregistrées automatiquement, même si vous quittez cette page.</div>
           </div>
         </div>
       </div>
+      <SaveConfirmation confirmation={confirmation} onAcquitter={acquitter} />
     </CandidateLayout>
   );
 }

@@ -7,6 +7,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  */
 export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
 
+/**
+ * Retour visible d'un enregistrement demande.
+ *
+ * La sauvegarde automatique n'en produit jamais : elle a deja son indicateur,
+ * discret a dessein, et un message a chaque pause de frappe serait du bruit.
+ * Un clic sur « Enregistrer » est autre chose — un acte, qui appelle une reponse.
+ *
+ * `id` croit a chaque message : c'est lui qui distingue deux confirmations
+ * identiques a la suite, la seconde devant se reafficher plutot que passer
+ * inapercue.
+ */
+export type SaveConfirmation = { id: number; tone: 'success' | 'error'; message: string };
+
 export type AutosaveResult<T, R> = {
   /** Etat a afficher au candidat. Jamais simule : il suit la requete reelle. */
   state: SaveState;
@@ -22,6 +35,15 @@ export type AutosaveResult<T, R> = {
    * recalculer cote navigateur — ce qui reviendrait a laisser React decider.
    */
   response: R | null;
+  /**
+   * Message a montrer apres un enregistrement demande. `null` le reste du temps.
+   *
+   * Il porte ce que le serveur a repondu, succes comme echec : une confirmation
+   * qui ne saurait pas dire non ne confirmerait rien.
+   */
+  confirmation: SaveConfirmation | null;
+  /** Referme le message. */
+  acquitter: () => void;
   /** Envoie tout de suite ce qui a change (sortie de champ, navigation). */
   flush: () => void;
   /**
@@ -89,6 +111,7 @@ export function useAutosave<T extends Record<string, unknown>, R = unknown>(
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [response, setResponse] = useState<R | null>(null);
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
+  const [confirmation, setConfirmation] = useState<SaveConfirmation | null>(null);
 
   const valuesRef = useRef(values);
   const monteRef = useRef(true);
@@ -96,6 +119,9 @@ export function useAutosave<T extends Record<string, unknown>, R = unknown>(
   const enAttenteRef = useRef(false);
   const seqRef = useRef(0);
   const dernierAppliqueRef = useRef(0);
+  // Arme par `save`, lu par l'envoi qui suit : lui seul produit un message.
+  const expliciteRef = useRef(false);
+  const messageSeqRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Compare a l'etat serveur connu : recharger la page ne doit pas declencher
   // une sauvegarde alors que rien n'a change.
@@ -108,6 +134,11 @@ export function useAutosave<T extends Record<string, unknown>, R = unknown>(
       enAttenteRef.current = true;
       return;
     }
+
+    // Lu ici et non dans `save` : un clic pendant qu'une requete est en vol a
+    // ete mis en attente ci-dessus, et c'est l'envoi suivant qui le portera.
+    const explicite = expliciteRef.current;
+    expliciteRef.current = false;
 
     const charge = valuesRef.current;
     const empreinte = JSON.stringify(charge);
@@ -141,6 +172,7 @@ export function useAutosave<T extends Record<string, unknown>, R = unknown>(
               Object.entries(corps.errors ?? {}).map(([champ, messages]) => [champ, messages[0]]),
             ),
           );
+          if (explicite) setConfirmation({ id: ++messageSeqRef.current, tone: 'error', message: 'Enregistrement impossible : corrigez les champs signalés.' });
           setState('error');
         }
         return;
@@ -163,11 +195,14 @@ export function useAutosave<T extends Record<string, unknown>, R = unknown>(
         // enregistree serait un mensonge : c'est exactement ce qui faisait
         // perdre la derniere saisie a un rechargement immediat.
         setState(JSON.stringify(valuesRef.current) === empreinte ? 'saved' : 'dirty');
+
+        if (explicite) setConfirmation({ id: ++messageSeqRef.current, tone: 'success', message: 'Vos réponses ont été enregistrées.' });
       }
     } catch {
       if (monteRef.current && seq >= dernierAppliqueRef.current) {
         dernierAppliqueRef.current = seq;
         setState('error');
+        if (explicite) setConfirmation({ id: ++messageSeqRef.current, tone: 'error', message: 'Enregistrement impossible. Vérifiez votre connexion, puis réessayez.' });
       }
     } finally {
       enVolRef.current = false;
@@ -188,8 +223,11 @@ export function useAutosave<T extends Record<string, unknown>, R = unknown>(
   const save = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
+    expliciteRef.current = true;
     void envoyer();
   }, [envoyer]);
+
+  const acquitter = useCallback(() => setConfirmation(null), []);
 
   useEffect(() => {
     if (JSON.stringify(values) === referenceRef.current) return;
@@ -214,5 +252,5 @@ export function useAutosave<T extends Record<string, unknown>, R = unknown>(
     };
   }, []);
 
-  return { state, savedAt, errors, response, flush, save };
+  return { state, savedAt, errors, response, confirmation, flush, save, acquitter };
 }

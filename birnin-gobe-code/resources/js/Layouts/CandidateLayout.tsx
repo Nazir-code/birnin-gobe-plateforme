@@ -71,12 +71,23 @@ export function CandidateLayout({ children, active = 'Tableau de bord', topSlot 
   return (
     <div className="min-h-screen bg-[#fafaf7] lg:grid lg:grid-cols-[265px_1fr]">
       <aside className="hidden border-r border-slate-200 bg-white lg:flex lg:min-h-screen lg:flex-col">
-        <div className="px-7 py-6"><BrandLogo size="sidebar" /></div>
+        {/* Comme dans l'en-tete public : le logo ramene a l'accueil public.
+            `aria-label` nomme la destination — le texte alternatif de l'image
+            decrit la marque, pas ou le lien mene. */}
+        <div className="px-7 py-6">
+          <Link href="/" className="focus-ring inline-flex rounded-lg" aria-label="Retour à l'accueil BIRNIN GOBE">
+            <BrandLogo size="sidebar" />
+          </Link>
+        </div>
         {navLinks()}
         {bottomCard}
       </aside>
       <MobileNavDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} panelClassName="bg-white" testId="menu-mobile">
-        <div className="px-3 pb-3"><BrandLogo size="sidebar" /></div>
+        <div className="px-3 pb-3">
+          <Link href="/" className="focus-ring inline-flex rounded-lg" aria-label="Retour à l'accueil BIRNIN GOBE" onClick={() => setMobileNavOpen(false)}>
+            <BrandLogo size="sidebar" />
+          </Link>
+        </div>
         {navLinks(() => setMobileNavOpen(false))}
         {bottomCard}
       </MobileNavDrawer>
@@ -86,7 +97,9 @@ export function CandidateLayout({ children, active = 'Tableau de bord', topSlot 
             <button className="focus-ring flex h-10 w-10 items-center justify-center rounded-lg text-slate-700 hover:bg-slate-50" onClick={() => setMobileNavOpen(true)} aria-label="Ouvrir le menu">
               <Menu size={22} />
             </button>
-            <BrandLogo size="mobile" />
+            <Link href="/" className="focus-ring inline-flex rounded-lg" aria-label="Retour à l'accueil BIRNIN GOBE">
+              <BrandLogo size="mobile" />
+            </Link>
           </div>
           <div className="ml-auto flex items-center gap-5">
             {topSlot}

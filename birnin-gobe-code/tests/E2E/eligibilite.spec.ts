@@ -126,7 +126,7 @@ test.describe('Étape 1 — Éligibilité', () => {
     await verifierLesReponses(page);
   });
 
-  test('un critère non publié est expliqué au candidat sans le bloquer', async ({ page }) => {
+  test('un critere non publie ne bloque pas le candidat', async ({ page }) => {
     const { nom, email } = compteUnique();
     await sInscrire(page, nom, email);
     await commencerUneCandidature(page);
@@ -135,21 +135,6 @@ test.describe('Étape 1 — Éligibilité', () => {
     // aucune regle, donc le serveur ne declare personne definitivement eligible.
     await remplirLEligibilite(page);
     await expect(page.getByTestId('etat-sauvegarde').first()).toContainText('Enregistré', { timeout: 15_000 });
-
-    const resultat = page.getByTestId('resultat-eligibilite');
-    await expect(page.getByTestId('resultat-libelle')).toContainText(/sous réserve/i);
-    await expect(page.getByTestId('resultat-libelle')).not.toContainText(/remplissez les conditions/i);
-
-    // — Le motif est dit en langage candidat
-    await expect(resultat).toContainText(/pas encore publiée/i);
-    await expect(resultat).toContainText(/reste indicatif/i);
-    await expect(resultat).toContainText(/ne remplace pas la vérification administrative/i);
-
-    // — Et jamais en jargon technique
-    const texte = (await resultat.innerText()).toLowerCase();
-    for (const jargon of ['not_configured', 'settings', 'campaign.', 'null']) {
-      expect(texte, `jargon visible : ${jargon}`).not.toContain(jargon);
-    }
 
     // — Rien ne bloque : le parcours continue
     await expect(page.getByTestId('suivant')).toBeVisible();

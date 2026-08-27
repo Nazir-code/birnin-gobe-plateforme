@@ -46,13 +46,13 @@ export function saisie(erreur?: string): string {
   return `focus-ring min-h-12 w-full rounded-lg border bg-white px-4 text-sm text-slate-800 ${erreur ? 'border-red-400' : 'border-slate-300'}`;
 }
 
-export function Groupe({ icone, titre, aide }: { icone: ReactNode; titre: string; aide: string }) {
+export function Groupe({ icone, titre, aide }: { icone: ReactNode; titre: string; aide?: string }) {
   return (
     <div className="mb-6 flex gap-3 border-b border-slate-100 pb-4">
       <div className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-800">{icone}</div>
       <div>
         <h2 className="text-lg font-extrabold tracking-tight text-ink-950">{titre}</h2>
-        <p className="mt-1 text-xs leading-5 text-slate-500">{aide}</p>
+        {aide ? <p className="mt-1 text-xs leading-5 text-slate-500">{aide}</p> : null}
       </div>
     </div>
   );

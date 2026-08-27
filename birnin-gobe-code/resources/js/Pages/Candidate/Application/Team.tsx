@@ -5,6 +5,7 @@ import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Button, Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
 import { SaveIndicator } from '@/Components/SaveIndicator';
+import { SaveConfirmation } from '@/Components/SaveConfirmation';
 import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAside';
 import { useAuthUser } from '@/hooks/useAuth';
 import { useAutosave } from '@/hooks/useAutosave';
@@ -69,7 +70,7 @@ export default function Team({
   const user = useAuthUser();
   const [values, setValues] = useState({ ...structure, members });
 
-  const { state, savedAt, errors, response, flush, save } = useAutosave<typeof values, SaveResponse>(saveUrl, values);
+  const { state, savedAt, errors, response, confirmation, flush, save, acquitter } = useAutosave<typeof values, SaveResponse>(saveUrl, values);
 
   /** Le verdict vient toujours du serveur : celui du dernier enregistrement, sinon celui du chargement. */
   const verdict = response?.assessment ?? assessment;
@@ -326,6 +327,7 @@ export default function Team({
           </div>
         </div>
       </div>
+      <SaveConfirmation confirmation={confirmation} onAcquitter={acquitter} />
     </CandidateLayout>
   );
 }

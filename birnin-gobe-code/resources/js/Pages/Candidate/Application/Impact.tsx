@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Head } from '@inertiajs/react';
-import { Check, ChevronDown, Coins, HeartHandshake, Info, Target, UserCircle2 } from 'lucide-react';
+import { Check, ChevronDown, Coins, HeartHandshake, Target, UserCircle2 } from 'lucide-react';
 import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
 import { SaveIndicator } from '@/Components/SaveIndicator';
+import { SaveConfirmation } from '@/Components/SaveConfirmation';
 import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAside';
 import { BarreNavigation, DejaRenseigne, EnteteSection, EtatSection, Groupe, Redaction } from '@/Components/SectionForm';
 import { useAuthUser } from '@/hooks/useAuth';
@@ -41,7 +42,7 @@ export default function Impact({
   const user = useAuthUser();
   const [values, setValues] = useState<Answers>(answers);
 
-  const { state, savedAt, errors, flush, save } = useAutosave<Answers>(saveUrl, values);
+  const { state, savedAt, errors, confirmation, flush, save, acquitter } = useAutosave<Answers>(saveUrl, values);
 
   const set = (champ: keyof Answers) => (valeur: string) => setValues((v) => ({ ...v, [champ]: valeur }));
   const requis = (champ: keyof Answers) => requiredFields.includes(champ);
@@ -59,7 +60,7 @@ export default function Impact({
                 position={section.position}
                 total={section.total}
                 titre={section.label}
-                intro="Ce que votre solution changera, pour qui, et comment elle tiendra dans la durée. Vous décrivez ici vos propres attentes : rien n’est noté à cette étape."
+                intro="Ce que votre solution changera, pour qui, et comment elle tiendra dans la durée. Vous décrivez ici vos propres attentes."
               />
               {user ? <div className="hidden items-center gap-2 text-slate-700 sm:flex"><UserCircle2 size={34} className="text-brand-800" /><span className="text-sm font-semibold">Bonjour, {user.name.split(' ')[0]}</span><ChevronDown size={15} /></div> : null}
             </div>
@@ -104,7 +105,7 @@ export default function Impact({
                   <Groupe icone={<Coins size={18} />} titre="Viabilité" aide="Ce qui fera vivre votre solution une fois le concours terminé." />
 
                   <Redaction nom="business_model" label="Quel est votre modèle économique ?"
-                    aide="Qui paie, combien coûte le fonctionnement, et d’où viennent les recettes. Un modèle institutionnel — porté par une collectivité — est une réponse valable."
+                    aide="Qui paie, combien coûte le fonctionnement, et d’où viennent les recettes."
                     requis={requis('business_model')} erreur={errors.business_model} max={longTextMax}
                     valeur={values.business_model} onChange={set('business_model')} onBlur={flush} />
 
@@ -132,18 +133,6 @@ export default function Impact({
                 </Reveal>
 
                 <Reveal delay={140}><EtatSection manquants={manquants} /></Reveal>
-
-                <Reveal delay={200}>
-                  <Card className="self-start border-slate-200 bg-slate-50 p-6" data-testid="pas-de-notation">
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-full bg-slate-200 text-slate-700"><Info size={20} /></div>
-                      <h2 className="text-base font-black leading-tight text-brand-950">Cette étape ne vous note pas</h2>
-                    </div>
-                    <p className="mt-3 text-xs leading-5 text-slate-600">
-                      Vous décrivez ici votre projet. Aucune note, aucun score et aucun classement n’est calculé à partir de ces réponses : l’évaluation interviendra plus tard, après la clôture des candidatures.
-                    </p>
-                  </Card>
-                </Reveal>
               </div>
             </div>
 
@@ -151,6 +140,7 @@ export default function Impact({
           </div>
         </div>
       </div>
+      <SaveConfirmation confirmation={confirmation} onAcquitter={acquitter} />
     </CandidateLayout>
   );
 }

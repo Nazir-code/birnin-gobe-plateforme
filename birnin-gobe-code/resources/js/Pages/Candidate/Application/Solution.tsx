@@ -5,6 +5,7 @@ import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
 import { SaveIndicator } from '@/Components/SaveIndicator';
+import { SaveConfirmation } from '@/Components/SaveConfirmation';
 import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAside';
 import { BarreNavigation, Champ, DejaRenseigne, EnteteSection, EtatSection, Groupe, Redaction, saisie } from '@/Components/SectionForm';
 import { useAuthUser } from '@/hooks/useAuth';
@@ -18,7 +19,6 @@ type Answers = {
   usage_scenario: string;
   innovation: string;
   maturity_stage: string;
-  prototype_status: string;
   technologies: string;
   interoperability: string;
 };
@@ -50,7 +50,7 @@ export default function Solution({
   // `values` vient de `useState` : son identite ne change qu'a la saisie, donc
   // le minuteur de la sauvegarde automatique n'est relance que sur une vraie
   // modification, pas a chaque rendu.
-  const { state, savedAt, errors, flush, save } = useAutosave<Answers>(saveUrl, values);
+  const { state, savedAt, errors, confirmation, flush, save, acquitter } = useAutosave<Answers>(saveUrl, values);
 
   const set = (champ: keyof Answers) => (valeur: string) => setValues((v) => ({ ...v, [champ]: valeur }));
   const requis = (champ: keyof Answers) => requiredFields.includes(champ);
@@ -117,11 +117,6 @@ export default function Solution({
                     </select>
                   </Champ>
 
-                  <Redaction nom="prototype_status" label="Où en est concrètement votre prototype ?"
-                    aide="Ce qui existe déjà, ce qui a été testé, et avec qui. « Rien n’est encore construit » est une réponse."
-                    requis={requis('prototype_status')} erreur={errors.prototype_status} max={longTextMax}
-                    valeur={values.prototype_status} onChange={set('prototype_status')} onBlur={flush} />
-
                   <Redaction nom="technologies" label="Sur quelles technologies repose-t-elle ?"
                     aide="Outils, langages, matériel, canaux — SMS et USSD comptent autant qu’une application."
                     requis={requis('technologies')} erreur={errors.technologies} max={longTextMax}
@@ -167,6 +162,7 @@ export default function Solution({
           </div>
         </div>
       </div>
+      <SaveConfirmation confirmation={confirmation} onAcquitter={acquitter} />
     </CandidateLayout>
   );
 }

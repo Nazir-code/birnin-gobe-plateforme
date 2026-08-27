@@ -168,6 +168,25 @@ async function ouvrirUnOngletIsole(browser: Browser) {
   return contexte.newPage();
 }
 
+/**
+ * Attend que le serveur ait recu la derniere reponse de l'auto-test.
+ *
+ * L'indicateur « Enregistre » ne suffit pas : il peut encore porter la
+ * sauvegarde du champ precedent pendant que la derniere est en vol. La reponse
+ * du PATCH, elle, ne declare la section achevee qu'une fois tout recu.
+ */
+function attendreEligibiliteAchevee(page: Page) {
+  return page.waitForResponse(
+    async (r) => {
+      if (r.request().method() !== 'PATCH' || !r.url().includes('/eligibility') || r.status() !== 200) return false;
+      const corps = await r.json().catch(() => ({}));
+
+      return corps.completed === true;
+    },
+    { timeout: 30_000 },
+  );
+}
+
 /** Inscrit un candidat, ouvre son dossier et repond a l'auto-test. */
 async function candidatQuiRepond(page: Page, { region = 'Niamey' } = {}) {
   await page.goto('/register');
@@ -186,13 +205,10 @@ async function candidatQuiRepond(page: Page, { region = 'Niamey' } = {}) {
   await page.getByRole('group', { name: /Résidez-vous/i }).getByRole('radio', { name: 'Oui' }).check();
   await page.getByLabel(/Dans quelle région/).selectOption({ label: region });
   await page.getByLabel(/Sous quelle forme candidatez-vous/).selectOption({ label: 'Candidature individuelle' });
+  // Le signal fiable est la reponse du serveur, pas l'indicateur de sauvegarde.
+  const derniereReponse = attendreEligibiliteAchevee(page);
   await page.getByLabel(/Sous quelle forme candidatez-vous/).blur();
-
-  // Attendre « Enregistré » ne suffirait pas : l'indicateur peut encore porter
-  // la sauvegarde du champ precedent pendant que la derniere est en vol. Le
-  // signal fiable est le verdict lui-meme — il cesse d'annoncer des reponses
-  // incompletes seulement quand le serveur a recu la derniere.
-  await expect(page.getByTestId('resultat-libelle')).not.toContainText(/incomplètes/i, { timeout: 20_000 });
+  await derniereReponse;
   await expect(page.getByTestId('etat-sauvegarde').first()).toContainText('Enregistré', { timeout: 15_000 });
 
   // Le verdict est rendu par le serveur : on relit la page plutot que de faire
@@ -225,9 +241,6 @@ test.describe('Critères d’éligibilité — de l’administration au candidat
     const candidat = await ouvrirUnOngletIsole(browser);
     await candidatQuiRepond(candidat);
 
-    await expect(candidat.getByTestId('resultat-libelle')).toContainText(/remplissez les conditions/i);
-    await expect(candidat.getByTestId('resultat-eligibilite')).not.toContainText(/pas encore publié/i);
-
     // Rien ne bloque : l'etape suivante du parcours ouvert s'ouvre — « Profil »,
     // etape 2 (ADR-009), et non « Defi » qui vit derriere l'etape 3 non developpee.
     await candidat.getByTestId('suivant').click();
@@ -246,10 +259,6 @@ test.describe('Critères d’éligibilité — de l’administration au candidat
 
     const candidat = await ouvrirUnOngletIsole(browser);
     const urlEligibilite = await candidatQuiRepond(candidat, { region: 'Niamey' });
-
-    await expect(candidat.getByTestId('resultat-libelle')).toContainText(/ne remplissez pas les conditions/i);
-    // Le motif est dit en langage candidat, avec la liste des zones ouvertes.
-    await expect(candidat.getByTestId('resultat-eligibilite')).toContainText(/Agadez/);
 
     // La suite du dossier n'est pas proposee...
     await expect(candidat.getByTestId('suivant')).toHaveCount(0);
@@ -279,9 +288,6 @@ test.describe('Critères d’éligibilité — de l’administration au candidat
 
     const candidat = await ouvrirUnOngletIsole(browser);
     await candidatQuiRepond(candidat);
-
-    await expect(candidat.getByTestId('resultat-libelle')).toContainText(/sous réserve/i);
-    await expect(candidat.getByTestId('resultat-eligibilite')).toContainText(/pas encore publiées/i);
 
     // « Sous reserve » n'est pas un refus : le parcours continue vers l'etape 2.
     await candidat.getByTestId('suivant').click();

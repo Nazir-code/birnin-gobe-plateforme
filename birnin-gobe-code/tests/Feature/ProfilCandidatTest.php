@@ -202,7 +202,6 @@ final class ProfilCandidatTest extends TestCase
 
         $this->actingAs($candidat)
             ->patchJson($this->url($application), $this->profilComplet([
-                ProfileSection::GENDER => null,
                 ProfileSection::PHONE_SECONDARY => null,
                 ProfileSection::SPECIALTY => null,
                 ProfileSection::ACCESSIBILITY_NEED => null,

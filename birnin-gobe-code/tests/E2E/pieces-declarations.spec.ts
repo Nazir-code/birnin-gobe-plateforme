@@ -100,6 +100,7 @@ async function remplirLesSeptPremieresEtapes(page: Page) {
   await expect(page).toHaveURL(/\/profile$/);
   await attendreSection(page, 'profile', true, async () => {
     await page.getByLabel(/Où êtes-vous né/).fill('Niamey');
+    await page.getByLabel(/^Sexe/).selectOption({ label: 'Femme' });
     await page.getByLabel('Téléphone principal').fill('90 12 34 56');
     await page.getByLabel(/Comment préférez-vous être contacté/).selectOption({ label: 'SMS' });
     await page.getByLabel('Région de résidence').selectOption({ label: 'Niamey' });
@@ -137,7 +138,6 @@ async function remplirLesSeptPremieresEtapes(page: Page) {
     await page.getByLabel(/fonctionnalités principales/).fill('Signalement SMS, tableau de bord communal, alerte au technicien.');
     await page.getByLabel(/distingue de ce qui existe/).fill('Les signalements se perdent aujourd’hui ; ici tout est tracé.');
     await page.getByLabel(/À quel stade en êtes-vous/).selectOption({ label: 'Prototype — une première version existe' });
-    await page.getByLabel(/où en est concrètement votre prototype/i).fill('Une version SMS tourne depuis trois mois sur deux quartiers.');
     await page.getByLabel(/quelles technologies repose/i).fill('Passerelle SMS, PostgreSQL, interface web légère.');
     await page.getByRole('button', { name: /^enregistrer$/i }).click();
   });
@@ -171,6 +171,41 @@ async function remplirLesSeptPremieresEtapes(page: Page) {
   });
 }
 
+/** Les quatre declarations qu'un porteur individuel doit accepter. */
+const DECLARATIONS_EXIGEES = [
+  'accuracy_and_control',
+  'no_fraud_or_plagiarism',
+  'rules_acknowledgement',
+  'data_processing_consent',
+] as const;
+
+/**
+ * Attend le PATCH qui porte reellement les quatre declarations.
+ *
+ * `attendreSection(..., false, ...)` ne convient pas ici : cocher quatre cases
+ * declenche plusieurs sauvegardes differees, et la premiere annonce deja une
+ * section incomplete — la piece manque de toute facon. L'attente se resolvait
+ * donc avant que la derniere declaration soit partie, et le televersement qui
+ * suit enchainait sur un etat serveur perime : `setRestant` le figeait dans
+ * l'encart, sans qu'aucun PATCH ne vienne le corriger. L'etape restait
+ * incomplete pour une case pourtant cochee a l'ecran.
+ *
+ * Sur poste de travail, la temporisation fondait les quatre cases en un seul
+ * envoi et le defaut ne se voyait pas ; sous emulation mobile, un envoi
+ * intermediaire s'echappait. On attend donc la charge utile, pas le verdict.
+ */
+function attendreDeclarationsRecues(page: Page) {
+  return page.waitForResponse(async (r) => {
+    if (r.request().method() !== 'PATCH' || !r.url().includes('/attachments') || r.status() !== 200) {
+      return false;
+    }
+
+    const envoye = JSON.parse(r.request().postData() ?? '{}') as Record<string, unknown>;
+
+    return DECLARATIONS_EXIGEES.every((cle) => envoye[cle] === true);
+  }, { timeout: 25_000 });
+}
+
 /** Coche les declarations exigees, sans le consentement facultatif. */
 async function cocherLesDeclarations(page: Page) {
   await page.getByLabel(/certifie l’exactitude/).check();
@@ -201,10 +236,10 @@ test.describe('Étape 8 — Pièces / déclarations', () => {
     await expect(page.getByTestId('etat-section')).toContainText('Il reste');
 
     // — Les declarations seules n'achevent pas l'etape : la piece manque.
-    await attendreSection(page, 'attachments', false, async () => {
-      await cocherLesDeclarations(page);
-      await page.getByRole('button', { name: /^enregistrer$/i }).click();
-    });
+    const declarationsRecues = attendreDeclarationsRecues(page);
+    await cocherLesDeclarations(page);
+    await page.getByRole('button', { name: /^enregistrer$/i }).click();
+    await declarationsRecues;
     await expect(page.getByTestId('etat-section')).toContainText('Présentation du projet');
 
     // — La piece arrive : l'etape s'acheve sans qu'on recoche quoi que ce soit.

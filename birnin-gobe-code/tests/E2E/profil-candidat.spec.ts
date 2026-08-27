@@ -117,6 +117,30 @@ test.describe('Étape 2 — Profil du candidat', () => {
     await verifierLeProfil(page);
   });
 
+  test('un clic sur « Enregistrer » est confirmé au candidat', async ({ page }) => {
+    const { nom, email } = compteUnique();
+    await sInscrire(page, nom, email);
+    await allerAuProfil(page);
+
+    // Rien n'a ete saisi : le clic doit malgre tout atteindre le serveur et
+    // repondre. C'est le cas que `flush` ne couvrait pas — sans modification en
+    // attente, il ne partait pas, et le candidat cliquait dans le vide.
+    const confirmation = page.getByTestId('confirmation-sauvegarde');
+    await expect(confirmation).toHaveCount(0);
+
+    await page.getByRole('button', { name: /^enregistrer$/i }).click();
+    await expect(confirmation).toContainText(/enregistr/i, { timeout: 15_000 });
+
+    // Le message se referme a la main, sans attendre son effacement.
+    await confirmation.getByRole('button', { name: /fermer le message/i }).click();
+    await expect(confirmation).toHaveCount(0);
+
+    // Et il revient au clic suivant, apres une vraie saisie.
+    await page.getByLabel(/Où êtes-vous né/).fill(PROFIL.naissance);
+    await page.getByRole('button', { name: /^enregistrer$/i }).click();
+    await expect(confirmation).toBeVisible({ timeout: 15_000 });
+  });
+
   test('les données déjà connues sont montrées, jamais redemandées', async ({ page }) => {
     const { nom, email } = compteUnique();
     await sInscrire(page, nom, email);

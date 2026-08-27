@@ -15,6 +15,7 @@ use App\Domain\Application\SubmissionReadiness;
 use App\Domain\Application\SubmissionSnapshot;
 use App\Domain\Auth\UserRole;
 use App\Domain\Candidate\CandidateType;
+use App\Domain\Candidate\Gender;
 use App\Domain\Eligibility\EvaluateEligibility;
 use App\Domain\Reference\NigerRegion;
 use App\Models\Application;
@@ -343,6 +344,7 @@ final class IntegrationThematiqueEtPiecesTest extends TestCase
         return match ($section) {
             'profile' => [
                 'birth_place' => 'Niamey',
+                'gender' => Gender::FEMALE->value,
                 'phone_primary' => '90 12 34 56',
                 'preferred_channel' => 'SMS',
                 'residence_region' => NigerRegion::NIAMEY->value,
@@ -359,7 +361,6 @@ final class IntegrationThematiqueEtPiecesTest extends TestCase
                 'key_features' => 'Signalement SMS, tableau de bord communal, alerte au technicien.',
                 'innovation' => 'Les signalements se perdent aujourd’hui ; ici tout est tracé.',
                 'maturity_stage' => 'PROTOTYPE',
-                'prototype_status' => 'Une version SMS tourne depuis trois mois sur deux quartiers.',
                 'technologies' => 'Passerelle SMS, PostgreSQL, interface web légère.',
             ],
             'impact' => [

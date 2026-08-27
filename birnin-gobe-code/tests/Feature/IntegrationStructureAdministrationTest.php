@@ -12,6 +12,7 @@ use App\Domain\Application\TeamSection;
 use App\Domain\Auth\UserRole;
 use App\Domain\Candidate\CandidateType;
 use App\Domain\Candidate\EducationLevel;
+use App\Domain\Candidate\Gender;
 use App\Domain\Candidate\PreferredChannel;
 use App\Domain\Reference\NigerRegion;
 use App\Models\Application;
@@ -67,6 +68,7 @@ final class IntegrationStructureAdministrationTest extends TestCase
     {
         return [
             ProfileSection::BIRTH_PLACE => 'Zinder',
+            ProfileSection::GENDER => Gender::FEMALE->value,
             ProfileSection::PHONE_PRIMARY => '90123456',
             ProfileSection::PREFERRED_CHANNEL => PreferredChannel::SMS->value,
             ProfileSection::RESIDENCE_REGION => NigerRegion::NIAMEY->value,

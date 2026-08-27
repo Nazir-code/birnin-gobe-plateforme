@@ -338,3 +338,68 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 760px) {
   .surface-card { border-radius: 16px; }
 }
+
+/* Message de confirmation d'un enregistrement demandé.
+
+   Il entre par le bas, d'où il vient, puis ne bouge plus : un message qui
+   continue de s'animer pendant qu'on le lit se lit mal. Le mouvement est sous
+   `prefers-reduced-motion`, comme le reste des animations de la feuille — sans
+   lui, le message reste simplement affiché, ce qui est le comportement utile. */
+@media (prefers-reduced-motion: no-preference) {
+  .toast-sauvegarde {
+    animation: toast-monte var(--dur-base) var(--ease-out) both;
+  }
+}
+
+@keyframes toast-monte {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Soulignement des liens de la navigation publique, au survol et au clavier.
+
+   Un `background-image` posé sur le lien lui-même plutôt qu'un pseudo-élément
+   ou une bordure — même raison que le trait du hero : rien n'est ajouté à la
+   mise en page, donc l'en-tête ne bouge pas d'un pixel quand le trait paraît,
+   et le trait suit le texte quelle que soit sa longueur.
+
+   `:focus-visible` autant que `:hover` : le contrat d'interface exige une
+   navigation au clavier lisible, et un effet réservé à la souris la laisserait
+   sans ce repère. L'anneau de focus reste par-dessus, il n'est pas remplacé. */
+.nav-souligne {
+  background-image: linear-gradient(90deg, var(--color-gold-500), var(--color-gold-500));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0 2px;
+  transition: background-size var(--dur-base) var(--ease-out);
+}
+
+.nav-souligne:hover,
+.nav-souligne:focus-visible {
+  background-size: 100% 2px;
+}
+
+/* Le trait reste utile sans le mouvement : seule la transition tombe. */
+@media (prefers-reduced-motion: reduce) {
+  .nav-souligne {
+    transition: none;
+  }
+}
+
+/* Le même trait, quand le lien est une ligne pleine largeur — le tiroir mobile.
+
+   Là, `.nav-souligne` ne peut pas vivre sur le lien : sa boîte fait toute la
+   largeur du tiroir et 48 px de haut, le trait se dessinerait donc d'un bord à
+   l'autre et loin sous le texte. Il vit sur un `span` autour du libellé, et
+   c'est le lien qui le déclenche — sinon survoler la rangée sans toucher les
+   lettres ne ferait rien. */
+.nav-souligne-parent:hover .nav-souligne,
+.nav-souligne-parent:focus-visible .nav-souligne {
+  background-size: 100% 2px;
+}

@@ -66,7 +66,6 @@ final class SolutionCandidatTest extends TestCase
             SolutionSection::USAGE_SCENARIO => 'Une habitante envoie le code de la borne ; le technicien reçoit l’alerte et confirme la réparation.',
             SolutionSection::INNOVATION => 'Les signalements se font aujourd’hui de vive voix et se perdent ; ici tout est tracé.',
             SolutionSection::MATURITY_STAGE => MaturityStage::PROTOTYPE->value,
-            SolutionSection::PROTOTYPE_STATUS => 'Une première version SMS tourne depuis trois mois sur deux quartiers.',
             SolutionSection::TECHNOLOGIES => 'Passerelle SMS, PostgreSQL, interface web légère.',
             SolutionSection::INTEROPERABILITY => 'Export vers le système de gestion du service des eaux de la commune.',
             ...$remplacements,

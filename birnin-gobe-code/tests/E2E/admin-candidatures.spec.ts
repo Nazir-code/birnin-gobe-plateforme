@@ -48,6 +48,25 @@ async function seConnecterAdmin(page: Page) {
   await expect(page).toHaveURL(/\/admin\/dashboard$/);
 }
 
+/**
+ * Attend que le serveur ait recu la derniere reponse de l'auto-test.
+ *
+ * L'indicateur « Enregistre » ne suffit pas : il peut encore porter la
+ * sauvegarde du champ precedent pendant que la derniere est en vol. La reponse
+ * du PATCH, elle, ne declare la section achevee qu'une fois tout recu.
+ */
+function attendreEligibiliteAchevee(page: Page) {
+  return page.waitForResponse(
+    async (r) => {
+      if (r.request().method() !== 'PATCH' || !r.url().includes('/eligibility') || r.status() !== 200) return false;
+      const corps = await r.json().catch(() => ({}));
+
+      return corps.completed === true;
+    },
+    { timeout: 30_000 },
+  );
+}
+
 /** Depose un vrai dossier : inscription, brouillon, reponses d'eligibilite. */
 async function candidatQuiDepose(browser: Browser, nom: string) {
   const contexte = await browser.newContext({ baseURL: BASE_URL });
@@ -71,11 +90,10 @@ async function candidatQuiDepose(browser: Browser, nom: string) {
   await page.getByLabel(/Dans quelle région/).selectOption({ label: 'Niamey' });
   await page.getByLabel(/Sous quelle forme candidatez-vous/).selectOption({ label: 'Équipe' });
   await page.getByLabel(/Combien de personnes/).fill('4');
+  // Le signal fiable est la reponse du serveur, pas l'indicateur de sauvegarde.
+  const derniereReponse = attendreEligibiliteAchevee(page);
   await page.getByLabel(/Combien de personnes/).blur();
-
-  // Le verdict cesse d'annoncer des reponses incompletes quand le serveur a
-  // recu la derniere : signal plus fiable que l'indicateur de sauvegarde.
-  await expect(page.getByTestId('resultat-libelle')).not.toContainText(/incomplètes/i, { timeout: 20_000 });
+  await derniereReponse;
 
   await contexte.close();
 
@@ -212,7 +230,7 @@ test.describe('Administration — consultation des candidatures', () => {
     await expect(page.getByTestId('section-impact')).toHaveAttribute('data-etat', 'non-commencee');
     await expect(page.getByTestId('section-implementation')).toHaveAttribute('data-etat', 'non-commencee');
     await expect(page.getByTestId('section-attachments')).toHaveAttribute('data-etat', 'non-commencee');
-    await expect(page.getByTestId('section-review')).toHaveAttribute('data-etat', 'non-implementee');
+    await expect(page.getByTestId('section-review')).toHaveAttribute('data-etat', 'non-commencee');
 
     // — Les cinq regles d'eligibilite viennent du moteur
     await expect(page.getByTestId('regles-eligibilite').getByRole('listitem')).toHaveCount(5);
