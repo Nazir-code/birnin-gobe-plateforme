@@ -43,9 +43,15 @@ test.describe('Page d’accueil publique', () => {
     for (let rang = 1; rang <= 8; rang += 1) {
       await expect(page.getByTestId(`critere-${rang}`)).toBeVisible();
     }
-    await expect(page.getByTestId('critere-1')).toContainText('Pertinence');
-    await expect(page.getByTestId('critere-8')).toContainText('Équipe et pitch');
+    // Les intitules sont ceux du §11.2, et le poids est annonce avec eux : la
+    // page portait autrefois une liste a elle, qui ne correspondait a aucun
+    // critere du cahier des charges.
+    await expect(page.getByTestId('critere-1')).toContainText('Pertinence par rapport au défi');
+    await expect(page.getByTestId('critere-1')).toContainText('20 pts');
+    await expect(page.getByTestId('critere-8')).toContainText('Inclusion et ancrage territorial');
+    await expect(page.getByTestId('critere-8')).toContainText('5 pts');
     await expect(page.locator('#criteres')).toContainText('Critères d’évaluation');
+    await expect(page.locator('#criteres')).toContainText('100 points');
     // La distinction avec l'eligibilite doit etre ecrite : sans elle, un candidat
     // croira devoir satisfaire les huit pour avoir le droit de deposer.
     await expect(page.locator('#criteres')).toContainText('Ils ne décident pas');
@@ -149,8 +155,8 @@ test.describe('Page d’accueil publique', () => {
     await expect(conditions.nth(4)).toContainText('toutes les étapes de la compétition');
 
     // Les criteres d'evaluation, eux, n'ont pas bouge.
-    await expect(page.getByTestId('critere-1')).toContainText('Pertinence');
-    await expect(page.getByTestId('critere-8')).toContainText('Équipe et pitch');
+    await expect(page.getByTestId('critere-1')).toContainText('Pertinence par rapport au défi');
+    await expect(page.getByTestId('critere-8')).toContainText('Inclusion et ancrage territorial');
   });
 
   test('le pied de page ne garde ni colonne vide ni centre d’aide', async ({ page }) => {

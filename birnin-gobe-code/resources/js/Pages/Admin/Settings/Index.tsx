@@ -173,8 +173,8 @@ export default function SettingsIndex({
                   Seuil d’écart déclenchant une revue
                 </label>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Sur l’échelle 0 à {limits.maxScoreGap} du §11.3. La notation n’est pas encore implémentée : ce seuil
-                  est enregistré, rien ne le lit encore.
+                  Sur l’échelle 0 à {limits.maxScoreGap} du §11.3. La notation existe (ADR-015), mais la revue
+                  d’écart qu’elle déclenche reste à construire : ce seuil est enregistré, rien ne le lit encore.
                 </p>
                 <input
                   id="score_gap_threshold"

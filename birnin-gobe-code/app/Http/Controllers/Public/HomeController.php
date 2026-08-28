@@ -6,6 +6,7 @@ use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\ProjectTheme;
 use App\Domain\Auth\UserRole;
 use App\Domain\Campaign\ActiveCampaign;
+use App\Domain\Evaluation\EvaluationCriterion;
 use App\Models\Application;
 use App\Models\Campaign;
 use App\Models\User;
@@ -103,7 +104,25 @@ final class HomeController
     }
 
     /**
-     * Les huit critères d'évaluation, avec leur question directrice.
+     * Les huit critères d'évaluation du §11.2, avec leur poids.
+     *
+     * **Ils viennent de `EvaluationCriterion`, jamais d'une liste écrite ici.**
+     * Cette méthode portait auparavant sa propre liste de huit intitulés —
+     * « Impact usager », « Sécurité », « Équipe et pitch » — qui ne
+     * correspondaient à aucun critère du cahier des charges, et qui omettaient
+     * « Inclusion et ancrage territorial ». La page publique annonçait donc aux
+     * candidats qu'ils seraient jugés sur autre chose que ce que les évaluateurs
+     * notent réellement. Deux listes de « critères d'évaluation » dans le même
+     * dépôt ne pouvaient que diverger ; il n'y en a plus qu'une.
+     *
+     * **Le poids est affiché.** Un candidat qui sait que la pertinence pèse
+     * vingt points et l'inclusion cinq n'écrit pas le même dossier, et le §11.2
+     * est une grille publique — la taire ferait de la pondération une
+     * information réservée.
+     *
+     * Le texte de chaque carte est celui des éléments d'appréciation du cahier
+     * des charges, mot pour mot. Le reformuler en question directrice était plus
+     * engageant, et c'est précisément ce qui avait laissé la liste dériver.
      *
      * **À ne pas confondre avec l'éligibilité**, et la page le dit explicitement.
      * L'éligibilité décide qui a le droit de déposer — âge, nationalité, zone,
@@ -113,22 +132,19 @@ final class HomeController
      * un candidat qu'il doit satisfaire les huit pour avoir le droit de
      * candidater.
      *
-     * Aucun moteur d'éligibilité n'est touché : ceci est du contenu.
-     *
-     * @return list<array{key: string, title: string, question: string}>
+     * @return list<array{key: string, title: string, weight: int, question: string}>
      */
     private function criteres(): array
     {
-        return [
-            ['key' => 'pertinence', 'title' => 'Pertinence', 'question' => 'La solution répond-elle précisément au défi et aux usages prioritaires ?'],
-            ['key' => 'impact', 'title' => 'Impact usager', 'question' => 'Le bénéfice attendu est-il mesurable, utile et inclusif ?'],
-            ['key' => 'faisabilite', 'title' => 'Faisabilité', 'question' => 'Le MVP peut-il fonctionner avec les ressources, données et délais disponibles ?'],
-            ['key' => 'technique', 'title' => 'Qualité technique', 'question' => 'L’architecture, les performances, les données et la documentation sont-elles solides ?'],
-            ['key' => 'innovation', 'title' => 'Innovation utile', 'question' => 'La proposition améliore-t-elle significativement l’existant sans complexité inutile ?'],
-            ['key' => 'securite', 'title' => 'Sécurité', 'question' => 'Les accès, données, sauvegardes et risques sont-ils correctement maîtrisés ?'],
-            ['key' => 'durabilite', 'title' => 'Durabilité', 'question' => 'Maintenance, support, interopérabilité et coût total sont-ils crédibles ?'],
-            ['key' => 'equipe', 'title' => 'Équipe et pitch', 'question' => 'L’équipe réunit-elle les compétences et la capacité d’exécution requises ?'],
-        ];
+        return array_map(
+            static fn (EvaluationCriterion $critere): array => [
+                'key' => $critere->value,
+                'title' => $critere->label(),
+                'weight' => $critere->weight(),
+                'question' => $critere->elements(),
+            ],
+            EvaluationCriterion::cases(),
+        );
     }
 
     /**

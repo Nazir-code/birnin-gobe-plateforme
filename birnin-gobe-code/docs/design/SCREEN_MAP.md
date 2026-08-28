@@ -28,7 +28,9 @@
 | Alertes | `/admin/alerts` | `resources/js/Pages/Admin/Alerts/Index.tsx` (ADR-014) |
 | Paramètres | `/admin/settings` | `resources/js/Pages/Admin/Settings/Index.tsx` (ADR-014) |
 | Journal d'audit | `/admin/audit` | `resources/js/Pages/Admin/Audit/Index.tsx` |
-| Évaluation / jury | `/evaluator/assignments` | `resources/js/Pages/Evaluator/Assignments.tsx` |
+| Évaluateur — plan de travail | `/evaluator/assignments` | `resources/js/Pages/Evaluator/Assignments.tsx` (ADR-015) |
+| Évaluateur — charte et impartialité | `/evaluator/assignments/{assignment}` — charte non acceptée | `resources/js/Pages/Evaluator/Charter.tsx` (ADR-015) |
+| Évaluateur — grille de notation | `/evaluator/assignments/{assignment}` — après acceptation | `resources/js/Pages/Evaluator/Evaluate.tsx` (ADR-015) |
 
 ## Règle de fidélité
 

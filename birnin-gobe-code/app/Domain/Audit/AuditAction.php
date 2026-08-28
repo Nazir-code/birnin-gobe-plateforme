@@ -19,8 +19,8 @@ namespace App\Domain\Audit;
  * Les valeurs sont exactement celles que les cas d'usage écrivent aujourd'hui :
  * `StartApplication`, `StoreApplicationDocument`, `SubmitApplication`,
  * `SaveCampaign`, `SaveEligibilitySettings`, `SaveVerificationChecks`,
- * `DecideAdmissibility`, `AssignApplications` et `ReleaseAssignment`. Ajouter
- * une action ailleurs sans
+ * `DecideAdmissibility`, `AssignApplications`, `ReleaseAssignment`,
+ * `AcceptEvaluationCharter` et `LockEvaluation`. Ajouter une action ailleurs sans
  * l'ajouter ici ne casse rien ; ça la prive seulement de son libellé.
  */
 enum AuditAction: string
@@ -34,6 +34,8 @@ enum AuditAction: string
     case ADMISSIBILITY_DECIDED = 'ADMISSIBILITY_DECIDED';
     case EVALUATION_ASSIGNED = 'EVALUATION_ASSIGNED';
     case EVALUATION_ASSIGNMENT_RELEASED = 'EVALUATION_ASSIGNMENT_RELEASED';
+    case EVALUATION_CHARTER_ACCEPTED = 'EVALUATION_CHARTER_ACCEPTED';
+    case EVALUATION_LOCKED = 'EVALUATION_LOCKED';
     case CAMPAIGN_CREATED = 'CAMPAIGN_CREATED';
     case CAMPAIGN_UPDATED = 'CAMPAIGN_UPDATED';
     case CAMPAIGN_STATUS_CHANGED = 'CAMPAIGN_STATUS_CHANGED';
@@ -53,6 +55,8 @@ enum AuditAction: string
             self::ADMISSIBILITY_DECIDED => 'Décision d’admissibilité',
             self::EVALUATION_ASSIGNED => 'Dossier affecté à un évaluateur',
             self::EVALUATION_ASSIGNMENT_RELEASED => 'Affectation levée',
+            self::EVALUATION_CHARTER_ACCEPTED => 'Charte d’évaluation acceptée',
+            self::EVALUATION_LOCKED => 'Évaluation verrouillée',
             self::CAMPAIGN_CREATED => 'Campagne créée',
             self::CAMPAIGN_UPDATED => 'Campagne modifiée',
             self::CAMPAIGN_STATUS_CHANGED => 'Statut de campagne changé',
@@ -76,12 +80,14 @@ enum AuditAction: string
             self::ADMISSIBILITY_DECIDED,
             self::CAMPAIGN_STATUS_CHANGED,
             self::CAMPAIGN_ELIGIBILITY_UPDATED,
-            self::CAMPAIGN_EVALUATION_SETTINGS_UPDATED => AuditWeight::DECISIVE,
+            self::CAMPAIGN_EVALUATION_SETTINGS_UPDATED,
+            self::EVALUATION_LOCKED => AuditWeight::DECISIVE,
 
             self::APPLICATION_DOCUMENT_DELETED,
             self::VERIFICATION_CHECKS_RECORDED,
             self::EVALUATION_ASSIGNED,
             self::EVALUATION_ASSIGNMENT_RELEASED,
+            self::EVALUATION_CHARTER_ACCEPTED,
             self::CAMPAIGN_UPDATED => AuditWeight::NOTABLE,
 
             default => AuditWeight::ROUTINE,

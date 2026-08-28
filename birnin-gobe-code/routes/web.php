@@ -1,9 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminSessionController;
+use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
 use App\Http\Controllers\Admin\AuditController;
-use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CampaignEligibilityController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
@@ -25,9 +25,10 @@ use App\Http\Controllers\Candidate\ImplementationSectionController;
 use App\Http\Controllers\Candidate\ProfileSectionController;
 use App\Http\Controllers\Candidate\ReviewController;
 use App\Http\Controllers\Candidate\SolutionSectionController;
-use App\Http\Controllers\Candidate\SubmittedController;
 use App\Http\Controllers\Candidate\SubmitApplicationController;
+use App\Http\Controllers\Candidate\SubmittedController;
 use App\Http\Controllers\Candidate\TeamSectionController;
+use App\Http\Controllers\Evaluator\EvaluationController;
 use App\Http\Controllers\Public\HomeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -366,7 +367,29 @@ Route::middleware(['auth', 'role:evaluator'])
     ->prefix('evaluator')
     ->name('evaluator.')
     ->group(function (): void {
-        Route::get('/assignments', fn () => Inertia::render('Evaluator/Assignments'))->name('assignments');
+        // L'espace évaluateur (§11.1 à §11.3). Cinq routes, et une seule porte :
+        // `show` rend la charte tant qu'elle n'est pas acceptée, le dossier
+        // ensuite. Aucune route ne prend d'identifiant d'évaluateur — c'est
+        // toujours l'utilisateur authentifié, sans quoi la file de chacun
+        // deviendrait une URL devinable.
+        Route::get('/assignments', [EvaluationController::class, 'index'])->name('assignments');
+        Route::get('/assignments/{assignment}', [EvaluationController::class, 'show'])
+            ->name('assignments.show');
+        Route::post('/assignments/{assignment}/charter', [EvaluationController::class, 'acceptCharter'])
+            ->name('assignments.charter');
+        Route::put('/assignments/{assignment}/evaluation', [EvaluationController::class, 'save'])
+            ->name('assignments.save');
+        // Le verrouillage enregistre d'abord : séparer les deux ferait perdre
+        // la dernière saisie de quiconque oublie d'enregistrer.
+        Route::post('/assignments/{assignment}/evaluation/lock', [EvaluationController::class, 'lock'])
+            ->name('assignments.lock');
+        Route::post('/assignments/{assignment}/conflict', [EvaluationController::class, 'declareConflict'])
+            ->name('assignments.conflict');
+        // Les pièces passent par l'affectation, jamais par la route de
+        // l'administration : l'habilitation se lit sur le dossier confié, pas
+        // sur le rôle.
+        Route::get('/assignments/{assignment}/documents/{type}', [EvaluationController::class, 'downloadDocument'])
+            ->name('assignments.documents.download');
     });
 
 Route::middleware(['auth', 'role:jury'])

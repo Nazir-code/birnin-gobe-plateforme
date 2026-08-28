@@ -87,6 +87,21 @@ class Application extends Model
         return $this->hasMany(EvaluationAssignment::class);
     }
 
+    /**
+     * Les notations de presélection (§11.2), brouillons compris.
+     *
+     * Filtrer sur `verrouillees()` est la responsabilite de l'appelant : ce
+     * qu'une administration a le droit de lire avant le verrou se limite a
+     * l'avancement (§11.3), et une relation qui masquerait deja les brouillons
+     * empecherait l'evaluateur de relire le sien.
+     *
+     * @return HasMany<Evaluation, $this>
+     */
+    public function evaluations(): HasMany
+    {
+        return $this->hasMany(Evaluation::class);
+    }
+
     public function sectionAnswers(ApplicationSection $section): ?ApplicationSectionAnswers
     {
         return $this->sections()->where('section', $section->value)->first();

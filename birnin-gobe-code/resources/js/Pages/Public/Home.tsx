@@ -24,7 +24,7 @@ const iconesThematiques: Record<string, typeof Building2> = {
 };
 
 type Thematique = { key: string; title: string; problems: string; results: string };
-type Critere = { key: string; title: string; question: string };
+type Critere = { key: string; title: string; weight: number; question: string };
 
 /** Les cinq etapes du parcours, de la candidature aux resultats. */
 const processus = ['Candidature', 'Admissibilité', 'Présélection', 'Jury final', 'Publication'] as const;
@@ -301,16 +301,20 @@ export default function Home({ campaign, themes, criteria }: {
         <div className="mx-auto max-w-[1500px] px-6 py-12 lg:px-12 xl:px-16">
           <SectionTitle eyebrow="Comment les dossiers sont jugés" title="Critères d’évaluation" />
           <p className="-mt-2 mb-5 max-w-3xl text-sm leading-6 text-slate-600">
-            Ces huit critères servent à <strong>évaluer</strong> les dossiers recevables. Ils ne décident pas
-            qui a le droit de candidater : cela relève de l’éligibilité, présentée juste en dessous.
+            Ces huit critères servent à <strong>évaluer</strong> les dossiers recevables, sur un total de
+            100 points. Ils ne décident pas qui a le droit de candidater : cela relève de l’éligibilité,
+            présentée juste en dessous.
           </p>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {criteria.map(({ key, title, question }, index) => (
+            {criteria.map(({ key, title, weight, question }, index) => (
               <Reveal key={key} delay={index * 40}>
                 <Card className="hover-lift h-full p-4" data-testid={`critere-${index + 1}`}>
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-brand-800 text-xs font-black text-brand-800">
-                      {index + 1}
+                  <div className="flex items-start gap-2.5">
+                    {/* Le poids remplace le numéro d'ordre : ce qu'un candidat a
+                        besoin de savoir, c'est ce qui pèse, pas le rang de la
+                        carte dans la grille. */}
+                    <span className="grid h-7 shrink-0 place-items-center rounded-full border border-brand-800 px-2 text-xs font-black text-brand-800">
+                      {weight} pts
                     </span>
                     <h3 className="text-sm font-extrabold text-brand-950">{title}</h3>
                   </div>

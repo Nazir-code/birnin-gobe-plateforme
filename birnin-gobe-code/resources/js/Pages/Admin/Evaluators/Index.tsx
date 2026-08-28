@@ -489,8 +489,9 @@ export default function EvaluatorsIndex({
 
         <p className="mt-4 flex items-start gap-2 text-xs text-slate-500">
           <UsersRound className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          La notation (§11.2, §11.3) et l’acceptation de la charte par l’évaluateur ne sont pas encore branchées :
-          l’espace évaluateur ne lit pas encore ces affectations.
+          Chaque affectation ouvre un dossier dans l’espace évaluateur, après acceptation de la charte (§11.1).
+          Cet écran ne montre pas les notes : le §11.3 n’accorde au pilotage que l’avancement avant le
+          verrouillage, et aucune route ne permet d’écrire une note depuis l’administration.
         </p>
       </div>
     </DarkSidebarLayout>

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Auth\UserRole;
 use App\Domain\Campaign\CampaignStatus;
+use App\Domain\Evaluation\EvaluationCriterion;
 use App\Models\Application;
 use App\Models\Campaign;
 use App\Models\User;
@@ -238,27 +239,48 @@ final class AccueilPublicTest extends TestCase
         }
     }
 
-    /** Les huit critères d'évaluation, avec leur question directrice. */
-    public function test_l_accueil_porte_les_huit_criteres_d_evaluation(): void
+    /**
+     * Les huit critères annoncés au public sont ceux du §11.2.
+     *
+     * Ce test protège une promesse, pas un affichage. La page portait autrefois
+     * sa propre liste — « Impact usager », « Sécurité », « Équipe et pitch » —
+     * qui ne correspondait à aucun critère du cahier des charges et omettait
+     * l'inclusion. Un candidat lisait donc qu'il serait jugé sur autre chose que
+     * ce que les évaluateurs notent. L'assertion porte sur `EvaluationCriterion`
+     * et non sur des libellés recopiés : recopier serait refaire la seconde
+     * liste que ce test existe pour interdire.
+     */
+    public function test_l_accueil_porte_les_criteres_reels_du_paragraphe_11_2(): void
     {
         $this->campagne();
 
         $this->get('/')
             ->assertOk()
             ->assertInertia(function ($page) {
-                $page->has('criteria', 8);
+                $page->has('criteria', count(EvaluationCriterion::cases()));
 
-                $attendus = [
-                    'Pertinence', 'Impact usager', 'Faisabilité', 'Qualité technique',
-                    'Innovation utile', 'Sécurité', 'Durabilité', 'Équipe et pitch',
-                ];
-
-                foreach ($attendus as $rang => $titre) {
-                    $page->where("criteria.{$rang}.title", $titre);
+                foreach (EvaluationCriterion::cases() as $rang => $critere) {
+                    $page->where("criteria.{$rang}.key", $critere->value);
+                    $page->where("criteria.{$rang}.title", $critere->label());
+                    $page->where("criteria.{$rang}.weight", $critere->weight());
+                    // Les éléments d'appréciation, mot pour mot : ce ne sont pas
+                    // que des titres, et c'est ce texte qui dit sur quoi on note.
+                    $page->where("criteria.{$rang}.question", $critere->elements());
                 }
+            });
+    }
 
-                // Une question au moins, au mot près : ce ne sont pas que des titres.
-                $page->where('criteria.2.question', 'Le MVP peut-il fonctionner avec les ressources, données et délais disponibles ?');
+    /** La pondération publiée totalise bien les 100 points annoncés. */
+    public function test_les_poids_annonces_totalisent_cent(): void
+    {
+        $this->campagne();
+
+        $this->get('/')
+            ->assertInertia(function ($page) {
+                $this->assertSame(
+                    EvaluationCriterion::TOTAL_WEIGHT,
+                    collect($page->toArray()['props']['criteria'])->sum('weight'),
+                );
             });
     }
 
