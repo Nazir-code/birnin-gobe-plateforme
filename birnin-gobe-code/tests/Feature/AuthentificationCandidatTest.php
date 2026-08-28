@@ -170,6 +170,24 @@ final class AuthentificationCandidatTest extends TestCase
         ];
     }
 
+    /**
+     * Chaque espace interne rend bien l'écran qui lui appartient.
+     *
+     * Les deux tests suivants vérifient qui est refusé ; celui-ci vérifie ce
+     * qui est servi. Sans lui, une route peut emprunter l'écran d'un autre
+     * espace sans que rien ne le signale — c'est ce que faisait `/jury/dashboard`,
+     * qui rendait la file de l'évaluateur.
+     */
+    public function test_chaque_espace_interne_rend_son_propre_ecran(): void
+    {
+        $jure = User::factory()->role(UserRole::JURY)->create();
+
+        $this->actingAs($jure)
+            ->get('/jury/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Jury/Dashboard'));
+    }
+
     #[DataProvider('espacesInternes')]
     public function test_un_candidat_ne_peut_pas_ouvrir_un_espace_interne(string $url): void
     {

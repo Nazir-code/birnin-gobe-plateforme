@@ -396,7 +396,12 @@ Route::middleware(['auth', 'role:jury'])
     ->prefix('jury')
     ->name('jury.')
     ->group(function (): void {
-        // L'espace jury n'a pas encore d'écran. Le groupe existe pour que la
-        // règle d'accès soit posée dès maintenant et testable.
-        Route::get('/dashboard', fn () => Inertia::render('Evaluator/Assignments'))->name('dashboard');
+        // L'espace jury (§12) n'existe pas encore, et son écran le dit. Il
+        // empruntait jusqu'ici celui de l'évaluateur, qui affichait alors des
+        // données de démonstration ; depuis qu'il lit les vraies affectations,
+        // l'emprunt ne tient plus — et il ne devait pas tenir : montrer au jury
+        // une file d'évaluation vide lui laisserait croire qu'il n'a rien à
+        // faire. La route reste pour que la règle d'accès soit posée dès
+        // maintenant et testable.
+        Route::get('/dashboard', fn () => Inertia::render('Jury/Dashboard'))->name('dashboard');
     });
