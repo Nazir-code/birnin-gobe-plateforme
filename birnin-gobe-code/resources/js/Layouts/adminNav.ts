@@ -15,13 +15,13 @@ import type { DarkNavItem } from '@/Layouts/DarkSidebarLayout';
 export const adminNav: DarkNavItem[] = [
   { icon: Gauge, label: 'Tableau de bord', href: '/admin/dashboard' },
   { icon: CalendarRange, label: 'Campagnes', href: '/admin/campaigns' },
-  { icon: Layers3, label: 'Files de vérification' },
+  { icon: Layers3, label: 'Files de vérification', href: '/admin/verification' },
   { icon: FolderKanban, label: 'Candidatures', href: '/admin/applications' },
   { icon: UsersRound, label: 'Évaluateurs' },
   { icon: BarChart3, label: 'Indicateurs' },
   { icon: Bell, label: 'Alertes' },
   { icon: Settings, label: 'Paramètres' },
-  { icon: FileStack, label: 'Journal d’audit' },
+  { icon: FileStack, label: 'Journal d’audit', href: '/admin/audit' },
 ];
 
 /** URL de déconnexion interne, commune aux écrans d'administration. */

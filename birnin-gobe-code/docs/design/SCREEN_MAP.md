@@ -21,6 +21,9 @@
 | Campagnes — critères d'éligibilité | `/admin/campaigns/{campaign}/eligibility` | `resources/js/Pages/Admin/Campaigns/Eligibility.tsx` (ADR-010) |
 | Candidatures — liste | `/admin/applications` | `resources/js/Pages/Admin/Applications/Index.tsx` |
 | Candidatures — détail (lecture seule) | `/admin/applications/{application}` | `resources/js/Pages/Admin/Applications/Show.tsx` |
+| Vérification — file | `/admin/verification` | `resources/js/Pages/Admin/Verification/Index.tsx` (ADR-013) |
+| Vérification — écran de contrôle | `/admin/verification/{application}` | `resources/js/Pages/Admin/Verification/Show.tsx` (ADR-013) |
+| Journal d'audit | `/admin/audit` | `resources/js/Pages/Admin/Audit/Index.tsx` |
 | Évaluation / jury | `/evaluator/assignments` | `resources/js/Pages/Evaluator/Assignments.tsx` |
 
 ## Règle de fidélité

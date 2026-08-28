@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
+use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CampaignEligibilityController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\VerificationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
@@ -305,6 +307,24 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         // lire — aucun remplacement, aucune suppression, aucun statut.
         Route::get('/applications/{application}/documents/{type}', [AdminApplicationController::class, 'downloadDocument'])
             ->name('applications.documents.download');
+
+        // Controle d'admissibilite (§10). Le premier endroit ou
+        // l'administration ecrit sur une candidature : elle ajoute un verdict a
+        // cote du dossier et fait bouger son statut, jamais son contenu. Aucune
+        // route ici ne reecrit une reponse ni une piece.
+        Route::get('/verification', [VerificationController::class, 'index'])->name('verification.index');
+        Route::get('/verification/{application}', [VerificationController::class, 'show'])
+            ->name('verification.show');
+        Route::post('/verification/{application}/checks', [VerificationController::class, 'storeChecks'])
+            ->name('verification.checks.store');
+        Route::post('/verification/{application}/decision', [VerificationController::class, 'storeDecision'])
+            ->name('verification.decision.store');
+
+        // Journal d'audit (§13). Une seule route, en lecture, et il ne faut
+        // jamais en ajouter une autre : un journal qu'on peut corriger ne
+        // prouve plus rien. La consultation n'y est pas consignee — voir
+        // AuditController.
+        Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
     });
 });
 

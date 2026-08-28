@@ -57,6 +57,26 @@ class Application extends Model
         return $this->hasMany(Attachment::class);
     }
 
+    /**
+     * La grille d'admissibilite du §10.2 — un verdict par controle.
+     *
+     * @return HasMany<VerificationCheck, $this>
+     */
+    public function verificationChecks(): HasMany
+    {
+        return $this->hasMany(VerificationCheck::class);
+    }
+
+    /**
+     * L'historique des decisions d'admissibilite, en ajout seul (§10.3).
+     *
+     * @return HasMany<VerificationDecision, $this>
+     */
+    public function verificationDecisions(): HasMany
+    {
+        return $this->hasMany(VerificationDecision::class);
+    }
+
     public function sectionAnswers(ApplicationSection $section): ?ApplicationSectionAnswers
     {
         return $this->sections()->where('section', $section->value)->first();
