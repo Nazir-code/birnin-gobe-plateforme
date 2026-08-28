@@ -153,7 +153,7 @@ regardait pas.
 
 ## Conséquences
 
-- Les neuf entrées de `adminNav` portent un `href`. La règle reste valable pour toute entrée
+- Les entrées de `adminNav` portent toutes un `href` (neuf ici, dix depuis ADR-016). La règle reste valable pour toute entrée
   future : sans écran, pas de lien.
 - « L'écran existe » ne veut pas dire « le domaine est couvert ». Paramètres le dit de
   lui-même ; c'est à l'écran de le dire, pas à l'absence de lien.
@@ -165,8 +165,8 @@ regardait pas.
 
 - ~~L'espace évaluateur réel : lecture des affectations, charte, grille de notation sur 100
   points, commentaire obligatoire pour les notes extrêmes, verrouillage.~~ — fait, ADR-015.
-- La revue d'écart du §11.3 : le seuil est enregistré ici, les notes existent depuis
-  ADR-015, mais rien ne compare encore deux évaluations verrouillées.
+- ~~La revue d'écart du §11.3 : le seuil est enregistré ici, les notes existent depuis
+  ADR-015, mais rien ne compare encore deux évaluations verrouillées.~~ — fait, ADR-016.
 - La sélection finale (§12), qui débloquerait la famille d'indicateurs « Finale ».
 - Les notifications (§8.3), qui débloqueraient le domaine « Communication » et l'alerte sur
   les échecs d'envoi.

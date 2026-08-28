@@ -5,6 +5,7 @@ namespace App\Domain\Alerting;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\AttachmentScanStatus;
 use App\Domain\Campaign\CampaignStatus;
+use App\Domain\Evaluation\DivergenceQuery;
 use App\Domain\Evaluation\EvaluationSettings;
 use App\Domain\Verification\AdmissibilityDecision;
 use App\Models\Application;
@@ -57,6 +58,7 @@ final readonly class ComputeAlerts
             $this->clarificationsDepassees($campagne),
             $this->recevablesSansEvaluateur($campagne),
             $this->dossiersSousCouverts($campagne),
+            $this->ecartsARevoir($campagne),
             $this->clotureImminente($campagne),
             $this->clotureFranchieAvecFileOuverte($campagne),
             $this->piecesNonAnalysees($campagne),
@@ -192,6 +194,45 @@ final readonly class ComputeAlerts
             action: 'Compléter les affectations pour atteindre le minimum arrêté pour cette campagne.',
             count: $compte,
             url: route('admin.evaluators.index'),
+        );
+    }
+
+    /**
+     * Dossiers dont l'écart entre évaluateurs dépasse le seuil et attend une revue.
+     *
+     * Silencieuse tant que le seuil n'est pas arrêté, exactement comme la
+     * sous-couverture : sans seuil décidé, aucun écart n'est excessif — il est
+     * seulement non comparé. Signaler une divergence contre un seuil inventé
+     * ferait rouvrir des notations qui n'avaient rien d'anormal.
+     *
+     * Elle est `WARNING` et non `CRITICAL` : un écart n'a de conséquence ni
+     * pour un candidat ni pour le calendrier tant que la présélection n'est pas
+     * close. Il en aurait une si l'on classait sans l'avoir arbitré, mais le
+     * classement relève du §12, qui n'existe pas encore.
+     */
+    private function ecartsARevoir(?Campaign $campagne): ?Alert
+    {
+        if (EvaluationSettings::fromCampaign($campagne)->scoreGapThreshold === null) {
+            return null;
+        }
+
+        $compte = DivergenceQuery::totalARevoir($campagne);
+
+        if ($compte === 0) {
+            return null;
+        }
+
+        return new Alert(
+            key: 'evaluation.ecarts_a_revoir',
+            severity: AlertSeverity::WARNING,
+            label: 'Écarts de notation à revoir',
+            detail: sprintf(
+                '%d dossier(s) portent un écart entre évaluateurs supérieur au seuil arrêté.',
+                $compte,
+            ),
+            action: 'Comparer les notations et arbitrer : demander un avis de plus, ou acter le désaccord (§11.3).',
+            count: $compte,
+            url: route('admin.divergences.index'),
         );
     }
 

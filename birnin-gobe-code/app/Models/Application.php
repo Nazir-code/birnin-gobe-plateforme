@@ -102,6 +102,16 @@ class Application extends Model
         return $this->hasMany(Evaluation::class);
     }
 
+    /**
+     * L'historique des revues d'ecart (§11.3), en ajout seul.
+     *
+     * @return HasMany<EvaluationReview, $this>
+     */
+    public function evaluationReviews(): HasMany
+    {
+        return $this->hasMany(EvaluationReview::class);
+    }
+
     public function sectionAnswers(ApplicationSection $section): ?ApplicationSectionAnswers
     {
         return $this->sections()->where('section', $section->value)->first();

@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CampaignEligibilityController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DivergenceController;
 use App\Http\Controllers\Admin\EvaluatorController;
 use App\Http\Controllers\Admin\IndicatorController;
 use App\Http\Controllers\Admin\SettingsController;
@@ -333,6 +334,14 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->name('evaluators.assignments.store');
         Route::delete('/evaluators/assignments/{assignment}', [EvaluatorController::class, 'destroyAssignment'])
             ->name('evaluators.assignments.destroy');
+
+        // Revue d'ecart entre evaluateurs (§11.3). Trois routes, dont une
+        // seule ecrit — et elle n'ecrit pas de note : le §11.3 n'accorde au
+        // gestionnaire que l'avancement, jamais la retouche d'une notation.
+        Route::get('/divergences', [DivergenceController::class, 'index'])->name('divergences.index');
+        Route::get('/divergences/{application}', [DivergenceController::class, 'show'])->name('divergences.show');
+        Route::post('/divergences/{application}/reviews', [DivergenceController::class, 'store'])
+            ->name('divergences.store');
 
         // Indicateurs (§13.1, §13.4). Deux routes en lecture : l'ecran et
         // l'export CSV du §13.2. Chaque indicateur voyage avec sa definition,

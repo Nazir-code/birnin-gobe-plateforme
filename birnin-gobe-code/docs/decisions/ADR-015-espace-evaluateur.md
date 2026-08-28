@@ -227,9 +227,8 @@ du plan de travail, qui est la seule chose qu'un tableau de bord d'évaluateur a
 
 ## Ce qui reste ouvert
 
-- **La revue d'écart du §11.3.** Le seuil est enregistré depuis ADR-014, et les notes
-  existent désormais : le calcul de l'écart entre évaluations verrouillées, et l'écran qui
-  le présente, restent à faire. C'est la première suite naturelle de cet incrément.
+- ~~**La revue d'écart du §11.3.**~~ — faite, ADR-016 : l'écart se mesure critère par
+  critère, et l'arbitrage n'autorise jamais la retouche d'une note.
 - **La règle d'agrégation** — moyenne, médiane ou note de consensus. Le §11.3 demande
   qu'elle soit « choisie et documentée avant l'ouverture » ; l'inventer ici aurait produit un
   classement fondé sur une règle que personne n'a arrêtée.

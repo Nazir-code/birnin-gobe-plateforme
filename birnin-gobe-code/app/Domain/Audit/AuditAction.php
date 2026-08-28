@@ -20,7 +20,8 @@ namespace App\Domain\Audit;
  * `StartApplication`, `StoreApplicationDocument`, `SubmitApplication`,
  * `SaveCampaign`, `SaveEligibilitySettings`, `SaveVerificationChecks`,
  * `DecideAdmissibility`, `AssignApplications`, `ReleaseAssignment`,
- * `AcceptEvaluationCharter` et `LockEvaluation`. Ajouter une action ailleurs sans
+ * `AcceptEvaluationCharter`, `LockEvaluation` et `RecordDivergenceReview`.
+ * Ajouter une action ailleurs sans
  * l'ajouter ici ne casse rien ; ça la prive seulement de son libellé.
  */
 enum AuditAction: string
@@ -36,6 +37,7 @@ enum AuditAction: string
     case EVALUATION_ASSIGNMENT_RELEASED = 'EVALUATION_ASSIGNMENT_RELEASED';
     case EVALUATION_CHARTER_ACCEPTED = 'EVALUATION_CHARTER_ACCEPTED';
     case EVALUATION_LOCKED = 'EVALUATION_LOCKED';
+    case EVALUATION_DIVERGENCE_REVIEWED = 'EVALUATION_DIVERGENCE_REVIEWED';
     case CAMPAIGN_CREATED = 'CAMPAIGN_CREATED';
     case CAMPAIGN_UPDATED = 'CAMPAIGN_UPDATED';
     case CAMPAIGN_STATUS_CHANGED = 'CAMPAIGN_STATUS_CHANGED';
@@ -57,6 +59,7 @@ enum AuditAction: string
             self::EVALUATION_ASSIGNMENT_RELEASED => 'Affectation levée',
             self::EVALUATION_CHARTER_ACCEPTED => 'Charte d’évaluation acceptée',
             self::EVALUATION_LOCKED => 'Évaluation verrouillée',
+            self::EVALUATION_DIVERGENCE_REVIEWED => 'Écart de notation revu',
             self::CAMPAIGN_CREATED => 'Campagne créée',
             self::CAMPAIGN_UPDATED => 'Campagne modifiée',
             self::CAMPAIGN_STATUS_CHANGED => 'Statut de campagne changé',
@@ -88,6 +91,7 @@ enum AuditAction: string
             self::EVALUATION_ASSIGNED,
             self::EVALUATION_ASSIGNMENT_RELEASED,
             self::EVALUATION_CHARTER_ACCEPTED,
+            self::EVALUATION_DIVERGENCE_REVIEWED,
             self::CAMPAIGN_UPDATED => AuditWeight::NOTABLE,
 
             default => AuditWeight::ROUTINE,
