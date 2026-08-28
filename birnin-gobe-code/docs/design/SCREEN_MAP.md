@@ -23,6 +23,10 @@
 | Candidatures — détail (lecture seule) | `/admin/applications/{application}` | `resources/js/Pages/Admin/Applications/Show.tsx` |
 | Vérification — file | `/admin/verification` | `resources/js/Pages/Admin/Verification/Index.tsx` (ADR-013) |
 | Vérification — écran de contrôle | `/admin/verification/{application}` | `resources/js/Pages/Admin/Verification/Show.tsx` (ADR-013) |
+| Évaluateurs — affectation | `/admin/evaluators` | `resources/js/Pages/Admin/Evaluators/Index.tsx` (ADR-014) |
+| Indicateurs | `/admin/indicators` | `resources/js/Pages/Admin/Indicators/Index.tsx` (ADR-014) |
+| Alertes | `/admin/alerts` | `resources/js/Pages/Admin/Alerts/Index.tsx` (ADR-014) |
+| Paramètres | `/admin/settings` | `resources/js/Pages/Admin/Settings/Index.tsx` (ADR-014) |
 | Journal d'audit | `/admin/audit` | `resources/js/Pages/Admin/Audit/Index.tsx` |
 | Évaluation / jury | `/evaluator/assignments` | `resources/js/Pages/Evaluator/Assignments.tsx` |
 

@@ -68,4 +68,17 @@ class User extends Authenticatable
     {
         return $this->hasMany(Application::class, 'candidate_id');
     }
+
+    /**
+     * Les dossiers affectes a cet utilisateur en tant qu'evaluateur (§11.1).
+     *
+     * Les affectations levees y figurent aussi : c'est cette relation qui porte
+     * les conflits declares, et un conflit doit rester lisible apres coup.
+     *
+     * @return HasMany<EvaluationAssignment, $this>
+     */
+    public function evaluationAssignments(): HasMany
+    {
+        return $this->hasMany(EvaluationAssignment::class, 'evaluator_id');
+    }
 }

@@ -77,6 +77,16 @@ class Application extends Model
         return $this->hasMany(VerificationDecision::class);
     }
 
+    /**
+     * Les affectations aux evaluateurs (§11.1), levees comprises.
+     *
+     * @return HasMany<EvaluationAssignment, $this>
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(EvaluationAssignment::class);
+    }
+
     public function sectionAnswers(ApplicationSection $section): ?ApplicationSectionAnswers
     {
         return $this->sections()->where('section', $section->value)->first();

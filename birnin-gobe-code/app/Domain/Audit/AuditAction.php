@@ -18,8 +18,9 @@ namespace App\Domain\Audit;
  *
  * Les valeurs sont exactement celles que les cas d'usage écrivent aujourd'hui :
  * `StartApplication`, `StoreApplicationDocument`, `SubmitApplication`,
- * `SaveCampaign`, `SaveEligibilitySettings`, `SaveVerificationChecks` et
- * `DecideAdmissibility`. Ajouter une action ailleurs sans
+ * `SaveCampaign`, `SaveEligibilitySettings`, `SaveVerificationChecks`,
+ * `DecideAdmissibility`, `AssignApplications` et `ReleaseAssignment`. Ajouter
+ * une action ailleurs sans
  * l'ajouter ici ne casse rien ; ça la prive seulement de son libellé.
  */
 enum AuditAction: string
@@ -31,10 +32,13 @@ enum AuditAction: string
     case APPLICATION_SUBMITTED = 'APPLICATION_SUBMITTED';
     case VERIFICATION_CHECKS_RECORDED = 'VERIFICATION_CHECKS_RECORDED';
     case ADMISSIBILITY_DECIDED = 'ADMISSIBILITY_DECIDED';
+    case EVALUATION_ASSIGNED = 'EVALUATION_ASSIGNED';
+    case EVALUATION_ASSIGNMENT_RELEASED = 'EVALUATION_ASSIGNMENT_RELEASED';
     case CAMPAIGN_CREATED = 'CAMPAIGN_CREATED';
     case CAMPAIGN_UPDATED = 'CAMPAIGN_UPDATED';
     case CAMPAIGN_STATUS_CHANGED = 'CAMPAIGN_STATUS_CHANGED';
     case CAMPAIGN_ELIGIBILITY_UPDATED = 'CAMPAIGN_ELIGIBILITY_UPDATED';
+    case CAMPAIGN_EVALUATION_SETTINGS_UPDATED = 'CAMPAIGN_EVALUATION_SETTINGS_UPDATED';
 
     /** Libellé d'affichage. Jamais persisté, jamais comparé. */
     public function label(): string
@@ -47,10 +51,13 @@ enum AuditAction: string
             self::APPLICATION_SUBMITTED => 'Candidature déposée',
             self::VERIFICATION_CHECKS_RECORDED => 'Grille d’admissibilité enregistrée',
             self::ADMISSIBILITY_DECIDED => 'Décision d’admissibilité',
+            self::EVALUATION_ASSIGNED => 'Dossier affecté à un évaluateur',
+            self::EVALUATION_ASSIGNMENT_RELEASED => 'Affectation levée',
             self::CAMPAIGN_CREATED => 'Campagne créée',
             self::CAMPAIGN_UPDATED => 'Campagne modifiée',
             self::CAMPAIGN_STATUS_CHANGED => 'Statut de campagne changé',
             self::CAMPAIGN_ELIGIBILITY_UPDATED => 'Critères d’éligibilité modifiés',
+            self::CAMPAIGN_EVALUATION_SETTINGS_UPDATED => 'Paramètres d’évaluation modifiés',
         };
     }
 
@@ -68,10 +75,13 @@ enum AuditAction: string
             self::APPLICATION_SUBMITTED,
             self::ADMISSIBILITY_DECIDED,
             self::CAMPAIGN_STATUS_CHANGED,
-            self::CAMPAIGN_ELIGIBILITY_UPDATED => AuditWeight::DECISIVE,
+            self::CAMPAIGN_ELIGIBILITY_UPDATED,
+            self::CAMPAIGN_EVALUATION_SETTINGS_UPDATED => AuditWeight::DECISIVE,
 
             self::APPLICATION_DOCUMENT_DELETED,
             self::VERIFICATION_CHECKS_RECORDED,
+            self::EVALUATION_ASSIGNED,
+            self::EVALUATION_ASSIGNMENT_RELEASED,
             self::CAMPAIGN_UPDATED => AuditWeight::NOTABLE,
 
             default => AuditWeight::ROUTINE,

@@ -3,9 +3,13 @@
 use App\Http\Controllers\Admin\AdminSessionController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
 use App\Http\Controllers\Admin\AuditController;
+use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CampaignEligibilityController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\EvaluatorController;
+use App\Http\Controllers\Admin\IndicatorController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\VerificationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
@@ -319,6 +323,36 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
             ->name('verification.checks.store');
         Route::post('/verification/{application}/decision', [VerificationController::class, 'storeDecision'])
             ->name('verification.decision.store');
+
+        // Affectation aux evaluateurs (§11.1). L'ecran est unique — charge,
+        // dossiers a affecter et affectations en vigueur se comparent — et il
+        // porte deux ecritures : affecter un lot, lever une affectation.
+        Route::get('/evaluators', [EvaluatorController::class, 'index'])->name('evaluators.index');
+        Route::post('/evaluators/assignments', [EvaluatorController::class, 'storeAssignments'])
+            ->name('evaluators.assignments.store');
+        Route::delete('/evaluators/assignments/{assignment}', [EvaluatorController::class, 'destroyAssignment'])
+            ->name('evaluators.assignments.destroy');
+
+        // Indicateurs (§13.1, §13.4). Deux routes en lecture : l'ecran et
+        // l'export CSV du §13.2. Chaque indicateur voyage avec sa definition,
+        // sa formule et sa source — un chiffre exporte sans sa fiche finit par
+        // etre cite pour autre chose que ce qu'il mesure.
+        Route::get('/indicators', [IndicatorController::class, 'index'])->name('indicators.index');
+        Route::get('/indicators/export', [IndicatorController::class, 'export'])->name('indicators.export');
+
+        // Alertes de pilotage (§9.3). Une seule route, en lecture : une alerte
+        // est un calcul sur l'etat reel, pas un enregistrement qu'on acquitte.
+        // Aucun bouton « ignorer » — une alerte eteinte alors que sa cause
+        // persiste apprend a ne plus lire l'ecran.
+        Route::get('/alerts', AlertController::class)->name('alerts.index');
+
+        // Parametres (§9.2). L'ecran est d'abord un inventaire : les neuf
+        // domaines du cahier des charges, avec l'etat reel de leur outillage.
+        // La seule ecriture qu'il porte est celle des parametres d'evaluation,
+        // dont l'affectation du §11.1 depend.
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::put('/settings/campaigns/{campaign}/evaluation', [SettingsController::class, 'updateEvaluation'])
+            ->name('settings.evaluation.update');
 
         // Journal d'audit (§13). Une seule route, en lecture, et il ne faut
         // jamais en ajouter une autre : un journal qu'on peut corriger ne
