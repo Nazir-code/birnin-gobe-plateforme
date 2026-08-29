@@ -35,7 +35,18 @@ function useLinkLabel() {
   return (link: SiteLink) => t.footer.links[link.key];
 }
 
-/** Lien actif si la destination existe, sinon libellé inerte marqué « bientôt ». */
+/**
+ * Lien actif si la destination existe, sinon libellé inerte marqué « bientôt ».
+ *
+ * **Le marqueur est rendu quelle que soit la densité**, et c'est une
+ * correction : il était conditionné à `tone === 'column'`, alors que le seul
+ * appelant de ce composant passe `tone="inline"`. La branche n'était donc
+ * jamais atteinte, et les quatre mentions du bas de page — mentions légales,
+ * confidentialité, protection des données, accessibilité — s'affichaient en
+ * gris pâle sans rien qui les distingue d'un lien. Un libellé qui a l'air d'un
+ * lien et n'en est pas se lit comme une page cassée, pas comme une page à
+ * venir.
+ */
 function FooterLink({ link, tone = 'column' }: { link: SiteLink; tone?: 'column' | 'inline' }) {
   const t = useI18n();
   const label = useLinkLabel()(link);
@@ -43,13 +54,15 @@ function FooterLink({ link, tone = 'column' }: { link: SiteLink; tone?: 'column'
 
   if (!link.href) {
     return (
-      <span className={`inline-flex flex-wrap items-center gap-2 ${size} text-white/60`}>
+      <span className={`inline-flex flex-wrap items-center gap-2 ${size} text-white/60`} data-testid={`bientot-${link.key}`}>
         {label}
-        {tone === 'column' ? (
-          <span className="rounded-full border border-white/25 px-2 py-px text-[10px] font-semibold uppercase tracking-wide">
-            {t.footer.comingSoon}
-          </span>
-        ) : null}
+        <span
+          className={`rounded-full border border-white/25 px-2 py-px font-semibold uppercase tracking-wide ${
+            tone === 'column' ? 'text-[10px]' : 'text-[9px]'
+          }`}
+        >
+          {t.footer.comingSoon}
+        </span>
       </span>
     );
   }

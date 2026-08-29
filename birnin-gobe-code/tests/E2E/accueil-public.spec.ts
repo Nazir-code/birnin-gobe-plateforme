@@ -170,6 +170,29 @@ test.describe('Page d’accueil publique', () => {
   });
 
   /**
+   * Une destination absente se voit, elle ne se devine pas.
+   *
+   * Les quatre mentions du bas de page n'ont pas encore de page derriere. Elles
+   * s'affichaient en gris pale, sans rien qui les distingue d'un lien : le
+   * marqueur « Bientot » etait conditionne a une densite d'affichage que le seul
+   * appelant du composant n'utilise pas. Un libelle qui a l'air d'un lien et n'en
+   * est pas se lit comme une page cassee.
+   */
+  test('les mentions legales annoncent qu’elles n’existent pas encore', async ({ page }) => {
+    await accueil(page);
+    const pied = page.locator('footer');
+
+    for (const cle of ['legalNotice', 'privacy', 'dataProtection', 'accessibility']) {
+      const mention = pied.getByTestId(`bientot-${cle}`);
+      await expect(mention).toBeVisible();
+      await expect(mention).toContainText('Bientôt');
+    }
+
+    // Et elles ne sont pas cliquables : ce ne sont pas des liens morts.
+    await expect(pied.getByRole('link', { name: 'Mentions légales' })).toHaveCount(0);
+  });
+
+  /**
    * Le titre du hero arrive en deux temps, puis ne bouge plus.
    *
    * Ce test ne mesure aucune duree : une assertion sur un timing depend de la
