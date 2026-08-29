@@ -207,11 +207,7 @@ final class EvaluationController
 
         abort_if($ligne === null, 404);
 
-        return StoreApplicationDocument::disk()->download(
-            $ligne->storage_key,
-            $ligne->original_filename,
-            ['Content-Type' => $ligne->mime_type],
-        );
+        return StoreApplicationDocument::servir($ligne);
     }
 
     /**

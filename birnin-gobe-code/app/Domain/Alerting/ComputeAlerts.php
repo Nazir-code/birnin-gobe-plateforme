@@ -62,6 +62,7 @@ final readonly class ComputeAlerts
             $this->clotureImminente($campagne),
             $this->clotureFranchieAvecFileOuverte($campagne),
             $this->piecesNonAnalysees($campagne),
+            $this->piecesEnQuarantaine($campagne),
         ]);
 
         // Le plus grave d'abord ; à gravité égale, le plus nombreux.
@@ -309,11 +310,13 @@ final readonly class ComputeAlerts
      */
     private function piecesNonAnalysees(?Campaign $campagne): ?Alert
     {
-        $compte = Attachment::query()
-            ->where('scan_status', '!=', AttachmentScanStatus::CLEAN->value)
-            ->when($campagne !== null, fn (Builder $q) => $q->whereHas(
-                'application',
-                fn (Builder $a) => $a->where('campaign_id', $campagne->getKey()),
+        $compte = $this->pieces($campagne)
+            ->whereIn('scan_status', array_map(
+                static fn (AttachmentScanStatus $etat): string => $etat->value,
+                array_filter(
+                    AttachmentScanStatus::bloquants(),
+                    static fn (AttachmentScanStatus $etat): bool => $etat !== AttachmentScanStatus::QUARANTINE,
+                ),
             ))
             ->count();
 
@@ -323,13 +326,56 @@ final readonly class ComputeAlerts
 
         return new Alert(
             key: 'pieces.non_analysees',
-            severity: AlertSeverity::INFO,
-            label: 'Pièces jamais analysées',
-            detail: sprintf('%d pièce(s) déposée(s) n’ont fait l’objet d’aucune analyse antivirus.', $compte),
-            action: 'Ouvrir les pièces dans la visionneuse, jamais depuis le poste de travail. L’analyse antivirus n’est pas branchée.',
+            severity: AlertSeverity::WARNING,
+            label: 'Pièces sans verdict antivirus',
+            detail: sprintf('%d pièce(s) attendent un verdict : elles ne sont pas téléchargeables.', $compte),
+            action: 'Vérifier que l’analyseur tourne, puis relancer : php artisan attachments:scan',
             count: $compte,
             url: null,
         );
+    }
+
+    /**
+     * Pièces mises en quarantaine — §15.1.
+     *
+     * Séparée de la précédente, et plus grave : « on ne sait pas encore » et
+     * « une menace a été trouvée » n'appellent pas le même geste. Les fondre
+     * dans un seul compteur ferait disparaître le second cas dans le premier, et
+     * c'est le second qui demande qu'on prévienne le candidat et qu'on décide du
+     * sort de son dossier.
+     *
+     * Elle n'est pas `CRITICAL` : le fichier ne peut plus être téléchargé par
+     * personne, donc la menace est déjà contenue. Ce qui reste à faire est
+     * administratif.
+     */
+    private function piecesEnQuarantaine(?Campaign $campagne): ?Alert
+    {
+        $compte = $this->pieces($campagne)
+            ->where('scan_status', AttachmentScanStatus::QUARANTINE->value)
+            ->count();
+
+        if ($compte === 0) {
+            return null;
+        }
+
+        return new Alert(
+            key: 'pieces.quarantaine',
+            severity: AlertSeverity::WARNING,
+            label: 'Pièces en quarantaine',
+            detail: sprintf('%d pièce(s) déposée(s) portent une menace détectée par l’antivirus.', $compte),
+            action: 'Le téléchargement est déjà fermé. Demander au candidat de redéposer la pièce, sans jamais ouvrir l’originale.',
+            count: $compte,
+            url: null,
+        );
+    }
+
+    /** @return Builder<Attachment> */
+    private function pieces(?Campaign $campagne): Builder
+    {
+        return Attachment::query()->when($campagne !== null, fn (Builder $q) => $q->whereHas(
+            'application',
+            fn (Builder $a) => $a->where('campaign_id', $campagne->getKey()),
+        ));
     }
 
     /** @return Builder<Application> */

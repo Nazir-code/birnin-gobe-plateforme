@@ -162,11 +162,7 @@ final class AttachmentsSectionController
     {
         $piece = $this->pieceOu404($application, $type);
 
-        return StoreApplicationDocument::disk()->download(
-            $piece->storage_key,
-            $piece->original_filename,
-            ['Content-Type' => $piece->mime_type],
-        );
+        return StoreApplicationDocument::servir($piece);
     }
 
     /**
