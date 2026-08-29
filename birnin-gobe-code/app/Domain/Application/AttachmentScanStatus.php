@@ -16,11 +16,21 @@ namespace App\Domain\Application;
  * examinés, et la base doit continuer de le dire. Aucune écriture nouvelle ne
  * produit cette valeur.
  *
- * **Un seul état autorise le téléchargement.** C'est la règle centrale, et elle
- * est ici plutôt que dans les trois contrôleurs qui servent des fichiers — le
- * candidat, le vérificateur et l'évaluateur. Trois `if` finiraient par diverger,
- * et celui qu'on oublierait serait le chemin par lequel un fichier vérolé
- * sortirait.
+ * `PENDING` est aussi le **défaut de la colonne** en base. C'est le seul état
+ * qui puisse l'être sans mentir : une ligne insérée sans passer par
+ * `StoreApplicationDocument` attend un verdict, elle n'en a pas reçu un. Le
+ * défaut d'origine était `QUARANTINE`, prudent mais faux — il faisait naître
+ * chaque insertion en accusant le fichier de quelqu'un.
+ *
+ * **Deux questions, pas une.** Servir la pièce d'un inconnu à un vérificateur
+ * est une *redistribution*, et seul `CLEAN` l'autorise. La rendre au candidat
+ * qui vient de la déposer est un *aller-retour* : le fichier vient de sa
+ * machine, et tout sauf la quarantaine le laisse passer. Les confondre aurait
+ * fermé au candidat la relecture de son propre dossier, sans rien protéger.
+ *
+ * Les deux règles vivent ici plutôt que dans les trois contrôleurs qui servent
+ * des fichiers. Trois `if` finiraient par diverger, et celui qu'on oublierait
+ * serait le chemin par lequel un fichier vérolé sortirait.
  */
 enum AttachmentScanStatus: string
 {
@@ -69,17 +79,38 @@ enum AttachmentScanStatus: string
     }
 
     /**
-     * Le téléchargement est-il autorisé ?
+     * La pièce peut-elle être servie à quelqu'un d'autre que son déposant ?
      *
-     * **Fermé par défaut.** Seul `CLEAN` ouvre. Un fichier dont l'analyse n'a
-     * pas abouti n'est pas un fichier innocent : c'est un fichier sur lequel on
-     * ne sait rien, et l'ouvrir « en attendant » reviendrait à faire porter le
-     * doute par la personne qui clique — un vérificateur, un évaluateur, sur
-     * son poste de travail.
+     * **Fermé par défaut : seul `CLEAN` ouvre.** Un fichier dont l'analyse n'a
+     * pas abouti n'est pas un fichier innocent, c'est un fichier sur lequel on
+     * ne sait rien ; l'ouvrir « en attendant » ferait porter le doute par la
+     * personne qui clique — un vérificateur, un évaluateur, sur son poste de
+     * travail. C'est le sens de la protection : elle protège de ce que des
+     * inconnus déposent.
      */
-    public function autoriseLeTelechargement(): bool
+    public function autoriseLaRedistribution(): bool
     {
         return $this === self::CLEAN;
+    }
+
+    /**
+     * La pièce peut-elle revenir à celui qui l'a déposée ?
+     *
+     * **Tout sauf la quarantaine.** Un candidat qui retélécharge son propre
+     * fichier ne reçoit rien qu'il n'ait déjà : le fichier vient de sa machine,
+     * et le lui rendre n'ajoute aucun risque. Lui fermer la porte n'aurait donc
+     * rien protégé, et lui aurait coûté cher — sans analyseur configuré, aucun
+     * candidat ne pourrait jamais relire ce qu'il a envoyé, ce qui est
+     * précisément le geste qu'on fait depuis un cybercafé avant de déposer.
+     *
+     * `QUARANTINE` reste fermée même à son déposant. Ce n'est pas pour le
+     * protéger — il a déjà le fichier — mais parce qu'une plateforme publique
+     * ne sert pas un binaire dont elle sait qu'il porte une menace. Le message
+     * lui dit quoi faire : redéposer une pièce saine.
+     */
+    public function autoriseLeRetourAuDeposant(): bool
+    {
+        return $this !== self::QUARANTINE;
     }
 
     /**
@@ -98,12 +129,12 @@ enum AttachmentScanStatus: string
         };
     }
 
-    /** Les états qui interdisent le téléchargement. */
+    /** Les états qui interdisent de servir la pièce à un tiers. */
     public static function bloquants(): array
     {
         return array_values(array_filter(
             self::cases(),
-            static fn (self $etat): bool => ! $etat->autoriseLeTelechargement(),
+            static fn (self $etat): bool => ! $etat->autoriseLaRedistribution(),
         ));
     }
 }

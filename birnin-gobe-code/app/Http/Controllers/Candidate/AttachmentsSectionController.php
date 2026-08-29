@@ -162,7 +162,9 @@ final class AttachmentsSectionController
     {
         $piece = $this->pieceOu404($application, $type);
 
-        return StoreApplicationDocument::servir($piece);
+        // La policy a déjà établi que ce dossier est le sien : ce n'est pas
+        // une redistribution, c'est un aller-retour.
+        return StoreApplicationDocument::servir($piece, versLeDeposant: true);
     }
 
     /**

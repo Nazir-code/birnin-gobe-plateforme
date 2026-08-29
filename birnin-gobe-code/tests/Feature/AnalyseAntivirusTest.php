@@ -26,10 +26,15 @@ use Tests\TestCase;
  *
  * Ce que cette suite protège :
  *
- * 1. **Seule une pièce analysée et saine se télécharge.** C'est la garantie
- *    centrale, et elle vaut pour les trois espaces qui servent des fichiers :
- *    le candidat, le vérificateur, l'évaluateur. Un test par espace, parce que
- *    c'est l'oubli d'un seul qui rouvrirait la porte.
+ * 1. **Une pièce ne va à un tiers que si elle est analysée et saine.** C'est la
+ *    garantie centrale, et elle vaut pour les espaces qui reçoivent le fichier
+ *    de quelqu'un d'autre : le vérificateur du §10, l'évaluateur du §11.2.
+ *
+ * 1 bis. **Mais elle revient à son déposant.** Le candidat qui retélécharge son
+ *    propre fichier ne reçoit rien qu'il n'ait déjà envoyé ; lui fermer la porte
+ *    n'aurait rien protégé et lui aurait interdit de relire son dossier. Seule
+ *    la quarantaine ferme aussi ce chemin, parce qu'on ne sert pas un binaire
+ *    dont on sait qu'il porte une menace.
  *
  * 2. **Une panne d'analyseur n'accuse personne, et n'ouvre rien.** Les deux
  *    erreurs symétriques sont interdites : traiter l'indisponibilité comme une
@@ -129,10 +134,52 @@ final class AnalyseAntivirusTest extends TestCase
         Queue::assertPushed(ScanAttachment::class, fn (ScanAttachment $job): bool => $job->attachmentId === $piece->getKey());
     }
 
+    /**
+     * Une pièce insérée sans passer par le cas d'usage attend un verdict.
+     *
+     * Le défaut de la colonne était `QUARANTINE` : prudent en apparence, faux
+     * en réalité — il faisait naître la ligne en affirmant qu'une analyse avait
+     * eu lieu et trouvé une menace. Le piège était dormant, puisque le cas
+     * d'usage écrit toujours l'état explicitement ; il n'attendait qu'une
+     * reprise de données ou une correction en base.
+     *
+     * Ce test insère donc **volontairement** sans le cas d'usage : c'est le
+     * seul chemin par lequel le défaut se voit.
+     */
+    public function test_une_piece_inseree_sans_etat_attend_un_verdict(): void
+    {
+        $dossier = $this->dossier();
+
+        $piece = Attachment::query()->create([
+            'application_id' => $dossier->getKey(),
+            'type' => DocumentType::cases()[0]->value,
+            'storage_key' => 'applications/reprise.pdf',
+            'original_filename' => 'reprise.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => 1024,
+            'checksum' => str_repeat('0', 64),
+        ]);
+
+        $etat = $piece->refresh()->scan_status;
+
+        $this->assertSame(AttachmentScanStatus::PENDING, $etat, 'Le défaut ne doit accuser personne.');
+        $this->assertFalse($etat->autoriseLaRedistribution(), 'Et il ne doit rien ouvrir à un tiers.');
+        $this->assertTrue($etat->seRejoue(), 'Le rattrapage doit pouvoir la reprendre.');
+    }
+
     // — Seule une pièce saine se télécharge ————————————————————————
 
-    #[DataProvider('etatsBloquants')]
-    public function test_le_candidat_ne_telecharge_pas_une_piece_sans_verdict(string $etat): void
+    /**
+     * Le déposant relit son dossier, quel que soit l'avancement de l'analyse.
+     *
+     * Une première version de cet incrément fermait aussi ce chemin, et trois
+     * tests du parcours candidat l'ont signalé. Ils avaient raison : sans
+     * analyseur configuré, plus aucun candidat n'aurait pu relire ce qu'il
+     * venait de déposer — un contrôle qui coûte cher sans rien protéger, parce
+     * que le fichier vient de sa propre machine.
+     */
+    #[DataProvider('etatsRendusAuDeposant')]
+    public function test_le_deposant_relit_toujours_sa_piece(string $etat): void
     {
         $candidat = $this->candidat();
         $dossier = $this->dossier($candidat);
@@ -140,44 +187,47 @@ final class AnalyseAntivirusTest extends TestCase
 
         $this->actingAs($candidat)
             ->get($this->urlCandidat($dossier, $piece))
-            ->assertStatus(423);
+            ->assertOk();
     }
 
     /** @return array<string, array{string}> */
-    public static function etatsBloquants(): array
+    public static function etatsRendusAuDeposant(): array
     {
         $cas = [];
 
-        foreach (AttachmentScanStatus::bloquants() as $etat) {
-            $cas[mb_strtolower($etat->label())] = [$etat->value];
+        foreach (AttachmentScanStatus::cases() as $etat) {
+            if ($etat->autoriseLeRetourAuDeposant()) {
+                $cas[mb_strtolower($etat->label())] = [$etat->value];
+            }
         }
 
         return $cas;
     }
 
-    public function test_le_candidat_telecharge_une_piece_analysee_et_saine(): void
+    /** La quarantaine, elle, ferme aussi la porte du déposant. */
+    public function test_le_deposant_ne_recupere_pas_une_piece_en_quarantaine(): void
     {
         $candidat = $this->candidat();
         $dossier = $this->dossier($candidat);
-        $piece = $this->piece($dossier, AttachmentScanStatus::CLEAN);
+        $piece = $this->piece($dossier, AttachmentScanStatus::QUARANTINE);
 
         $this->actingAs($candidat)
             ->get($this->urlCandidat($dossier, $piece))
-            ->assertOk();
+            ->assertStatus(423);
     }
 
     /**
-     * Les quatre états bloquants le sont pour tout le monde.
+     * Un seul état permet de servir la pièce à un tiers.
      *
      * Le test porte sur l'énumération plutôt que sur une liste recopiée : un
-     * état ajouté demain sans décision explicite sur le téléchargement fera
+     * état ajouté demain sans décision explicite sur la redistribution fera
      * échouer ce test, ce qui est exactement le rappel qu'on veut.
      */
-    public function test_un_seul_etat_ouvre_le_telechargement(): void
+    public function test_un_seul_etat_ouvre_la_redistribution(): void
     {
         $ouverts = array_filter(
             AttachmentScanStatus::cases(),
-            static fn (AttachmentScanStatus $etat): bool => $etat->autoriseLeTelechargement(),
+            static fn (AttachmentScanStatus $etat): bool => $etat->autoriseLaRedistribution(),
         );
 
         $this->assertSame([AttachmentScanStatus::CLEAN], array_values($ouverts));
@@ -244,7 +294,7 @@ final class AnalyseAntivirusTest extends TestCase
 
         $this->assertSame(AttachmentScanStatus::UNAVAILABLE, $piece->scan_status);
         $this->assertNull($piece->scan_signature, 'Une panne ne nomme aucune menace.');
-        $this->assertFalse($piece->scan_status->autoriseLeTelechargement(), 'Et elle n’ouvre rien non plus.');
+        $this->assertFalse($piece->scan_status->autoriseLaRedistribution(), 'Et elle ne s’ouvre à aucun tiers.');
         $this->assertTrue($piece->scan_status->seRejoue(), 'Une panne se répare : la pièce doit être reprise.');
     }
 

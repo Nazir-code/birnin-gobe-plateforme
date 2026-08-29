@@ -195,6 +195,15 @@ final readonly class StoreApplicationDocument
      * lequel un fichier vérolé sort — sur le poste de quelqu'un qui n'avait
      * aucune raison de se méfier.
      *
+     * **`$versLeDeposant` sépare deux questions qu'on aurait eu tort de
+     * confondre.** Servir la pièce d'un inconnu à un vérificateur est une
+     * redistribution, et elle exige un verdict. La rendre au candidat qui vient
+     * de l'envoyer est un aller-retour : le fichier vient de sa machine, la lui
+     * refuser n'aurait rien protégé — et sans analyseur configuré, plus aucun
+     * candidat ne pourrait relire ce qu'il a déposé. Seule la quarantaine
+     * ferme aussi ce chemin-là, parce qu'une plateforme publique ne sert pas un
+     * binaire dont elle sait qu'il porte une menace.
+     *
      * Le refus est un **423 Locked** et non un 403 : la pièce existe, la
      * personne a le droit de la voir, et l'obstacle est temporaire dans quatre
      * cas sur cinq. Un 403 laisserait croire à un problème d'habilitation, et
@@ -203,11 +212,15 @@ final readonly class StoreApplicationDocument
      * Le message vient de l'état lui-même : un refus muet se lit comme une
      * panne, et la personne réessaie en boucle.
      */
-    public static function servir(Attachment $piece): StreamedResponse
+    public static function servir(Attachment $piece, bool $versLeDeposant = false): StreamedResponse
     {
         $etat = $piece->scan_status;
 
-        abort_unless($etat->autoriseLeTelechargement(), 423, $etat->explication());
+        $autorise = $versLeDeposant
+            ? $etat->autoriseLeRetourAuDeposant()
+            : $etat->autoriseLaRedistribution();
+
+        abort_unless($autorise, 423, $etat->explication());
 
         return self::disk()->download(
             $piece->storage_key,

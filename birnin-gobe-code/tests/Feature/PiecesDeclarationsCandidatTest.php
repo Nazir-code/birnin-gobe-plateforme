@@ -449,9 +449,20 @@ final class PiecesDeclarationsCandidatTest extends TestCase
         $this->assertSame('application/pdf', $piece->mime_type);
         $this->assertGreaterThan(0, $piece->size);
         $this->assertNotSame('', $piece->checksum);
-        // Aucun analyseur ne tourne : la colonne le dit plutôt que de laisser
-        // croire qu'une analyse a eu lieu.
-        $this->assertSame(AttachmentScanStatus::NOT_SCANNED->value, $piece->scan_status);
+        // L'analyse antivirus du §15.1 a pris la pièce en charge. On vérifie la
+        // propriété, pas l'état exact : celui-ci dépend du pilote de file — la
+        // pièce est `PENDING` tant que le job attend, et déjà `UNAVAILABLE` en
+        // `sync` faute d'analyseur configuré. Épingler l'un des deux ferait
+        // échouer ce test le jour où la configuration de file change, pour une
+        // raison sans rapport avec ce qu'il protège.
+        $this->assertFalse(
+            $piece->scan_status->autoriseLaRedistribution(),
+            'Une pièce fraîchement déposée n’est servie à aucun tiers.',
+        );
+        $this->assertTrue(
+            $piece->scan_status->seRejoue(),
+            'Et elle reste reprenable par « attachments:scan » jusqu’à son verdict.',
+        );
 
         Storage::disk(StoreApplicationDocument::diskName())->assertExists($piece->storage_key);
     }
@@ -1107,9 +1118,18 @@ final class PiecesDeclarationsCandidatTest extends TestCase
                 ->where('application.sections.7.documents.0.filename', 'presentation.pdf')
                 ->where('application.sections.7.documents.0.label', DocumentType::PROJECT_PRESENTATION->label()));
 
-        $this->actingAs($admin)
-            ->get("/admin/applications/{$application->getKey()}/documents/".DocumentType::PROJECT_PRESENTATION->value)
-            ->assertOk();
+        // Le téléchargement, lui, attend un verdict antivirus : servir à un
+        // tiers la pièce d'un inconnu est une redistribution, et seul l'état
+        // `CLEAN` l'autorise (§15.1). Sans analyseur configuré dans les tests,
+        // la pièce reste en attente — et c'est le comportement voulu.
+        $chemin = "/admin/applications/{$application->getKey()}/documents/".DocumentType::PROJECT_PRESENTATION->value;
+
+        $this->actingAs($admin)->get($chemin)->assertStatus(423);
+
+        Attachment::query()->where('application_id', $application->getKey())
+            ->update(['scan_status' => AttachmentScanStatus::CLEAN->value]);
+
+        $this->actingAs($admin)->get($chemin)->assertOk();
 
         // Aucune route d'écriture côté administration : le dossier appartient au
         // candidat tant qu'il n'est pas déposé.

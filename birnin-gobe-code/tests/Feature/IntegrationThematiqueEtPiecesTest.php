@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
+use App\Domain\Application\AttachmentScanStatus;
 use App\Domain\Application\AttachmentsSection;
 use App\Domain\Application\ChallengeSection;
 use App\Domain\Application\DocumentType;
@@ -19,6 +20,7 @@ use App\Domain\Candidate\Gender;
 use App\Domain\Eligibility\EvaluateEligibility;
 use App\Domain\Reference\NigerRegion;
 use App\Models\Application;
+use App\Models\Attachment;
 use App\Models\Campaign;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -196,9 +198,19 @@ final class IntegrationThematiqueEtPiecesTest extends TestCase
                 $this->assertArrayNotHasKey('storage_key', $pieces['documents'][0]);
             });
 
-        // — Le téléchargement : lecture seule, et il fonctionne.
+        // — Le téléchargement : lecture seule, et il attend un verdict.
+        // Servir à un tiers la pièce d'un inconnu est une redistribution ; seul
+        // l'état `CLEAN` l'autorise (§15.1). La pièce vient d'être déposée, donc
+        // elle attend encore son analyse.
+        $chemin = "/admin/applications/{$dossier->getKey()}/documents/".DocumentType::PROJECT_PRESENTATION->value;
+
+        $this->actingAs($admin)->get($chemin)->assertStatus(423);
+
+        Attachment::query()->where('application_id', $dossier->getKey())
+            ->update(['scan_status' => AttachmentScanStatus::CLEAN->value]);
+
         $this->actingAs($admin)
-            ->get("/admin/applications/{$dossier->getKey()}/documents/".DocumentType::PROJECT_PRESENTATION->value)
+            ->get($chemin)
             ->assertOk()
             ->assertDownload('presentation.pdf');
     }
