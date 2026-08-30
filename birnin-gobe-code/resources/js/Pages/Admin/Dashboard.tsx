@@ -43,11 +43,22 @@ export default function AdminDashboard({
   campaignsCount,
   campaignsUrl,
   applications,
+  alerts,
 }: {
   campaign: Campagne | null;
   campaignsCount: number;
   campaignsUrl: string;
-  applications: { total: number; drafts: number; submitted: number; url: string };
+  applications: {
+    total: number;
+    drafts: number;
+    submitted: number;
+    admissible: number;
+    url: string;
+    draftsUrl: string;
+    submittedUrl: string;
+    admissibleUrl: string;
+  };
+  alerts: { count: number; url: string };
 }) {
   const user = useAuthUser();
 
@@ -107,14 +118,16 @@ export default function AdminDashboard({
           </Card>
         </Reveal>
 
-        {/* Trois compteurs sont comptés pour de bon : ils viennent de
-            `applications`. « Dossiers soumis » a rejoint les deux premiers avec
-            le workflow de dépôt — son zéro est désormais un vrai comptage, et
-            non l'aveu d'une fonctionnalité absente. Les deux derniers gardent
-            leur tiret : un « 0 » affirmerait qu'on a compté et trouvé zéro,
-            alors que le workflow qui produirait ces nombres n'existe pas encore.
-            Un tiret dit « inconnu », un zéro dit « aucun » : la différence
-            compte pour qui pilote. */}
+        {/* Les cinq compteurs sont de vrais comptages, et chacun mène à la
+            liste de ce qu'il a compté — filtrée sur exactement le même
+            périmètre. Un chiffre qui ouvre une liste plus large ferait douter du
+            chiffre ; c'est la règle déjà posée pour les alertes du §9.3.
+
+            « Admissibles » et « Alertes actives » affichaient un tiret et la
+            mention « à venir ». C'était vrai à l'écriture de cet écran, et faux
+            depuis que le contrôle d'admissibilité et les alertes de pilotage
+            existent. Un tableau de bord qui annonce « à venir » ce qui est livré
+            détourne de fonctionnalités disponibles. */}
         <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard
             icon={FolderKanban}
@@ -122,6 +135,8 @@ export default function AdminDashboard({
             label="Candidatures"
             hint="Tous statuts, toutes campagnes"
             tone="blue"
+            href={applications.url}
+            testId="carte-candidatures"
           />
           <StatCard
             icon={Gauge}
@@ -129,6 +144,8 @@ export default function AdminDashboard({
             label="Brouillons en cours"
             hint="Dossiers commencés, non soumis"
             tone="gold"
+            href={applications.draftsUrl}
+            testId="carte-brouillons"
           />
           <StatCard
             icon={ClipboardCheck}
@@ -136,21 +153,28 @@ export default function AdminDashboard({
             label="Dossiers soumis"
             hint="Dossiers déposés, numéro attribué"
             tone="blue"
+            href={applications.submittedUrl}
+            testId="carte-soumis"
           />
-          <StatCard icon={ShieldCheck} value="—" label="Admissibles" hint="Admissibilité à venir" tone="green" />
-          <StatCard icon={AlertTriangle} value="—" label="Alertes actives" hint="À venir" tone="red" />
+          <StatCard
+            icon={ShieldCheck}
+            value={applications.admissible}
+            label="Admissibles"
+            hint="Recevables, en attente d’affectation"
+            tone="green"
+            href={applications.admissibleUrl}
+            testId="carte-admissibles"
+          />
+          <StatCard
+            icon={AlertTriangle}
+            value={alerts.count}
+            label="Alertes actives"
+            hint="Retards, écarts et pièces à traiter"
+            tone="red"
+            href={alerts.url}
+            testId="carte-alertes"
+          />
         </div>
-
-        {applications.total > 0 ? (
-          <div className="mt-3">
-            <Link
-              href={applications.url}
-              className="focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg text-sm font-bold text-brand-800 hover:underline"
-            >
-              <FolderKanban size={16} /> Consulter les candidatures
-            </Link>
-          </div>
-        ) : null}
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_1.1fr_1.15fr]">
           <Reveal delay={100}>

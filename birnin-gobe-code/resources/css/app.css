@@ -403,3 +403,21 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .nav-souligne-parent:focus-visible .nav-souligne {
   background-size: 100% 2px;
 }
+
+/* Rotation du bouton « Actualiser », pendant que la requête est en vol.
+
+   Aucune garde `prefers-reduced-motion` ici : le filet global en tête de
+   feuille ramène déjà toute animation à 0,01 ms, et une seconde garde locale
+   finirait par diverger de lui. L'état reste alors lisible sans mouvement,
+   parce que le libellé change aussi — « Actualisation… » — et que le bouton se
+   désactive. Une information qui ne tient que dans une animation disparaît
+   pour qui la refuse. */
+.anim-rotation {
+  animation: rotation-continue 900ms linear infinite;
+}
+
+@keyframes rotation-continue {
+  to {
+    transform: rotate(360deg);
+  }
+}
