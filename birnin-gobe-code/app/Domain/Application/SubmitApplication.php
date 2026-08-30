@@ -4,8 +4,11 @@ namespace App\Domain\Application;
 
 use App\Domain\Audit\AuditWriter;
 use App\Domain\Eligibility\EvaluateEligibility;
+use App\Domain\Notification\NotificationEvent;
+use App\Domain\Notification\SendNotification;
 use App\Models\Application;
 use App\Models\User;
+use App\Notifications\Candidat\SoumissionRecue;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -40,6 +43,7 @@ final readonly class SubmitApplication
         private ApplicationStateMachine $stateMachine,
         private EvaluateEligibility $eligibilite,
         private AuditWriter $audit,
+        private SendNotification $notifier,
     ) {}
 
     /**
@@ -47,7 +51,7 @@ final readonly class SubmitApplication
      */
     public function handle(Application $application, User $actor): Application
     {
-        return DB::transaction(function () use ($application, $actor): Application {
+        $depose = DB::transaction(function () use ($application, $actor): Application {
             // Relecture sous verrou : à partir d'ici, aucune autre requête ne
             // peut décider du sort de ce dossier avant le `commit`.
             $verrouille = Application::query()
@@ -105,6 +109,18 @@ final readonly class SubmitApplication
 
             return $verrouille;
         });
+
+        // §8.3, ligne 3. Après le `commit`, jamais dedans : une transaction qui
+        // échouerait après l'envoi laisserait un candidat en possession d'un
+        // accusé de dépôt pour un dossier non déposé.
+        $this->notifier->handle(
+            evenement: NotificationEvent::SUBMISSION_RECEIVED,
+            destinataire: $depose->candidate()->first() ?? $actor,
+            message: new SoumissionRecue($depose),
+            dossier: $depose,
+        );
+
+        return $depose;
     }
 
     /**

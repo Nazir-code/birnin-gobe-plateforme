@@ -4,10 +4,14 @@ namespace App\Domain\Verification;
 
 use App\Domain\Application\ApplicationStateMachine;
 use App\Domain\Audit\AuditWriter;
+use App\Domain\Notification\NotificationEvent;
+use App\Domain\Notification\SendNotification;
 use App\Models\Application;
 use App\Models\User;
 use App\Models\VerificationCheck;
 use App\Models\VerificationDecision;
+use App\Notifications\Candidat\ClarificationDemandee;
+use App\Notifications\Candidat\DecisionDEtape;
 use DomainException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +56,7 @@ final readonly class DecideAdmissibility
     public function __construct(
         private ApplicationStateMachine $stateMachine,
         private AuditWriter $audit,
+        private SendNotification $notifier,
     ) {}
 
     /**
@@ -67,7 +72,7 @@ final readonly class DecideAdmissibility
         ?string $candidateMessage = null,
         ?string $respondBy = null,
     ): Application {
-        return DB::transaction(function () use (
+        [$decide, $trace] = DB::transaction(function () use (
             $application,
             $decision,
             $actor,
@@ -76,7 +81,10 @@ final readonly class DecideAdmissibility
             $internalNote,
             $candidateMessage,
             $respondBy,
-        ): Application {
+            // La fermeture rend le dossier **et** la trace de décision : le message
+            // au candidat en a besoin, et le relire après le commit ferait une
+            // requête de plus pour une ligne qu'on vient d'écrire.
+        ): array {
             $verrouille = Application::query()
                 ->whereKey($application->getKey())
                 ->lockForUpdate()
@@ -97,7 +105,7 @@ final readonly class DecideAdmissibility
 
             $verrouille->forceFill(['status' => $statutVise->value])->save();
 
-            VerificationDecision::query()->create([
+            $trace = VerificationDecision::query()->create([
                 'application_id' => $verrouille->getKey(),
                 'decision' => $decision->value,
                 'primary_reason' => $primaryReason?->value,
@@ -129,8 +137,43 @@ final readonly class DecideAdmissibility
                 reason: $primaryReason?->label(),
             );
 
-            return $verrouille;
+            return [$verrouille, $trace];
         });
+
+        // §8.3, lignes 4 et 5. Après le `commit` : un candidat prévenu d'une
+        // décision que la transaction annulerait ensuite n'aurait aucun moyen
+        // de comprendre ce qui lui arrive.
+        //
+        // Le message envoyé est celui que le vérificateur a écrit pour le
+        // candidat, jamais l'observation interne — le §10.3 sépare les deux
+        // précisément pour que l'envoi soit possible sans divulgation.
+        $this->notifierLeCandidat($decide, $trace);
+
+        return $decide;
+    }
+
+    /**
+     * Prévient le candidat de ce qui vient d'être décidé sur son dossier.
+     *
+     * Une clarification et une décision finale ne sont pas le même événement au
+     * §8.3, et n'appellent pas le même message : l'une demande une action dans
+     * un délai, l'autre clôt une étape. Les fondre en un seul courriel ferait
+     * lire « votre dossier est recevable » à quelqu'un à qui l'on réclame une
+     * pièce.
+     */
+    private function notifierLeCandidat(Application $dossier, VerificationDecision $trace): void
+    {
+        $candidat = $dossier->candidate()->first();
+
+        if ($candidat === null) {
+            return;
+        }
+
+        [$evenement, $message] = $trace->decision === AdmissibilityDecision::CLARIFICATION
+            ? [NotificationEvent::CLARIFICATION_REQUESTED, new ClarificationDemandee($dossier, $trace)]
+            : [NotificationEvent::STAGE_DECISION, new DecisionDEtape($dossier, $trace)];
+
+        $this->notifier->handle($evenement, $candidat, $message, $dossier);
     }
 
     /**

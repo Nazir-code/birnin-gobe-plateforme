@@ -6,9 +6,12 @@ use App\Domain\Application\ApplicationStateMachine;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Audit\AuditWriter;
 use App\Domain\Auth\UserRole;
+use App\Domain\Notification\NotificationEvent;
+use App\Domain\Notification\SendNotification;
 use App\Models\Application;
 use App\Models\EvaluationAssignment;
 use App\Models\User;
+use App\Notifications\Evaluateur\DossiersAffectes;
 use DomainException;
 use Illuminate\Support\Facades\DB;
 
@@ -48,6 +51,7 @@ final readonly class AssignApplications
     public function __construct(
         private ApplicationStateMachine $stateMachine,
         private AuditWriter $audit,
+        private SendNotification $notifier,
     ) {}
 
     /**
@@ -68,7 +72,9 @@ final readonly class AssignApplications
             throw new DomainException('ASSIGNMENT_NO_APPLICATION');
         }
 
-        return DB::transaction(function () use ($identifiants, $evaluateur, $actor): int {
+        $campagne = null;
+
+        $crees = DB::transaction(function () use ($identifiants, $evaluateur, $actor, &$campagne): int {
             // Verrou sur tout le lot avant la moindre écriture : deux
             // responsables qui affectent en même temps ne doivent pas pouvoir
             // lire tous les deux « aucune affectation en vigueur ».
@@ -82,6 +88,9 @@ final readonly class AssignApplications
             }
 
             $crees = 0;
+
+            // La campagne du lot, pour l'échéance annoncée dans le message.
+            $campagne = $dossiers->first()?->campaign()->first();
 
             foreach ($dossiers as $dossier) {
                 $this->assertAffectable($dossier, $evaluateur);
@@ -121,6 +130,20 @@ final readonly class AssignApplications
 
             return $crees;
         });
+
+        // §8.3, ligne 6. Un seul message pour tout le lot : le §11.1 fait
+        // affecter une vingtaine de dossiers d'un geste, et vingt courriels en
+        // trois minutes se lisent comme une panne, puis se filtrent.
+        if ($crees > 0) {
+            $this->notifier->handle(
+                evenement: NotificationEvent::ASSIGNMENT,
+                destinataire: $evaluateur,
+                message: new DossiersAffectes($crees, $campagne),
+                campagne: $campagne,
+            );
+        }
+
+        return $crees;
     }
 
     /**

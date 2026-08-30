@@ -11,6 +11,7 @@ use App\Domain\Verification\AdmissibilityDecision;
 use App\Models\Application;
 use App\Models\Attachment;
 use App\Models\Campaign;
+use App\Models\NotificationDelivery;
 use App\Models\VerificationDecision;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -63,6 +64,7 @@ final readonly class ComputeAlerts
             $this->clotureFranchieAvecFileOuverte($campagne),
             $this->piecesNonAnalysees($campagne),
             $this->piecesEnQuarantaine($campagne),
+            $this->notificationsEnEchec($campagne),
         ]);
 
         // Le plus grave d'abord ; à gravité égale, le plus nombreux.
@@ -234,6 +236,44 @@ final readonly class ComputeAlerts
             action: 'Comparer les notations et arbitrer : demander un avis de plus, ou acter le désaccord (§11.3).',
             count: $compte,
             url: route('admin.divergences.index'),
+        );
+    }
+
+    /**
+     * Notifications dont l'envoi a échoué — §9.3, §8.3.
+     *
+     * ADR-014 avait explicitement écarté cette alerte : aucun envoi n'existait,
+     * donc rien ne pouvait échouer, et un compteur bloqué à zéro apprend à
+     * ignorer l'écran. Les envois existent désormais, et l'alerte avec eux.
+     *
+     * **Ne compte que les échecs, jamais les canaux non servis.** Un SMS qui ne
+     * part pas faute de fournisseur n'est pas une panne : c'est une décision qui
+     * n'a pas été prise, et elle se lit dans les paramètres du §9.2. La compter
+     * ici produirait une alerte permanente, exactement ce qu'ADR-014 refusait.
+     *
+     * `CRITICAL` : un candidat qu'on n'a pas pu prévenir d'un rejet ou d'un
+     * délai de réponse subit une conséquence réelle, et le temps joue contre
+     * lui. C'est la définition que `AlertSeverity` donne de ce niveau.
+     */
+    private function notificationsEnEchec(?Campaign $campagne): ?Alert
+    {
+        $compte = NotificationDelivery::query()
+            ->enEchec()
+            ->when($campagne !== null, fn (Builder $q) => $q->where('campaign_id', $campagne->getKey()))
+            ->count();
+
+        if ($compte === 0) {
+            return null;
+        }
+
+        return new Alert(
+            key: 'notifications.echecs',
+            severity: AlertSeverity::CRITICAL,
+            label: 'Notifications non délivrées',
+            detail: sprintf('%d message(s) n’ont pas pu être envoyés à leur destinataire.', $compte),
+            action: 'Vérifier la configuration d’envoi, puis prévenir les personnes concernées par un autre moyen.',
+            count: $compte,
+            url: null,
         );
     }
 

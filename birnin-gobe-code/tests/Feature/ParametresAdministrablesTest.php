@@ -110,7 +110,14 @@ final class ParametresAdministrablesTest extends TestCase
                 $this->assertSame(SettingsState::ADMINISTRABLE->value, $domaines['ELIGIBILITE']['state']);
                 $this->assertSame(SettingsState::PARTIEL->value, $domaines['EVALUATION']['state']);
 
-                foreach (['THEMATIQUES', 'FORMULAIRE', 'COMMUNICATION', 'PUBLICATION', 'UTILISATEURS', 'CONSERVATION'] as $absent) {
+                // « Communication » est passé d'absent à partiel avec ADR-018 :
+                // les six événements du §8.3 partent par courriel, mais aucun
+                // fournisseur SMS n'est choisi, aucune adresse de secrétariat
+                // n'est configurée, et les modèles ne sont pas éditables sans
+                // code. C'est exactement ce que « partiel » doit signaler.
+                $this->assertSame(SettingsState::PARTIEL->value, $domaines['COMMUNICATION']['state']);
+
+                foreach (['THEMATIQUES', 'FORMULAIRE', 'PUBLICATION', 'UTILISATEURS', 'CONSERVATION'] as $absent) {
                     $this->assertSame(SettingsState::ABSENT->value, $domaines[$absent]['state']);
                 }
             });

@@ -71,7 +71,7 @@ enum SettingsDomain: string
     {
         return match ($this) {
             self::CAMPAGNE, self::ELIGIBILITE => SettingsState::ADMINISTRABLE,
-            self::EVALUATION => SettingsState::PARTIEL,
+            self::EVALUATION, self::COMMUNICATION => SettingsState::PARTIEL,
             default => SettingsState::ABSENT,
         };
     }
@@ -92,7 +92,7 @@ enum SettingsDomain: string
             self::EVALUATION => 'Le nombre minimal d’évaluations et le seuil d’écart sont réglables. Les critères, leurs poids et l’échelle du §11.2 ne le sont pas : tant qu’aucune notation n’existe, les rendre configurables publierait un réglage que rien ne lit.',
             self::THEMATIQUES => 'Les quatre axes sont un référentiel du code (`ProjectTheme`), pas une donnée. Les rendre administrables suppose de décider ce qu’il advient des dossiers déjà rattachés à un axe supprimé.',
             self::FORMULAIRE => 'Les neuf sections et leurs champs sont décrits par le domaine, et leur validation serveur en dépend. Un formulaire administrable suppose un moteur de champs dynamiques, pas un écran de plus.',
-            self::COMMUNICATION => 'Aucune notification n’est envoyée aujourd’hui (§8.3). Régler des modèles que rien n’expédie donnerait à croire que les candidats sont prévenus.',
+            self::COMMUNICATION => 'Les six événements du §8.3 sont envoyés par courriel, et chaque envoi laisse une trace. Ce qui manque reste réel : aucun fournisseur SMS n’est choisi, aucune adresse de secrétariat n’est configurée, et les modèles ne sont pas éditables sans code — ils vivent dans « app/Notifications ».',
             self::PUBLICATION => 'Le CMS n’existe pas : les contenus publics sont encore portés par le code et `i18n/fr.ts`.',
             self::UTILISATEURS => 'Les comptes internes sont provisionnés en ligne de commande (ADR-006). Une administration des rôles suppose d’abord d’arbitrer les périmètres et les dates d’accès du §9.2.',
             self::CONSERVATION => 'Aucune purge n’est implémentée. Une durée de conservation affichée mais jamais appliquée serait une promesse fausse, opposable en cas de contrôle.',
