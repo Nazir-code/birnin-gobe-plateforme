@@ -128,7 +128,11 @@ export default function AdminDashboard({
             depuis que le contrôle d'admissibilité et les alertes de pilotage
             existent. Un tableau de bord qui annonce « à venir » ce qui est livré
             détourne de fonctionnalités disponibles. */}
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {/* Cinq colonnes seulement à partir de 2xl. En dessous, la barre
+            latérale prend 300 px et il ne reste que ~170 px par carte : moins
+            que « Candidatures » en gras à côté d'une icône de 48 px. Le mot se
+            coupait au milieu. Trois colonnes laissent ~290 px, ce qui tient. */}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
           <StatCard
             icon={FolderKanban}
             value={applications.total}

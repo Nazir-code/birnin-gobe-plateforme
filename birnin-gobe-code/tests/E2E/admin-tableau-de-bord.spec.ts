@@ -72,6 +72,25 @@ test.describe('Tableau de bord — compteurs', () => {
     expect(new Set(largeurs).size, `Largeurs relevees : ${largeurs.join(', ')}`).toBe(1);
   });
 
+  test('aucun contenu ne deborde de sa carte', async ({ page }) => {
+    const email = `admin-tdb-${jetonUnique()}@example.test`;
+    provisionnerAdmin('Aicha Diallo', email);
+    await connecterAdmin(page, email);
+
+    for (const id of CARTES) {
+      const debordement = await page.getByTestId(id).evaluate((el) => ({
+        horizontal: el.scrollWidth - el.clientWidth,
+        vertical: el.scrollHeight - el.clientHeight,
+      }));
+
+      // Le texte sortait de la carte et passait sous la fleche : la carte ne
+      // faisait que ~170 px sur cinq colonnes, et « Candidatures » n'y tenait
+      // pas. Un debordement ne leve aucune erreur, il se voit seulement.
+      expect(debordement.horizontal, `Carte ${id} : debordement horizontal`).toBeLessThanOrEqual(0);
+      expect(debordement.vertical, `Carte ${id} : debordement vertical`).toBeLessThanOrEqual(0);
+    }
+  });
+
   test('un compteur ouvre la liste filtree sur ce qu il annonce', async ({ page }) => {
     const email = `admin-tdb-${jetonUnique()}@example.test`;
     provisionnerAdmin('Aicha Diallo', email);

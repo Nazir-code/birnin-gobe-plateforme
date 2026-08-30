@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { ArrowRight, type LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { AnimatedCounter } from '@/Components/AnimatedCounter';
 import { Reveal } from '@/Components/Reveal';
 
@@ -18,6 +18,13 @@ import { Reveal } from '@/Components/Reveal';
  * chaque carte est alors seule dans sa rangée, et `h-full` n'a plus rien à quoi
  * s'aligner. D'où la hauteur réservée de l'intitulé secondaire, qui rend la
  * hauteur du contenu indépendante du texte.
+ *
+ * **Pas de flèche « voir plus ».** Elle a existé, et ne tenait pas : sur cinq
+ * colonnes la carte fait environ 170 px, dont 48 pour l'icône, et les 32 px que
+ * la flèche prenait manquaient au texte — qui passait par-dessus. Ce qui signale
+ * le clic est ce que la carte fait déjà : le curseur, le survol, le relief au
+ * clic. Une affordance qui écrase le contenu qu'elle sert coûte plus qu'elle ne
+ * rapporte.
  *
  * **La destination doit montrer exactement ce que la carte a compté.** Un
  * compteur qui annonce trois dossiers soumis et ouvre une liste de douze fait
@@ -54,7 +61,11 @@ export function StatCard({
       <div className={`grid h-12 w-12 place-items-center rounded-full ${palette}`}>
         <Icon size={23} strokeWidth={1.8} />
       </div>
-      <div className="min-w-0 flex-1">
+      {/* `overflow-wrap: anywhere` et non le seul `min-w-0` : celui-ci autorise
+          la boîte à rétrécir sous la largeur de son contenu, ce qui fait
+          déborder un mot insécable au lieu de le couper. Sur cinq colonnes, la
+          carte ne fait que ~170 px et « Candidatures » ne tient pas. */}
+      <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
         <div className="text-2xl font-extrabold tracking-tight text-slate-900">
           <AnimatedCounter value={String(value)} />
         </div>
@@ -65,7 +76,6 @@ export function StatCard({
             borne le haut, `min-h` réserve le bas. */}
         {hint ? <div className="mt-0.5 line-clamp-2 min-h-[2rem] text-[11px] leading-4 text-slate-400">{hint}</div> : null}
       </div>
-      {href ? <ArrowRight size={16} className="shrink-0 text-slate-300" aria-hidden /> : null}
     </>
   );
 
