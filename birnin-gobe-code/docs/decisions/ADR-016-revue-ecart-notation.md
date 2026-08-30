@@ -141,7 +141,8 @@ du calcul.
 
 - **La règle d'agrégation du §11.3** — moyenne, médiane ou consensus — reste à arbitrer, et
   c'est elle qui débloquera le classement. Cet incrément la rend plus urgente qu'il ne la
-  résout : on sait maintenant où les avis divergent, pas comment les additionner.
+  résout : on sait maintenant où les avis divergent, pas comment les additionner. **ADR-017**
+  pose la question au comité, avec les chiffres réels des dossiers déjà notés.
 - **La short-list du §11.3** (3 à 4 dossiers par thématique, générée comme proposition).
 - **La sélection finale (§12)** et l'espace jury.
 - **La détection de biais systématique** : l'écran montre les écarts dossier par dossier,
