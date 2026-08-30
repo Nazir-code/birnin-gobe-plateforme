@@ -11,6 +11,14 @@ import { Reveal } from '@/Components/Reveal';
  * lien sans en être un se lit comme une page cassée. Une carte sans destination
  * garde donc l'apparence d'une carte, sans curseur de pointeur ni flèche.
  *
+ * **Toutes les cartes ont la même hauteur, dans toutes les dispositions.**
+ * Deux mécanismes le tiennent, et il faut les deux. `h-full` — sur l'enveloppe,
+ * qui est la cellule de grille, et sur le lien, qui porte le fond blanc — aligne
+ * les cartes d'une même rangée. Mais sous 640 px la grille passe à une colonne :
+ * chaque carte est alors seule dans sa rangée, et `h-full` n'a plus rien à quoi
+ * s'aligner. D'où la hauteur réservée de l'intitulé secondaire, qui rend la
+ * hauteur du contenu indépendante du texte.
+ *
  * **La destination doit montrer exactement ce que la carte a compté.** Un
  * compteur qui annonce trois dossiers soumis et ouvre une liste de douze fait
  * douter du compteur. C'est la même exigence que pour les alertes du §9.3, dont
@@ -51,7 +59,11 @@ export function StatCard({
           <AnimatedCounter value={String(value)} />
         </div>
         <div className="text-sm font-bold text-slate-700">{label}</div>
-        {hint ? <div className="mt-0.5 text-[11px] text-slate-400">{hint}</div> : null}
+        {/* Deux lignes réservées, jamais plus, jamais moins : c'est
+            l'intitulé secondaire qui faisait varier la hauteur des cartes, et
+            en colonne unique aucune rangée ne vient les réaligner. `line-clamp`
+            borne le haut, `min-h` réserve le bas. */}
+        {hint ? <div className="mt-0.5 line-clamp-2 min-h-[2rem] text-[11px] leading-4 text-slate-400">{hint}</div> : null}
       </div>
       {href ? <ArrowRight size={16} className="shrink-0 text-slate-300" aria-hidden /> : null}
     </>
@@ -59,11 +71,11 @@ export function StatCard({
 
   if (href) {
     return (
-      <Reveal>
+      <Reveal className="h-full">
         <Link
           href={href}
           data-testid={testId}
-          className="hover-lift press-feedback focus-ring metric-card flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50"
+          className="hover-lift press-feedback focus-ring metric-card flex h-full w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50"
         >
           {contenu}
         </Link>
@@ -72,7 +84,7 @@ export function StatCard({
   }
 
   return (
-    <Reveal className="hover-lift metric-card flex items-center gap-4 px-5 py-4" testId={testId}>
+    <Reveal className="hover-lift metric-card flex h-full items-center gap-4 px-5 py-4" testId={testId}>
       {contenu}
     </Reveal>
   );
