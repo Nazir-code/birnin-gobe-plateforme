@@ -36,7 +36,9 @@ test.describe('Page d’accueil publique', () => {
     }
     await expect(page.getByTestId('thematique-1')).toContainText('Gestion urbaine et services de base');
     await expect(page.getByTestId('thematique-1')).toContainText('Problèmes prioritaires');
-    await expect(page.getByTestId('thematique-1')).toContainText('Résultats attendus');
+    // « Resultats attendus » n'est plus affiche : son intitule n'avait jamais de
+    // <dd>, et montrait donc un titre suivi de rien.
+    await expect(page.locator('#thematiques')).not.toContainText('Résultats attendus');
     await expect(page.getByTestId('thematique-4')).toContainText('Cartographie, géolocalisation, risques et résilience');
 
     // — Les huit criteres d'evaluation, annonces comme tels

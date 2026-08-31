@@ -23,7 +23,7 @@ const iconesThematiques: Record<string, typeof Building2> = {
   cartographie: MapPinned,
 };
 
-type Thematique = { key: string; title: string; problems: string; results: string };
+type Thematique = { key: string; title: string; problems: string };
 type Critere = { key: string; title: string; question: string };
 
 /** Les cinq etapes du parcours, de la candidature aux resultats. */
@@ -280,14 +280,11 @@ export default function Home({ campaign, themes, criteria }: {
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-900 text-white"><Icone size={21} /></div>
                     <h3 className="mt-1 text-base font-extrabold leading-6 text-brand-950">{title}</h3>
                   </div>
-                  <dl className="mt-4 space-y-3">
-                    <div>
-                      <dt className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Problèmes prioritaires</dt>
-                      <dd className="mt-1 text-sm leading-6 text-slate-600">{problems}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] font-bold uppercase tracking-wide text-brand-700">Résultats attendus</dt>
-                    </div>
+                  {/* « Résultats attendus » a été retiré : son intitulé n'avait
+                      jamais de <dd>, et affichait donc un titre suivi de rien. */}
+                  <dl className="mt-4">
+                    <dt className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Problèmes prioritaires</dt>
+                    <dd className="mt-1 text-sm leading-6 text-slate-600">{problems}</dd>
                   </dl>
                 </Card>
               </Reveal>
