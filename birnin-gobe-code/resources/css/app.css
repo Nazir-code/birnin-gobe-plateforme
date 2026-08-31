@@ -73,6 +73,38 @@
   box-shadow: 0 16px 36px rgb(16 34 52 / 10%);
 }
 
+/* Survol chaud, posé sur `.hover-lift` sans le contredire.
+
+   Les deux classes se partagent le travail par propriete : `.hover-lift` garde
+   le deplacement et l'ombre, celle-ci ne touche que la bordure et le fond. Sans
+   ce partage, les deux regles se disputeraient `box-shadow` et le resultat
+   dependrait de leur ordre dans le fichier — le genre de fragilite qui casse au
+   premier reordonnancement.
+
+   La couleur vient de la famille doree de la marque, et non d'un orange invente
+   pour l'occasion : le systeme n'a que deux familles, verte et doree (ADR-002).
+   `--color-gold-600` plutot que `--gold` — plus franchement orange, et deux fois
+   plus contraste sur le fond de page (2,35:1 contre 1,73:1).
+
+   Ces bordures restent decoratives : la carte n'est pas cliquable, et la bordure
+   au repos (`--line`) n'est elle-meme qu'a 1,19:1. Le seuil de 3:1 du critere
+   1.4.11 vise les composants d'interface, pas un accent de survol — mais le
+   texte, lui, a ete verifie sur le fond survole et reste AA (titre 11,3:1,
+   corps 7,1:1, label 4,7:1).
+
+   `--gold-soft` est un creme tres clair, choisi precisement pour cela : un fond
+   plus sature aurait oblige a repeindre aussi les paragraphes.
+
+   `:focus-within` accompagne `:hover` : si une carte recoit un jour un lien,
+   la parcourir au clavier la signalera comme la survoler a la souris. */
+.hover-accent {
+  transition: border-color var(--dur-base) var(--ease-out), background-color var(--dur-base) var(--ease-out);
+}
+.hover-accent:hover, .hover-accent:focus-within {
+  border-color: var(--color-gold-600);
+  background-color: var(--gold-soft);
+}
+
 .press-feedback {
   transition: transform var(--dur-fast) var(--ease-standard);
 }

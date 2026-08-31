@@ -275,7 +275,7 @@ export default function Home({ campaign, themes, criteria }: {
 
             return (
               <Reveal key={key} delay={index * 60}>
-                <Card className="hover-lift h-full p-5 sm:p-6" data-testid={`thematique-${index + 1}`}>
+                <Card className="hover-lift hover-accent h-full p-5 sm:p-6" data-testid={`thematique-${index + 1}`}>
                   <div className="flex items-start gap-3">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-900 text-white"><Icone size={21} /></div>
                     <h3 className="mt-1 text-base font-extrabold leading-6 text-brand-950">{title}</h3>
