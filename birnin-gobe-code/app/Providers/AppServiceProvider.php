@@ -5,8 +5,11 @@ namespace App\Providers;
 use App\Domain\Application\Scanning\ClamAvScanner;
 use App\Domain\Application\Scanning\UnavailableScanner;
 use App\Domain\Application\Scanning\VirusScanner;
+use App\Listeners\RefermerLaTraceDEnvoi;
 use App\Models\Application;
 use App\Policies\ApplicationPolicy;
+use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -46,5 +49,11 @@ final class AppServiceProvider extends ServiceProvider
         // convention de nommage : un renommage de classe casserait alors le
         // contrôle d'accès en silence, sans qu'aucune erreur ne soit levée.
         Gate::policy(Application::class, ApplicationPolicy::class);
+
+        // Même raison pour l'écouteur : la découverte automatique des
+        // événements repose sur le type déclaré en signature, et une trace
+        // d'envoi qui cesserait silencieusement de se refermer laisserait
+        // croire à un répartiteur en panne alors que tout fonctionne.
+        Event::listen(NotificationSent::class, RefermerLaTraceDEnvoi::class);
     }
 }

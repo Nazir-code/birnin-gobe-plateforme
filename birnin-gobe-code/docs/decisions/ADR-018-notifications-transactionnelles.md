@@ -50,7 +50,8 @@ servi.
 
 ### 3. « Tenté et échoué » n'est pas « jamais tenté »
 
-`DeliveryStatus` a trois cas, et la distinction entre les deux derniers est celle qui compte.
+`DeliveryStatus` a trois cas — **quatre depuis ADR-019, qui y ajoute `QUEUED`** — et la
+distinction entre `FAILED` et `SKIPPED` est celle qui compte.
 Un SMS qui ne part pas faute de fournisseur n'est pas une panne : c'est une fonctionnalité
 absente. Les compter ensemble produirait une alerte permanente — précisément ce qu'ADR-014
 refusait — et noierait les vraies pannes.
@@ -82,6 +83,12 @@ pas faire échouer un dépôt de candidature ni une décision d'admissibilité :
 committé, et la notification en est une conséquence. L'exception est attrapée, tracée en
 `FAILED`, et l'alerte la remonte — plutôt que d'être rendue à un candidat qui n'y peut rien.
 Un test le vérifie en remplaçant le répartiteur par un double qui lève.
+
+> **Corrigé par ADR-019.** Ce paragraphe supposait que l'envoi avait lieu dans l'appel, alors
+> que les messages sont mis en file : le `try/catch` n'entourait qu'une écriture dans Redis, et
+> `FAILED` ne pouvait donc jamais s'écrire pour une panne SMTP réelle. La trace naît désormais
+> `QUEUED` et se referme depuis le processus qui a réellement tenté l'envoi. La garantie
+> énoncée ici — le geste métier survit à la panne — reste vraie et reste testée.
 
 **Les envois partent après le `commit`, jamais dedans** — la règle que le docblock
 d'`AssignApplications` annonçait depuis ADR-014. Un accusé de dépôt envoyé dans une

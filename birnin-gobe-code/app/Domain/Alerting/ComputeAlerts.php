@@ -29,12 +29,10 @@ use Illuminate\Database\Eloquent\Builder;
  * écrire ici, nommés et commentés, dit qu'ils sont des valeurs de lancement.
  * Le jour où le comité les fixera, ils rejoindront `campaigns.settings`.
  *
- * **Ce qui n'est pas alerté, et pourquoi.** Le §13.1 cite « échecs de
- * notification » ; aucun envoi n'existe, donc rien n'échoue, et une alerte
- * toujours à zéro apprendrait à ignorer l'écran. Le §9.3 cite aussi les
- * « anomalies » de saisie ; celles que la plateforme sait voir sont déjà
- * présentées dossier par dossier au vérificateur (`AutomaticFindings`), et les
- * remonter ici en doublon disperserait la même information sur deux écrans.
+ * **Ce qui n'est pas alerté, et pourquoi.** Le §9.3 cite les « anomalies » de
+ * saisie ; celles que la plateforme sait voir sont déjà présentées dossier par
+ * dossier au vérificateur (`AutomaticFindings`), et les remonter ici en doublon
+ * disperserait la même information sur deux écrans.
  */
 final readonly class ComputeAlerts
 {
@@ -48,6 +46,19 @@ final readonly class ComputeAlerts
 
     /** Une clôture qui approche appelle une vérification de la file. */
     public const JOURS_AVANT_CLOTURE = 7;
+
+    /**
+     * Au-delà, un message confié au répartiteur et jamais parti est une panne.
+     *
+     * Une heure : la marge est large pour un envoi qui prend normalement
+     * quelques secondes, et c'est voulu. Un seuil serré transformerait chaque
+     * pointe de charge — les vingt courriels d'un lot d'affectation, l'afflux
+     * de la veille de clôture — en alerte `CRITICAL` qui se résout seule, et un
+     * responsable qui voit ce compteur clignoter sans conséquence apprend à ne
+     * plus le regarder. Une heure d'attente, en revanche, ne se rattrape pas
+     * toute seule : quelque chose est arrêté.
+     */
+    public const HEURES_AVANT_FILE_SUSPECTE = 1;
 
     /**
      * @return list<Alert>
@@ -65,6 +76,7 @@ final readonly class ComputeAlerts
             $this->piecesNonAnalysees($campagne),
             $this->piecesEnQuarantaine($campagne),
             $this->notificationsEnEchec($campagne),
+            $this->notificationsEnAttente($campagne),
         ]);
 
         // Le plus grave d'abord ; à gravité égale, le plus nombreux.
@@ -272,6 +284,52 @@ final readonly class ComputeAlerts
             label: 'Notifications non délivrées',
             detail: sprintf('%d message(s) n’ont pas pu être envoyés à leur destinataire.', $compte),
             action: 'Vérifier la configuration d’envoi, puis prévenir les personnes concernées par un autre moyen.',
+            count: $compte,
+            url: null,
+        );
+    }
+
+    /**
+     * Des messages confiés au répartiteur et jamais partis — §9.3.
+     *
+     * **C'est la seule alerte qui voit un `worker` arrêté.** Un envoi qui
+     * échoue produit un `FAILED`, et l'alerte précédente le remonte ; un envoi
+     * que personne ne dépile ne produit rien du tout. Sans ce compteur, la
+     * panne la plus totale — le conteneur `worker` à l'arrêt, aucune
+     * notification ne partant plus — serait aussi la plus silencieuse : tous
+     * les écrans resteraient verts pendant que plus aucun candidat n'est
+     * prévenu de quoi que ce soit.
+     *
+     * `CRITICAL`, pour la même raison que les échecs : un candidat qu'on n'a
+     * pas prévenu d'un rejet ou d'un délai de réponse subit une conséquence
+     * réelle, et le temps joue contre lui. Que le message soit tombé ou qu'il
+     * dorme dans une file ne change rien pour lui.
+     *
+     * **Non filtrée par campagne.** Une file arrêtée l'est pour tout le monde,
+     * et le message de création de compte — qui n'a pas de campagne — serait
+     * invisible sous un filtre. L'action à mener n'est pas non plus de l'ordre
+     * de l'édition en cours : elle est sur le serveur.
+     */
+    private function notificationsEnAttente(?Campaign $campagne): ?Alert
+    {
+        $compte = NotificationDelivery::query()
+            ->enAttenteDepuis(now()->subHours(self::HEURES_AVANT_FILE_SUSPECTE))
+            ->count();
+
+        if ($compte === 0) {
+            return null;
+        }
+
+        return new Alert(
+            key: 'notifications.file_bloquee',
+            severity: AlertSeverity::CRITICAL,
+            label: 'Messages en attente d’envoi',
+            detail: sprintf(
+                '%d message(s) sont confiés depuis plus de %d heure(s) sans être partis.',
+                $compte,
+                self::HEURES_AVANT_FILE_SUSPECTE,
+            ),
+            action: 'Vérifier que le service d’envoi en file d’attente tourne, puis reprendre les messages en attente.',
             count: $compte,
             url: null,
         );

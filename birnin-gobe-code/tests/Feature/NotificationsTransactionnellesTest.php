@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Alerting\ComputeAlerts;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Auth\UserRole;
@@ -27,7 +28,9 @@ use App\Notifications\Candidat\SoumissionRecue;
 use App\Notifications\Evaluateur\DossiersAffectes;
 use Illuminate\Contracts\Notifications\Dispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -159,10 +162,14 @@ final class NotificationsTransactionnellesTest extends TestCase
 
         Notification::assertSentTo($candidat, CompteCree::class);
 
+        // `QUEUED`, et non `SENT` : `Notification::fake()` remplace le
+        // répartiteur, donc rien n'a réellement été envoyé — et la trace doit
+        // le dire. C'est la propriété que cet incrément protège : une ligne ne
+        // passe à `SENT` que si un processus a vraiment parlé à un serveur.
         $this->assertDatabaseHas('notification_deliveries', [
             'event' => NotificationEvent::ACCOUNT_CREATED->value,
             'channel' => NotificationChannel::EMAIL->value,
-            'status' => DeliveryStatus::SENT->value,
+            'status' => DeliveryStatus::QUEUED->value,
             'recipient_id' => $candidat->getKey(),
         ]);
     }
@@ -183,7 +190,7 @@ final class NotificationsTransactionnellesTest extends TestCase
 
         $this->assertDatabaseHas('notification_deliveries', [
             'event' => NotificationEvent::STAGE_DECISION->value,
-            'status' => DeliveryStatus::SENT->value,
+            'status' => DeliveryStatus::QUEUED->value,
             'recipient_id' => $candidat->getKey(),
             'application_id' => $dossier->getKey(),
         ]);
@@ -436,6 +443,213 @@ final class NotificationsTransactionnellesTest extends TestCase
 
         Notification::assertNothingSent();
         $this->assertSame(0, NotificationDelivery::query()->count());
+    }
+
+    // — La file d'attente ne ment pas sur ce qui est parti ————————
+
+    /**
+     * Confier n'est pas envoyer.
+     *
+     * Les six messages du §8.3 sont mis en file : quand le cas d'usage rend la
+     * main, personne n'a encore parlé à un serveur SMTP. Une trace qui dirait
+     * `SENT` à ce moment ferait croire qu'un candidat a été prévenu sur la foi
+     * d'une écriture dans Redis.
+     */
+    public function test_une_trace_nait_ouverte_et_ne_dit_pas_encore_envoyee(): void
+    {
+        $candidat = $this->candidat();
+
+        app(SendNotification::class)->handle(
+            NotificationEvent::ACCOUNT_CREATED,
+            $candidat,
+            new CompteCree,
+        );
+
+        $trace = NotificationDelivery::query()
+            ->where('recipient_id', $candidat->getKey())
+            ->where('channel', NotificationChannel::EMAIL->value)
+            ->firstOrFail();
+
+        $this->assertSame(DeliveryStatus::QUEUED, $trace->status);
+        $this->assertFalse($trace->status->estClos(), 'L’issue n’est pas encore connue.');
+        $this->assertNull($trace->settled_at, 'Rien ne s’est encore refermé.');
+    }
+
+    /**
+     * L'envoi aboutit dans le `worker` : la trace se referme là, et pas avant.
+     *
+     * Le répartiteur factice du `setUp` est retiré pour que l'événement
+     * `NotificationSent` de Laravel soit réellement émis — c'est lui que
+     * `RefermerLaTraceDEnvoi` écoute, et sans lui rien ne prouverait que le
+     * chaînon existe.
+     */
+    public function test_un_envoi_reussi_referme_la_trace_en_envoyee(): void
+    {
+        // Un vrai répartiteur, reconstruit : `$this->app->make(Dispatcher::class)`
+        // rendrait le double posé par `Notification::fake()` dans le `setUp`,
+        // qui n'émet aucun événement — le test ne prouverait rien.
+        Notification::swap(new ChannelManager($this->app));
+
+        $candidat = $this->candidat();
+
+        app(SendNotification::class)->handle(
+            NotificationEvent::ACCOUNT_CREATED,
+            $candidat,
+            new CompteCree,
+        );
+
+        $trace = NotificationDelivery::query()
+            ->where('recipient_id', $candidat->getKey())
+            ->where('channel', NotificationChannel::EMAIL->value)
+            ->firstOrFail();
+
+        $this->assertSame(DeliveryStatus::SENT, $trace->status);
+        $this->assertNotNull($trace->settled_at, 'Le moment où l’on a su doit être daté.');
+    }
+
+    /**
+     * Une trace refermée ne se rouvre pas, et ne se contredit pas.
+     *
+     * Sur une file synchrone, un échec produit deux signaux — le `failed()` du
+     * message et l'exception attrapée par `SendNotification`. Le premier fixe
+     * l'issue ; le second ne doit pas la réécrire, sinon la date de fermeture
+     * glisserait et un succès pourrait être effacé par un signal en retard.
+     */
+    public function test_une_trace_deja_refermee_ne_change_plus(): void
+    {
+        $candidat = $this->candidat();
+
+        app(SendNotification::class)->handle(
+            NotificationEvent::ACCOUNT_CREATED,
+            $candidat,
+            new CompteCree,
+        );
+
+        $trace = NotificationDelivery::query()->where('recipient_id', $candidat->getKey())
+            ->where('channel', NotificationChannel::EMAIL->value)->firstOrFail();
+
+        NotificationDelivery::refermer($trace->getKey(), DeliveryStatus::SENT);
+        NotificationDelivery::refermer($trace->getKey(), DeliveryStatus::FAILED, 'Signal en retard.');
+
+        $trace->refresh();
+
+        $this->assertSame(DeliveryStatus::SENT, $trace->status);
+        $this->assertNull($trace->detail);
+    }
+
+    /**
+     * Un `worker` arrêté est la panne la plus totale, et serait la plus muette.
+     *
+     * Aucun `FAILED` ne s'écrit quand rien ne dépile : sans cette alerte, tous
+     * les écrans resteraient verts pendant que plus aucun candidat n'est
+     * prévenu de quoi que ce soit.
+     */
+    public function test_l_alerte_de_pilotage_signale_une_file_qui_ne_part_plus(): void
+    {
+        $admin = User::factory()->role(UserRole::ADMIN)->create();
+        $dossier = $this->dossierDepose();
+
+        NotificationDelivery::query()->create([
+            'event' => NotificationEvent::STAGE_DECISION->value,
+            'channel' => NotificationChannel::EMAIL->value,
+            'status' => DeliveryStatus::QUEUED->value,
+            'recipient_id' => $dossier->candidate_id,
+            'recipient_role' => 'CANDIDATE',
+            'recipient_address' => 'candidat@exemple.ne',
+            'application_id' => $dossier->getKey(),
+            'campaign_id' => $dossier->campaign_id,
+            'created_at' => now()->subHours(ComputeAlerts::HEURES_AVANT_FILE_SUSPECTE + 1),
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/alerts')
+            ->assertInertia(function ($page): void {
+                $alerte = collect($page->toArray()['props']['alerts'])->firstWhere('key', 'notifications.file_bloquee');
+
+                $this->assertNotNull($alerte, 'Une file arrêtée doit être signalée (§9.3).');
+                $this->assertSame(1, $alerte['count']);
+                $this->assertSame('CRITICAL', $alerte['severity']);
+            });
+    }
+
+    /** Un message confié il y a trois secondes n'est pas une panne. */
+    public function test_l_alerte_de_file_ne_se_declenche_pas_sur_un_envoi_recent(): void
+    {
+        $admin = User::factory()->role(UserRole::ADMIN)->create();
+        $this->campagne();
+
+        app(SendNotification::class)->handle(
+            NotificationEvent::ACCOUNT_CREATED,
+            $this->candidat(),
+            new CompteCree,
+        );
+
+        $this->actingAs($admin)
+            ->get('/admin/alerts')
+            ->assertInertia(function ($page): void {
+                $cles = collect($page->toArray()['props']['alerts'])->pluck('key');
+
+                $this->assertNotContains('notifications.file_bloquee', $cles);
+            });
+    }
+
+    /**
+     * Le rappel ne repart pas parce que le précédent n'est pas encore sorti.
+     *
+     * La garde porte sur la prise en charge, pas sur la seule réussite : sinon
+     * la commande du lendemain produirait un second message dès que le
+     * répartiteur prend une nuit de retard — exactement le doublon qu'elle
+     * existe pour éviter.
+     */
+    public function test_le_rappel_ne_repart_pas_tant_que_le_precedent_attend(): void
+    {
+        $campagne = Campaign::factory()->create(['closes_at' => now()->addDays(7)->endOfDay()]);
+        $this->campagne = $campagne;
+
+        $candidat = $this->candidat();
+
+        Application::factory()
+            ->for($campagne, 'campaign')
+            ->for($candidat, 'candidate')
+            ->withSection(ApplicationSection::ELIGIBILITY, ['renseigne' => 'oui'])
+            ->create();
+
+        $this->artisan('notifications:rappel-cloture')->assertSuccessful();
+
+        // Le message est toujours en file : rien ne l'a refermé.
+        $this->assertSame(DeliveryStatus::QUEUED, NotificationDelivery::query()
+            ->where('event', NotificationEvent::CLOSING_REMINDER->value)
+            ->where('recipient_id', $candidat->getKey())
+            ->firstOrFail()->status);
+
+        $this->artisan('notifications:rappel-cloture')->assertSuccessful();
+
+        Notification::assertSentToTimes($candidat, RappelDeCloture::class, 1);
+    }
+
+    // — Une tâche qui échoue laisse une trace exploitable ——————————
+
+    /**
+     * La table que `config/queue.php` désignait sans qu'elle existe.
+     *
+     * Sans elle, la première tâche à épuiser ses essais fait lever un
+     * `SQLSTATE[42P01]` **au moment d'enregistrer son échec** : la tâche est
+     * perdue et l'erreur d'origine avec elle. Deux tâches sont désormais mises
+     * en file — l'analyse antivirus du §15.1 et les six messages du §8.3.
+     */
+    public function test_le_journal_des_taches_en_echec_existe(): void
+    {
+        $table = (string) config('queue.failed.table');
+
+        $this->assertTrue(
+            Schema::hasTable($table),
+            'Le pilote d’échecs de file écrit dans cette table : sans elle, chaque échec en masque un autre.',
+        );
+
+        $this->assertTrue(
+            Schema::hasColumns($table, ['uuid', 'connection', 'queue', 'payload', 'exception', 'failed_at']),
+            'Le pilote « database-uuids » retrouve une tâche par son `uuid` — c’est l’argument de `queue:retry`.',
+        );
     }
 
     // — Le contenu exigé par le §8.3 ————————————————————————————
