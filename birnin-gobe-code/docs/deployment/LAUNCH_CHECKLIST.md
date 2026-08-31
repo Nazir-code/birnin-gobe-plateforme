@@ -381,9 +381,7 @@ modification de `.env`, refaire `config:cache`, ou ne pas l'activer du tout.
 
 | Sujet | État |
 |---|---|
-| Page d'accueil publique | affiche encore un calendrier et un compte à rebours de démonstration ; correctif identifié, à appliquer à l'intégration suivante |
-| Limitation des inscriptions | les deux écrans de connexion sont protégés ; l'inscription ne l'est pas encore |
-| Table `failed_jobs` | déclarée par `config/queue.php`, absente des migrations ; sans effet tant qu'aucune tâche n'est mise en file |
+| Reprise des messages en attente | l'alerte `notifications.file_bloquee` signale une file arrêtée (ADR-019) ; la relance reste un geste d'exploitation (`queue:retry`), pas un bouton du back-office |
 | Pièces justificatives | `minio` et `clamav` attendent derrière le profil `fichiers` |
-| Vérification d'adresse e-mail | pas encore implémentée ; l'inscription n'exige aucune confirmation |
-| Autres courriels | seul le lien de réinitialisation part aujourd'hui : ni accusé de soumission, ni notification d'admissibilité |
+| Vérification d'adresse e-mail | pas encore implémentée ; le courriel de création de compte ne prétend pas vérifier l'adresse (ADR-018), ce qui reste l'écart au §8.3 |
+| Transport de courriel | les six messages du §8.3 partent (ADR-018) et leur issue est tracée (ADR-019), mais `MAIL_MAILER` vaut encore `log` : aucun transport réel n'est choisi |

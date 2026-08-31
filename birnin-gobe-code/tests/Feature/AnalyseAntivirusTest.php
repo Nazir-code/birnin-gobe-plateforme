@@ -19,6 +19,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -304,6 +305,59 @@ final class AnalyseAntivirusTest extends TestCase
         $this->analyseurRend(ScanVerdict::clean());
 
         (new ScanAttachment(999_999))->handle(app(VirusScanner::class));
+
+        $this->assertSame(0, Attachment::query()->count());
+    }
+
+    /**
+     * Le job est abandonné après son dernier essai — ADR-019.
+     *
+     * `handle()` traite les cas prévus ; `failed()` traite l'imprévu — base
+     * injoignable, disque objet en panne, mémoire épuisée. Sans lui la pièce
+     * resterait `PENDING`, c'est-à-dire « analyse en cours », pour toujours :
+     * un état qui promet un verdict imminent qui ne viendra jamais, et une
+     * ligne dans `failed_jobs` que personne ne rapproche du fichier.
+     */
+    public function test_un_job_abandonne_ferme_la_piece_au_lieu_de_la_laisser_en_attente(): void
+    {
+        $dossier = $this->dossier();
+        $piece = $this->piece($dossier, AttachmentScanStatus::PENDING);
+
+        (new ScanAttachment($piece->getKey()))->failed(new RuntimeException('Base injoignable'));
+
+        $piece->refresh();
+
+        $this->assertSame(AttachmentScanStatus::UNAVAILABLE, $piece->scan_status);
+        $this->assertNull($piece->scan_signature, 'Un abandon ne nomme aucune menace.');
+        $this->assertFalse(
+            $piece->scan_status->autoriseLaRedistribution(),
+            'Ce qui n’a pas été vérifié ne s’ouvre pas : c’est la règle de tout le §15.1.',
+        );
+        $this->assertTrue($piece->scan_status->seRejoue(), 'Le rattrapage doit pouvoir la reprendre.');
+        $this->assertNotNull($piece->scanned_at, 'L’abandon est un fait daté.');
+    }
+
+    /**
+     * Un signal d'abandon en retard n'efface pas un verdict déjà rendu.
+     *
+     * Même garde qu'ADR-019 sur les traces d'envoi : le premier à conclure fixe
+     * l'issue. Sans elle, une pièce déclarée saine pourrait retomber en
+     * « analyse indisponible » et se refermer au téléchargement sans raison.
+     */
+    public function test_un_abandon_tardif_n_efface_pas_un_verdict_rendu(): void
+    {
+        $dossier = $this->dossier();
+        $piece = $this->piece($dossier, AttachmentScanStatus::CLEAN);
+
+        (new ScanAttachment($piece->getKey()))->failed(new RuntimeException('Signal en retard'));
+
+        $this->assertSame(AttachmentScanStatus::CLEAN, $piece->refresh()->scan_status);
+    }
+
+    /** Une pièce remplacée avant l'abandon : gérer un échec ne doit pas en produire un autre. */
+    public function test_un_job_abandonne_sur_une_piece_disparue_ne_leve_rien(): void
+    {
+        (new ScanAttachment(999_999))->failed(new RuntimeException('Base injoignable'));
 
         $this->assertSame(0, Attachment::query()->count());
     }

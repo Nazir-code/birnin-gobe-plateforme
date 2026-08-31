@@ -10,6 +10,7 @@ use App\Models\Attachment;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Analyse une pièce déposée — §15.1.
@@ -32,6 +33,13 @@ use Illuminate\Support\Facades\Log;
  * **La pièce peut avoir disparu.** Un candidat qui remplace un document entre le
  * dépôt et l'analyse supprime la ligne et le fichier ; le job le constate et
  * s'arrête sans bruit. C'est le cas normal, pas une anomalie.
+ *
+ * **Et si le job échoue quand même ?** `handle()` traite les cas prévus, pas
+ * l'imprévu : une base injoignable, un disque objet en panne, un dépassement de
+ * mémoire. Après trois essais, le job est abandonné. Sans `failed()`, la pièce
+ * resterait `PENDING` — « analyse en cours » — pour toujours : un état qui dit
+ * « repassez dans un instant » à quelqu'un qui attendrait indéfiniment, et une
+ * ligne dans `failed_jobs` que personne ne rapproche jamais du fichier concerné.
  */
 final class ScanAttachment implements ShouldQueue
 {
@@ -67,6 +75,41 @@ final class ScanAttachment implements ShouldQueue
         }
 
         $this->consigner($piece, $analyseur->scan($contenu));
+    }
+
+    /**
+     * Le job est abandonné après son dernier essai — §15.1, ADR-019.
+     *
+     * **`UNAVAILABLE`, jamais `CLEAN`.** C'est la même règle que partout
+     * ailleurs sur l'analyse antivirus : ce qui n'a pas été vérifié ne s'ouvre
+     * pas. La pièce reste fermée au téléchargement, l'alerte
+     * `pieces.non_analysees` la voit, et la commande de rattrapage peut la
+     * reprendre — alors que `PENDING` la laisserait dans un état qui promet un
+     * verdict imminent qui ne viendra jamais.
+     *
+     * **Un verdict déjà rendu n'est pas effacé.** Si une tentative précédente a
+     * conclu `CLEAN` ou `QUARANTINE`, le signal d'abandon arrive après coup et
+     * ne doit pas défaire ce qui a été établi — c'est la même garde
+     * qu'ADR-019 pose sur les traces d'envoi : le premier à conclure fixe
+     * l'issue. `seRejoue()` nomme exactement les états qui attendent encore.
+     *
+     * La pièce peut aussi avoir disparu entre-temps ; c'est le cas normal du
+     * remplacement de document, et il ne doit pas faire échouer la gestion d'un
+     * échec.
+     */
+    public function failed(?Throwable $erreur): void
+    {
+        $piece = Attachment::query()->find($this->attachmentId);
+
+        if ($piece === null || ! $piece->scan_status->seRejoue()) {
+            return;
+        }
+
+        $this->consigner($piece, ScanVerdict::unavailable(sprintf(
+            'L’analyse n’a pas abouti après %d tentatives : %s',
+            $this->tries,
+            $erreur?->getMessage() ?? 'cause inconnue',
+        )));
     }
 
     /**

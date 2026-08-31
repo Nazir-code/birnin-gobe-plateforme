@@ -20,3 +20,20 @@ Schedule::command('notifications:rappel-cloture')
     ->dailyAt('09:00')
     ->timezone(config('app.timezone'))
     ->withoutOverlapping();
+
+// Purge du journal des tâches en échec (table créée par ADR-019, purge décidée
+// par ADR-020).
+//
+// `failed_jobs` n'a aucune purge automatique : sans cette ligne, chaque échec
+// définitif y reste pour toujours, avec sa charge sérialisée complète — et la
+// charge d'une notification contient le dossier et le destinataire. Une table
+// qui ne fait que croître finit par peser sur les sauvegardes, et surtout elle
+// conserve des données personnelles bien au-delà de leur utilité.
+//
+// Sept jours : au-delà, une tâche échouée ne se rejoue plus utilement. Un
+// courriel d'admissibilité vieux d'une semaine ne se renvoie pas tel quel —
+// on reprend contact autrement. Le délai laisse largement le temps de voir
+// l'alerte du §9.3 et d'agir.
+Schedule::command('queue:prune-failed', ['--hours' => 24 * 7])
+    ->weeklyOn(1, '03:30')
+    ->timezone(config('app.timezone'));

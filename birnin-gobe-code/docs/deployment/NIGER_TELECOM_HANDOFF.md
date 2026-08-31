@@ -191,24 +191,32 @@ redémarrage du conteneur.
    base, avec une table `sessions` et `SESSION_DRIVER=database` dans
    `.env.example`. Elles survivent désormais au redéploiement et
    fonctionneraient avec plusieurs instances applicatives.
-2. **`config/queue.php` déclare une table `failed_jobs`** (driver
-   `database-uuids`) **qui n'existe dans aucune migration** — toujours ouvert.
-   Sans effet aujourd'hui : aucune tâche n'est mise en file dans le code
-   (`grep -r "dispatch("` ne rend rien). À créer avant la première tâche
-   asynchrone, sans quoi son premier échec lèvera une erreur SQL.
+2. ~~**`config/queue.php` déclare une table `failed_jobs`** (driver
+   `database-uuids`) **qui n'existe dans aucune migration**~~ — **résolu.**
+   ADR-019 l'a migrée, et un test vérifie sa présence. Le « sans effet » qui
+   accompagnait ce point à la passation avait cessé d'être vrai : deux tâches
+   sont désormais mises en file (l'analyse antivirus du §15.1 et les six
+   messages du §8.3), et la première à épuiser ses essais faisait lever un
+   `SQLSTATE[42P01]` **au moment d'enregistrer son échec** — la tâche perdue et
+   l'erreur d'origine avec elle.
 
 `SESSION_DRIVER` et `SESSION_SECURE_COOKIE` figurent désormais dans
 `.env.example` et dans `.env.production.example`. `REDIS_PASSWORD` est
-documenté dans le gabarit de production ; les variables `MAIL_*` restent
-absentes, aucun envoi de courriel n'étant configuré.
+documenté dans le gabarit de production. Les variables `MAIL_*` figurent dans
+`.env.example` depuis ADR-018 (`MAIL_MAILER=log` en développement) ; le
+transport réel de production reste à choisir.
 
 ---
 
 ## 7. Base de données
 
 - Cible : **PostgreSQL** (`config/database.php`, défaut `pgsql`).
-- 6 tables migrées : `users`, `password_reset_tokens`, `campaigns`,
-  `applications`, `attachments`, `audit_events`.
+- Tables migrées : `users`, `password_reset_tokens`, `sessions`, `campaigns`,
+  `applications`, `application_sections`, `attachments`, `audit_events`,
+  `verification_checks`, `verification_decisions`, `evaluation_assignments`,
+  `evaluations`, `evaluation_reviews`, `notification_deliveries`,
+  `failed_jobs`. Cette liste est celle d'aujourd'hui, pas celle de la
+  passation ; `database/migrations/` fait foi.
 
 > **NE PAS migrer vers MariaDB sans décision d'architecture explicite.**
 
@@ -310,18 +318,18 @@ lignes barrées ont été traitées, les autres restent ouvertes.
 | # | Sujet | Constat à la passation | Criticité | Depuis |
 |---|---|---|---|---|
 | 1 | ~~`infrastructure/caddy/Dockerfile`~~ | Compile le frontend avec `npm install` sans copier `package-lock.json`, alors que le `Dockerfile` racine utilise `npm ci`. | **Haute** | **Résolu** — `npm ci` avec le verrou dans les deux images. |
-| 2 | Table `failed_jobs` | Déclarée dans `config/queue.php`, absente des migrations. | **Haute** | **Ouvert**, sans effet : aucune tâche n'est encore mise en file. |
+| 2 | ~~Table `failed_jobs`~~ | Déclarée dans `config/queue.php`, absente des migrations. | **Haute** | **Résolu** — migrée par ADR-019, et un test le vérifie. Le « sans effet » de la passation avait cessé d'être vrai : deux tâches sont en file, et le premier échec définitif se perdait sur une erreur SQL. |
 | 3 | ~~`SESSION_DRIVER`~~ | `file` par défaut, sans volume. | **Haute** | **Résolu** — `database` depuis ADR-004, table `sessions` migrée. |
 | 4 | ~~`phpunit.xml` + tests PHP~~ | Absents, alors que la CI lance `php artisan test`. | **Haute** | **Résolu** — suite complète, exécutée par la CI. |
 | 5 | ~~Persistance de `storage/`~~ | Aucun volume : logs Laravel perdus au redéploiement. | Moyenne | **Résolu en production** — volume `app_storage` dans `docker-compose.prod.yml`, et `LOG_CHANNEL=stderr` sort les journaux dans `docker compose logs`. |
 | 6 | ~~Healthchecks~~ | Absents sur `app`, `caddy`, `worker`, `scheduler`. | Moyenne | **Résolu** — sonde sur `app` (port PHP-FPM), `caddy` attend `app` sain, `worker` et `scheduler` attendent PostgreSQL et Redis sains. |
 | 7 | ~~`.env.example`~~ | Ne documente ni `SESSION_DRIVER`, ni `SESSION_SECURE_COOKIE`, ni `REDIS_PASSWORD`, ni `MAIL_*`. | Moyenne | **Résolu** sauf `MAIL_*` — aucun envoi de courriel n'est configuré. Voir `.env.production.example`. |
-| 8 | CI | N'exécute ni Playwright ni Pint. | Moyenne | **Partiel** — Pint, PHPUnit, `tsc` et la construction tournent ; Playwright reste manuel. |
-| 8b | ~~**Style de code**~~ | Pint échoue : 28 fichiers, 19 violations. | Moyenne | **Résolu** — Pint passe, et la CI le vérifie. |
+| 8 | CI | N'exécute ni Playwright ni Pint. | Moyenne | **Partiel** — Pint (désormais sur tout le dépôt, ADR-020), PHPUnit, `tsc` et la construction tournent. **Playwright reste manuel, et la raison est mesurée** : `php artisan serve` est mono-processus et rend 1 à 2 s par requête dynamique, contre des attentes de 5 s dans les specs ; la voie viable est la pile Compose dans le runner, non validable depuis un poste de développement. Voir ADR-020. |
+| 8b | ~~**Style de code**~~ | Pint échoue : 28 fichiers, 19 violations. | Moyenne | **Résolu** — Pint passe, et la CI le vérifie **sur tout le dépôt**. L'énumération de dossiers qui tenait lieu de contrôle était une liste blanche : elle ignorait `bootstrap/`, `config/`, `database/migrations/`, `public/`, `tests/TestCase.php` et tout dossier créé après elle. Quinze fichiers avaient dérivé sans que le badge vert le signale (ADR-020). |
 | 8c | **Outillage PHP indisponible** | L'image `app` étant construite `--no-dev`, `php artisan test` et `vendor/bin/pint` n'existent pas dans le conteneur. | Moyenne | **Ouvert, et voulu** — une image de production n'embarque pas ses outils de test. Voir runbook §8. |
 | 9 | ~~`Caddyfile`~~ | Matcher `@notStatic` déclaré et jamais utilisé. | Faible | **Résolu** — retiré. |
 | 10 | Proxys de confiance | *Non relevé à la passation.* Sans `trustProxies`, Laravel voyait l'adresse de Caddy comme adresse cliente et la connexion comme non chiffrée. | **Haute** | **Résolu** — déclaré dans `bootstrap/app.php`. |
-| 11 | Page d'accueil publique | *Non relevé à la passation.* Calendrier, compte à rebours et statistiques viennent de `data/demo.ts`, pas de la campagne réelle. | **Haute** | **Ouvert** — correctif identifié, en attente d'une fenêtre sans branche parallèle sur `routes/web.php`. |
+| 11 | ~~Page d'accueil publique~~ | *Non relevé à la passation.* Calendrier, compte à rebours et statistiques viennent de `data/demo.ts`, pas de la campagne réelle. | **Haute** | **Résolu** — `HomeController` sert la campagne, les thématiques et les critères réels ; les chiffres inventés ont disparu. `resources/js/data/demo.ts` a été supprimé (ADR-020) : plus aucun écran ne l'importait, et un fichier de constantes plausibles est une invitation à les réimporter. |
 
 ---
 
@@ -472,7 +480,7 @@ Ce n'est pas une précaution de principe : sans authentification ni policies,
 1. Aucun contrôleur, aucune route protégée : les écrans ne sont pas reliés au
    backend.
 2. `SubmitApplication` n'a aucun appelant.
-3. Table `failed_jobs` déclarée mais non migrée.
+3. ~~Table `failed_jobs` déclarée mais non migrée.~~ — résolu (ADR-019).
 4. Aucun test PHP alors que la CI en lance.
 
 ### Blocages d'infrastructure (à lever avec Niger Télécom)
