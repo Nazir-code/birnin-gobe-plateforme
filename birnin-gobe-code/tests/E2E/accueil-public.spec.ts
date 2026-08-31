@@ -43,13 +43,14 @@ test.describe('Page d’accueil publique', () => {
     for (let rang = 1; rang <= 8; rang += 1) {
       await expect(page.getByTestId(`critere-${rang}`)).toBeVisible();
     }
-    // Les intitules sont ceux du §11.2, et le poids est annonce avec eux : la
-    // page portait autrefois une liste a elle, qui ne correspondait a aucun
-    // critere du cahier des charges.
+    // Les intitules sont ceux du §11.2 : la page portait autrefois une liste a
+    // elle, qui ne correspondait a aucun critere du cahier des charges.
     await expect(page.getByTestId('critere-1')).toContainText('Pertinence par rapport au défi');
-    await expect(page.getByTestId('critere-1')).toContainText('20 pts');
     await expect(page.getByTestId('critere-8')).toContainText('Inclusion et ancrage territorial');
-    await expect(page.getByTestId('critere-8')).toContainText('5 pts');
+    // La ponderation n'est plus publiee : ni pastille, ni valeur dans la charge
+    // Inertia. On verifie l'absence a l'ecran ; l'absence dans les props est
+    // tenue par AccueilPublicTest, qui seul peut la voir.
+    await expect(page.locator('#criteres')).not.toContainText('pts');
     await expect(page.locator('#criteres')).toContainText('Critères d’évaluation');
     await expect(page.locator('#criteres')).toContainText('100 points');
     // La distinction avec l'eligibilite doit etre ecrite : sans elle, un candidat

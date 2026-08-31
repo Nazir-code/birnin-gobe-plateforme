@@ -262,7 +262,6 @@ final class AccueilPublicTest extends TestCase
                 foreach (EvaluationCriterion::cases() as $rang => $critere) {
                     $page->where("criteria.{$rang}.key", $critere->value);
                     $page->where("criteria.{$rang}.title", $critere->label());
-                    $page->where("criteria.{$rang}.weight", $critere->weight());
                     // Les éléments d'appréciation, mot pour mot : ce ne sont pas
                     // que des titres, et c'est ce texte qui dit sur quoi on note.
                     $page->where("criteria.{$rang}.question", $critere->elements());
@@ -270,18 +269,32 @@ final class AccueilPublicTest extends TestCase
             });
     }
 
-    /** La pondération publiée totalise bien les 100 points annoncés. */
-    public function test_les_poids_annonces_totalisent_cent(): void
+    /**
+     * La pondération du §11.2 ne quitte pas le serveur.
+     *
+     * ADR-015 l'affichait ; le porteur du concours a tranché l'inverse. Ce test
+     * porte sur les **props**, pas sur le rendu, et c'est tout son intérêt :
+     * retirer la pastille dans le composant React aurait laissé `weight` dans
+     * la charge Inertia, donc en clair dans le HTML servi à chaque visiteur.
+     * La pondération aurait été masquée à l'œil et lisible à qui regarde la
+     * source — l'illusion du retrait, qui est pire que l'affichage assumé.
+     *
+     * Le total de 100 points reste vérifié sur l'enum lui-même, dans
+     * `EspaceEvaluateurTest` : c'est un invariant de la grille, indépendant de
+     * ce que le portail choisit d'en publier.
+     */
+    public function test_l_accueil_ne_publie_pas_la_ponderation(): void
     {
         $this->campagne();
 
         $this->get('/')
             ->assertInertia(function ($page) {
-                $this->assertSame(
-                    EvaluationCriterion::TOTAL_WEIGHT,
-                    collect($page->toArray()['props']['criteria'])->sum('weight'),
-                );
-            });
+                foreach (array_keys(EvaluationCriterion::cases()) as $rang) {
+                    $page->missing("criteria.{$rang}.weight");
+                }
+            })
+            // Et pas davantage dans le HTML rendu, où la charge Inertia voyage.
+            ->assertDontSee('"weight"', false);
     }
 
     /**

@@ -188,10 +188,27 @@ que diverger, et celle qui diverge est celle que lisent les candidats.
 
 Deux conséquences de forme :
 
-- **Le poids est affiché** (« 20 pts », « 5 pts »), à la place du numéro d'ordre. Le §11.2
+- ~~**Le poids est affiché** (« 20 pts », « 5 pts »), à la place du numéro d'ordre. Le §11.2
   est une grille publique : un candidat qui sait que la pertinence pèse vingt points et
   l'inclusion cinq n'écrit pas le même dossier, et taire la pondération en ferait une
-  information réservée.
+  information réservée.~~
+
+  > **Renversé le 31/08/2026, sur décision du porteur du concours.** La pondération n'est
+  > plus publiée sur le portail : ni pastille, ni valeur dans les props Inertia. Le
+  > raisonnement ci-dessus n'était pas faux, mais il tranchait un arbitrage de communication
+  > qui n'appartient pas au code.
+  >
+  > **Le retrait est fait dans `HomeController`, pas dans le composant React.** Retirer la
+  > seule pastille aurait laissé `weight` dans la charge Inertia, donc en clair dans le HTML
+  > de chaque visiteur : masqué à l'œil, lisible à qui regarde la source. C'est l'illusion du
+  > retrait, pire que l'affichage assumé — et c'est ce que `AccueilPublicTest` vérifie
+  > désormais, sur les props et sur le HTML rendu.
+  >
+  > Ce qui ne change pas : les cartes lisent toujours `EvaluationCriterion`, jamais une liste
+  > recopiée ; le total de 100 points reste annoncé (c'est l'échelle, pas sa répartition) ; et
+  > l'invariant « la somme des poids vaut 100 » reste vérifié sur l'enum dans
+  > `EspaceEvaluateurTest`, indépendamment de ce que le portail en publie. **L'espace
+  > évaluateur, lui, continue d'afficher les poids** : c'est là qu'ils servent à noter.
 - **Le texte de chaque carte est celui des éléments d'appréciation du cahier des charges**,
   mot pour mot, à la place des questions directrices. Les reformuler était plus engageant,
   et c'est précisément ce qui avait laissé la liste dériver.

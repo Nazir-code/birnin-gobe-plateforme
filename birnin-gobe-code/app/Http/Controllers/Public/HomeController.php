@@ -115,10 +115,20 @@ final class HomeController
      * notent réellement. Deux listes de « critères d'évaluation » dans le même
      * dépôt ne pouvaient que diverger ; il n'y en a plus qu'une.
      *
-     * **Le poids est affiché.** Un candidat qui sait que la pertinence pèse
-     * vingt points et l'inclusion cinq n'écrit pas le même dossier, et le §11.2
-     * est une grille publique — la taire ferait de la pondération une
-     * information réservée.
+     * **La pondération n'est pas publiée**, et c'est un revirement assumé
+     * d'ADR-015, qui l'affichait au motif que le §11.2 est une grille publique.
+     * L'arbitrage appartient au porteur du concours, pas au code.
+     *
+     * **Le retrait est fait ici, côté serveur, et pas dans le composant.**
+     * Retirer seulement la pastille React laisserait `weight` dans les props
+     * Inertia, donc en clair dans le HTML de chaque visiteur : la pondération
+     * serait masquée à l'œil et lisible à qui regarde la source. Une donnée
+     * qu'on décide de ne pas publier ne doit pas quitter le serveur.
+     *
+     * Le total de 100 points reste annoncé sur la page. C'est l'échelle de
+     * notation, pas sa répartition : dire qu'un dossier est noté sur 100 sans
+     * dire ce qui pèse le plus n'apprend rien qu'un candidat puisse exploiter,
+     * et le taire aussi rendrait le score final incompréhensible.
      *
      * Le texte de chaque carte est celui des éléments d'appréciation du cahier
      * des charges, mot pour mot. Le reformuler en question directrice était plus
@@ -132,7 +142,7 @@ final class HomeController
      * un candidat qu'il doit satisfaire les huit pour avoir le droit de
      * candidater.
      *
-     * @return list<array{key: string, title: string, weight: int, question: string}>
+     * @return list<array{key: string, title: string, question: string}>
      */
     private function criteres(): array
     {
@@ -140,7 +150,6 @@ final class HomeController
             static fn (EvaluationCriterion $critere): array => [
                 'key' => $critere->value,
                 'title' => $critere->label(),
-                'weight' => $critere->weight(),
                 'question' => $critere->elements(),
             ],
             EvaluationCriterion::cases(),
