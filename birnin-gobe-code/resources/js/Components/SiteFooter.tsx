@@ -10,6 +10,7 @@ import {
   legalLinks,
   prototypeApplyTarget,
   publicSiteLink,
+  siteMakers,
   supportLink,
   useSiteData,
   type SiteLink,
@@ -39,6 +40,45 @@ const currentYear = () => new Date().getFullYear();
  */
 function destinationsExistantes(liens: SiteLink[]): (SiteLink & { href: string })[] {
   return liens.filter((lien): lien is SiteLink & { href: string } => lien.href !== null);
+}
+
+/**
+ * La mention de réalisation, avec ses deux noms cliquables.
+ *
+ * La phrase est assemblée ici plutôt que servie d'un bloc par le dictionnaire,
+ * parce que deux de ses mots mènent ailleurs. Trois choses en découlent :
+ *
+ * - un réalisateur sans `href` reste du **texte**, jamais un lien mort — c'est
+ *   la même règle que les mentions légales, qui ne se rendent pas tant qu'aucune
+ *   page n'existe derrière ;
+ * - le séparateur ne s'écrit qu'entre deux noms, pas après le dernier ;
+ * - la couleur du lien vient de l'appelant : le pied public est sombre, le pied
+ *   compact est clair, et un ton unique serait illisible sur l'un des deux.
+ */
+function Credits({ tone }: { tone: 'dark' | 'light' }) {
+  const t = useI18n();
+  const linkClass =
+    tone === 'dark'
+      ? 'focus-ring rounded-sm font-semibold text-white/75 underline-offset-2 transition-colors hover:text-white hover:underline'
+      : 'focus-ring rounded-sm font-semibold text-slate-500 underline-offset-2 transition-colors hover:text-brand-800 hover:underline';
+
+  return (
+    <p className={tone === 'dark' ? 'text-xs text-white/50' : 'text-xs text-slate-400'}>
+      {t.footer.credits.prefix}{' '}
+      {siteMakers.map((maker, rang) => (
+        <span key={maker.name}>
+          {rang > 0 ? <>{' '}{t.footer.credits.separator}{' '}</> : null}
+          {maker.href ? (
+            <a className={linkClass} href={maker.href} rel="noopener noreferrer" target="_blank">
+              {maker.name}
+            </a>
+          ) : (
+            maker.name
+          )}
+        </span>
+      ))}
+    </p>
+  );
 }
 
 function useLinkLabel() {
@@ -243,7 +283,7 @@ function PublicFooter() {
                 ))}
               </ul>
             ) : null}
-            <p className="text-xs text-white/50">{t.footer.credits}</p>
+            <Credits tone="dark" />
           </div>
         </div>
       </div>
@@ -283,7 +323,7 @@ function CompactFooter() {
               ))}
             </ul>
           ) : null}
-          <p className="text-xs text-slate-400">{t.footer.credits}</p>
+          <Credits tone="light" />
         </div>
       </div>
     </footer>

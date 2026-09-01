@@ -28,7 +28,15 @@ export const fr = {
     rights: 'Tous droits réservés.',
     // Le cœur est du contenu, pas une icône : il porte le sens de la phrase et
     // doit être lu par une synthèse vocale comme il est vu.
-    credits: 'Développé avec ❤️ par NOVATECH & FME Consult',
+    //
+    // La phrase est coupée parce que deux de ses mots sont des liens. Les noms
+    // des réalisateurs ne sont **pas** ici : un nom propre ne se traduit pas, et
+    // le laisser dans le dictionnaire inviterait à en écrire une variante par
+    // locale. Ils vivent dans `config/site.ts`, avec leur destination.
+    credits: {
+      prefix: 'Développé avec ❤️ par',
+      separator: '&',
+    },
     links: {
       home: 'Accueil',
       about: 'À propos',
