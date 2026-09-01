@@ -187,6 +187,117 @@ final class CarteRepartitionTest extends TestCase
             });
     }
 
+    // — Les effectifs affichés au survol ——————————————————————————
+
+    /**
+     * Le nombre d'une région masquée ne quitte jamais le serveur.
+     *
+     * C'est la garantie centrale de cet ajout. L'infobulle peut dire « masqué »
+     * sans risque, parce qu'elle n'a rien d'autre à dire : le chiffre n'est pas
+     * dans la charge envoyée au navigateur, et aucune inspection du réseau ne
+     * l'y trouvera. Le §13.4 est tenu par l'absence de la donnée, pas par la
+     * discrétion de l'affichage.
+     */
+    public function test_l_effectif_d_une_region_masquee_n_est_pas_envoye(): void
+    {
+        $campagne = $this->campagne();
+
+        // Sous le seuil : cette région existe, et son effectif est protégé.
+        $this->dossiers($campagne, NigerRegion::DIFFA, IndicatorBreakdown::SEUIL_PETITS_EFFECTIFS - 1);
+        // Au-dessus : sans elle, la ventilation entière serait vide.
+        $this->dossiers($campagne, NigerRegion::ZINDER, IndicatorBreakdown::SEUIL_PETITS_EFFECTIFS + 3);
+
+        $reponse = $this->actingAs($this->admin())->get('/admin/dashboard')->assertOk();
+
+        $reponse->assertInertia(function ($page) {
+            $effectifs = $page->toArray()['props']['regionCounts'];
+
+            $this->assertNull(
+                $effectifs[NigerRegion::DIFFA->value],
+                'Un effectif sous le seuil doit valoir null, jamais son nombre.',
+            );
+            $this->assertSame(
+                IndicatorBreakdown::SEUIL_PETITS_EFFECTIFS + 3,
+                $effectifs[NigerRegion::ZINDER->value],
+            );
+        });
+
+        // Et le nombre masqué n'apparaît nulle part dans la page servie — les
+        // propriétés Inertia voyagent en JSON lisible dans le document.
+        $this->assertStringNotContainsString(
+            '"'.NigerRegion::DIFFA->value.'":'.(IndicatorBreakdown::SEUIL_PETITS_EFFECTIFS - 1),
+            $reponse->getContent(),
+        );
+    }
+
+    /**
+     * Une région sans dossier vaut zéro, et se distingue d'une région masquée.
+     *
+     * Les deux sont grises sur la carte — le palier ne les sépare pas — mais
+     * l'effectif, lui, doit les séparer : « aucun dossier » est un comptage,
+     * « masqué » est un refus de publier. C'est la distinction que la table des
+     * indicateurs montre déjà à la même audience.
+     */
+    public function test_une_region_sans_dossier_vaut_zero_et_non_masquee(): void
+    {
+        $campagne = $this->campagne();
+        $this->dossiers($campagne, NigerRegion::ZINDER, IndicatorBreakdown::SEUIL_PETITS_EFFECTIFS + 1);
+
+        $this->actingAs($this->admin())
+            ->get('/admin/dashboard')
+            ->assertInertia(function ($page) {
+                $effectifs = $page->toArray()['props']['regionCounts'];
+
+                $this->assertSame(0, $effectifs[NigerRegion::AGADEZ->value], 'Zéro est un comptage exact.');
+                $this->assertArrayHasKey(NigerRegion::AGADEZ->value, $effectifs);
+            });
+    }
+
+    /** Les huit régions sont servies, y compris celles sans aucun dossier. */
+    public function test_les_huit_regions_sont_servies(): void
+    {
+        $campagne = $this->campagne();
+        $this->dossiers($campagne, NigerRegion::ZINDER, IndicatorBreakdown::SEUIL_PETITS_EFFECTIFS + 1);
+
+        $this->actingAs($this->admin())
+            ->get('/admin/dashboard')
+            ->assertInertia(function ($page) {
+                $effectifs = $page->toArray()['props']['regionCounts'];
+
+                $this->assertCount(count(NigerRegion::cases()), $effectifs);
+            });
+    }
+
+    /**
+     * Sans aucun dossier : aucun palier, mais huit zéros.
+     *
+     * **Les deux ne suivent pas la même règle, et c'est voulu.** Un palier est
+     * *relatif* — il répond à « par rapport à la région la plus fournie » — et
+     * n'existe donc pas sans maximum : la carte reste grise. Un effectif est
+     * *absolu*, et zéro en est une valeur exacte : le survol peut dire « aucun
+     * dossier » sans rien inventer.
+     *
+     * Rendre  les deux ensemble aurait fait dire « non mesuré » à une
+     * région dont on sait parfaitement qu'elle n'a rien reçu.
+     */
+    public function test_sans_dossier_la_carte_reste_grise_mais_les_effectifs_valent_zero(): void
+    {
+        $this->campagne();
+
+        $this->actingAs($this->admin())
+            ->get('/admin/dashboard')
+            ->assertInertia(function ($page) {
+                $props = $page->toArray()['props'];
+
+                $this->assertNull($props['regionIntensities'], 'Aucun palier sans maximum observé.');
+
+                $effectifs = $props['regionCounts'];
+
+                $this->assertCount(count(NigerRegion::cases()), $effectifs);
+                $this->assertSame([0], array_values(array_unique($effectifs)), 'Zéro partout, et zéro est exact.');
+            });
+    }
+
     /** Un candidat n'atteint pas cet écran : la répartition est interne (§13.4). */
     public function test_la_repartition_n_est_pas_publique(): void
     {

@@ -1,4 +1,4 @@
-import type { SVGProps } from 'react';
+import { useId, useState, type SVGProps } from 'react';
 
 /**
  * Carte administrative réelle du Niger (7 régions + district de Niamey).
@@ -11,11 +11,39 @@ import type { SVGProps } from 'react';
  * Les couleurs ne sont pas dessinées dans l'image : elles viennent des données
  * passées en props, conformément à l'ADR-002 (les maquettes sont reconstruites
  * en composants, pas intégrées comme captures).
+ *
+ * **Le survol donne le compte, et la teinte donne la forme.** Les deux ne disent
+ * pas la même chose : le palier est relatif au maximum observé, le compte est
+ * absolu. Sans le second, la carte ne répondait qu'à « où y en a-t-il le
+ * plus ? » ; avec lui, elle répond aussi à « combien ».
+ *
+ * **Une région masquée le reste au survol.** `null` signale un effectif que le
+ * §13.4 protège — entre un et quatre dossiers, dont le croisement avec une
+ * région permettrait de remonter à quelqu'un. Le nombre n'est pas dans la
+ * charge envoyée au navigateur : il n'a jamais quitté le serveur, et l'infobulle
+ * ne peut donc pas le laisser filer. Elle dit seulement qu'il est masqué, ce que
+ * la table des indicateurs dit déjà à la même audience.
+ *
+ * **Le détail s'affiche sous la carte, pas en surimpression flottante.** Une
+ * bulle positionnée au curseur déborde d'un cadre de 260 px, saute au bord de
+ * l'écran, et n'existe pas au toucher. Une ligne fixe sous la carte se lit à la
+ * souris, au clavier et sur mobile, et sa hauteur réservée évite que la mise en
+ * page ne sursaute au premier survol.
  */
 export type NigerRegionCode = 'NE-1' | 'NE-2' | 'NE-3' | 'NE-4' | 'NE-5' | 'NE-6' | 'NE-7' | 'NE-8';
 
 /** Paliers de la légende « Répartition géographique ». */
 export type RegionIntensity = 'high' | 'elevated' | 'medium' | 'low';
+
+/**
+ * L'effectif d'une région, tel que le serveur l'a arrêté.
+ *
+ * `null` veut dire « masqué au titre du §13.4 », jamais « inconnu » : c'est un
+ * effectif qui existe et que la plateforme refuse de publier. Une région sans
+ * aucun dossier vaut `0`, et se distingue donc d'une région masquée — la même
+ * distinction que la table des indicateurs montre déjà.
+ */
+export type RegionCount = number | null;
 
 export const nigerRegions: { code: NigerRegionCode; name: string }[] = [
   { code: 'NE-1', name: 'Agadez' },
@@ -63,40 +91,97 @@ const intensityLabel: Record<RegionIntensity, string> = {
   low: 'Faible',
 };
 
+/**
+ * Ce qu'on peut dire de l'effectif d'une région.
+ *
+ * Les trois cas sont distincts et le restent : « aucune » est un comptage,
+ * « masqué » est un refus de publier, « non mesuré » est l'absence de donnée.
+ * Les confondre ferait lire un zéro là où il y a des dossiers, ou l'inverse.
+ */
+function effectif(compte: RegionCount | undefined): string {
+  if (compte === undefined) return 'répartition non mesurée';
+  if (compte === null) return 'moins de 5 dossiers — non communiqué';
+  if (compte === 0) return 'aucun dossier';
+
+  return `${compte} dossier${compte > 1 ? 's' : ''}`;
+}
+
 export function NigerRegionsMap({
   intensities,
+  counts,
   label = 'Carte du Niger : répartition des dossiers par région',
   className = '',
   ...props
 }: {
   intensities?: Partial<Record<NigerRegionCode, RegionIntensity>>;
+  /** Effectif par région. `null` = masqué (§13.4), absent = non mesuré. */
+  counts?: Partial<Record<NigerRegionCode, RegionCount>>;
   label?: string;
   /** Le dimensionnement appartient au parent : la hauteur suit le ratio du viewBox. */
   className?: string;
 } & Omit<SVGProps<SVGSVGElement>, 'className'>) {
+  const [survolee, setSurvolee] = useState<NigerRegionCode | null>(null);
+  const detailId = useId();
+
+  const region = nigerRegions.find((r) => r.code === survolee);
+  const detail = region ? `${region.name} — ${effectif(counts?.[region.code])}` : null;
+
   return (
-    <svg
-      viewBox="0 0 1000 784.1"
-      role="img"
-      aria-label={label}
-      className={className}
-      {...props}
-    >
-      {nigerRegions.map(({ code, name }) => {
-        const intensity = intensities?.[code];
-        return (
-          <path
-            key={code}
-            d={paths[code]}
-            className={`${intensity ? intensityFill[intensity] : emptyFill} stroke-white transition-colors duration-[250ms]`}
-            strokeWidth={1.25}
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-          >
-            <title>{intensity ? `${name} — ${intensityLabel[intensity]}` : name}</title>
-          </path>
-        );
-      })}
-    </svg>
+    <div className="w-full">
+      <svg
+        viewBox="0 0 1000 784.1"
+        // `group` et non `img` : les régions sont atteignables au clavier, et
+        // `img` rendrait tout le contenu opaque aux lecteurs d'écran.
+        role="group"
+        aria-label={label}
+        aria-describedby={detailId}
+        className={className}
+        onMouseLeave={() => setSurvolee(null)}
+        {...props}
+      >
+        {nigerRegions.map(({ code, name }) => {
+          const intensity = intensities?.[code];
+          const actif = survolee === code;
+
+          return (
+            <path
+              key={code}
+              d={paths[code]}
+              tabIndex={0}
+              role="img"
+              aria-label={`${name}, ${effectif(counts?.[code])}`}
+              data-testid={`region-${code}`}
+              className={`${intensity ? intensityFill[intensity] : emptyFill} cursor-default stroke-white outline-none transition-colors duration-[250ms] ${
+                actif ? 'stroke-brand-950' : ''
+              }`}
+              strokeWidth={actif ? 3 : 1.25}
+              strokeLinejoin="round"
+              vectorEffect="non-scaling-stroke"
+              onMouseEnter={() => setSurvolee(code)}
+              onFocus={() => setSurvolee(code)}
+              onBlur={() => setSurvolee(null)}
+            >
+              {/* Repli natif : la bulle du navigateur reste utile si le script
+                  n'a pas encore pris la main. */}
+              <title>
+                {`${name} — ${effectif(counts?.[code])}${intensity ? ` (${intensityLabel[intensity]})` : ''}`}
+              </title>
+            </path>
+          );
+        })}
+      </svg>
+
+      {/* Hauteur réservée : sans elle, la carte se décale au premier survol. */}
+      <p
+        id={detailId}
+        aria-live="polite"
+        className="mt-2 min-h-9 text-center text-sm text-slate-600"
+        data-testid="region-detail"
+      >
+        {detail ?? (
+          <span className="text-slate-400">Survolez une région pour voir son nombre de dossiers.</span>
+        )}
+      </p>
+    </div>
   );
 }

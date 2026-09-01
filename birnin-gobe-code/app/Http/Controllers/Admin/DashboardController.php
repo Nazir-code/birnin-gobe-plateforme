@@ -55,10 +55,20 @@ final class DashboardController
         // La carte de répartition (§9.1) repasse par les ventilations du §13.1 :
         // le seuil de petits effectifs y est déjà appliqué, et recompter ici
         // ferait une seconde source où le masquage pourrait manquer.
-        $repartition = RegionIntensity::carte($indicateurs->repartitionRegionale($ouverte));
+        //
+        // Lu **une** fois et servi deux fois : les paliers colorent la carte, les
+        // effectifs la font parler au survol. Deux appels donneraient deux
+        // lectures de la base, donc deux réponses possibles pour un même écran.
+        $effectifs = $indicateurs->repartitionRegionale($ouverte);
+        $repartition = RegionIntensity::carte($effectifs);
 
         return Inertia::render('Admin/Dashboard', [
             'regionIntensities' => $repartition === [] ? null : $repartition,
+            // Les effectifs tels que le §13.4 les a arrêtés : `null` pour une
+            // région masquée, `0` pour une région sans dossier. Le nombre d'une
+            // région masquée n'a jamais quitté le serveur — l'infobulle ne peut
+            // donc pas le laisser filer, quoi qu'elle affiche.
+            'regionCounts' => $effectifs === [] ? null : $effectifs,
             'campaign' => $ouverte === null ? null : $presenter->row($ouverte, $active !== null && $active->is($ouverte)),
             'campaignsCount' => Campaign::query()->count(),
             'campaignsUrl' => route('admin.campaigns.index'),
