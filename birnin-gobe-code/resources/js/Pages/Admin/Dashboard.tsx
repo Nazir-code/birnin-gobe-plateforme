@@ -5,7 +5,7 @@ import { ADMIN_LOGOUT, adminNav } from '@/Layouts/adminNav';
 import { Card, Pill, SectionTitle } from '@/Components/Ui';
 import { StatCard } from '@/Components/StatCard';
 import { Reveal } from '@/Components/Reveal';
-import { NigerRegionsMap } from '@/Components/NigerRegionsMap';
+import { NigerRegionsMap, type RegionIntensity } from '@/Components/NigerRegionsMap';
 import { useAuthUser } from '@/hooks/useAuth';
 
 /**
@@ -44,6 +44,7 @@ export default function AdminDashboard({
   campaignsUrl,
   applications,
   alerts,
+  regionIntensities = null,
 }: {
   campaign: Campagne | null;
   campaignsCount: number;
@@ -59,6 +60,8 @@ export default function AdminDashboard({
     admissibleUrl: string;
   };
   alerts: { count: number; url: string };
+  /** Paliers par code de région, ou `null` quand rien n'est publiable. */
+  regionIntensities?: Record<string, RegionIntensity> | null;
 }) {
   const user = useAuthUser();
 
@@ -199,10 +202,24 @@ export default function AdminDashboard({
               {/* Sans `intensities`, la carte se rend en gris neutre : la
                   géographie est réelle, la donnée est absente et se voit. */}
               <NigerRegionsMap
-                label="Carte du Niger : aucune donnée de répartition disponible"
+                intensities={regionIntensities ?? undefined}
+                label={
+                  regionIntensities
+                    ? 'Carte du Niger : répartition des dossiers par région d’intervention'
+                    : 'Carte du Niger : aucune donnée de répartition disponible'
+                }
                 className="mx-auto mt-3 block h-auto w-full max-w-[260px]"
               />
-              <p className="mt-3 text-center text-[11px] text-slate-400">Aucun dossier à répartir.</p>
+              {/* Le seuil du §13.4 s'applique en amont : une région sous cinq
+                  dossiers est rendue `null` par la ventilation et reste grise,
+                  comme une région vide. La carte donne une forme, pas un
+                  décompte — la table des indicateurs, elle, distingue « aucun »
+                  de « trop peu pour le dire ». */}
+              <p className="mt-3 text-center text-[11px] text-slate-400">
+                {regionIntensities
+                  ? 'Densité relative à la région la plus fournie. Les effectifs trop faibles restent gris.'
+                  : 'Aucun dossier à répartir.'}
+              </p>
             </Card>
           </Reveal>
         </div>

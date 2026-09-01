@@ -6,6 +6,8 @@ use App\Domain\Alerting\ComputeAlerts;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Campaign\ActiveCampaign;
 use App\Domain\Campaign\CampaignStatus;
+use App\Domain\Reporting\ComputeIndicators;
+use App\Domain\Reporting\RegionIntensity;
 use App\Http\Presenters\CampaignPresenter;
 use App\Models\Application;
 use App\Models\Campaign;
@@ -34,8 +36,12 @@ use Inertia\Response;
  */
 final class DashboardController
 {
-    public function __invoke(ActiveCampaign $campagnes, CampaignPresenter $presenter, ComputeAlerts $alertes): Response
-    {
+    public function __invoke(
+        ActiveCampaign $campagnes,
+        CampaignPresenter $presenter,
+        ComputeAlerts $alertes,
+        ComputeIndicators $indicateurs,
+    ): Response {
         $active = $campagnes->resolve();
 
         // Distinguer « aucune campagne ouverte » de « une campagne ouverte mais
@@ -46,7 +52,13 @@ final class DashboardController
             ->orderByDesc('id')
             ->first();
 
+        // La carte de répartition (§9.1) repasse par les ventilations du §13.1 :
+        // le seuil de petits effectifs y est déjà appliqué, et recompter ici
+        // ferait une seconde source où le masquage pourrait manquer.
+        $repartition = RegionIntensity::carte($indicateurs->repartitionRegionale($ouverte));
+
         return Inertia::render('Admin/Dashboard', [
+            'regionIntensities' => $repartition === [] ? null : $repartition,
             'campaign' => $ouverte === null ? null : $presenter->row($ouverte, $active !== null && $active->is($ouverte)),
             'campaignsCount' => Campaign::query()->count(),
             'campaignsUrl' => route('admin.campaigns.index'),

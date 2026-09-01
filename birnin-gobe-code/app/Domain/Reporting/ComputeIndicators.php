@@ -59,6 +59,44 @@ final readonly class ComputeIndicators
     /**
      * @return list<IndicatorBreakdown>
      */
+    /**
+     * La répartition régionale, indexée par code de région — pour la carte.
+     *
+     * **Elle repasse par `ventilations()`**, et c'est tout l'intérêt : le seuil
+     * de petits effectifs du §13.4 est appliqué une seule fois, à la
+     * construction de la ventilation. Compter à nouveau ici, même avec la même
+     * requête, ferait une seconde source où le masquage pourrait manquer — et
+     * une carte qui colore une région d'un seul dossier rend au regard ce que
+     * le masquage vient de retirer.
+     *
+     * Les ventilations sont indexées par libellé, la carte parle en codes. La
+     * correspondance se fait sur `NigerRegion`, pas sur une table recopiée.
+     *
+     * @return array<string, int|null> code de région → effectif, `null` si masqué
+     */
+    public function repartitionRegionale(?Campaign $campagne): array
+    {
+        $ventilation = collect($this->ventilations($campagne))
+            ->firstWhere(fn (IndicatorBreakdown $v): bool => $v->key === 'candidatures.par_region');
+
+        if ($ventilation === null) {
+            return [];
+        }
+
+        $parLibelle = collect($ventilation->rows)->keyBy('label');
+        $repartition = [];
+
+        foreach (NigerRegion::cases() as $region) {
+            $ligne = $parLibelle->get($region->label());
+
+            if ($ligne !== null) {
+                $repartition[$region->value] = $ligne['value'];
+            }
+        }
+
+        return $repartition;
+    }
+
     public function ventilations(?Campaign $campagne): array
     {
         return [
