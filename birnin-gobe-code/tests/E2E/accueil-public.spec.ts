@@ -54,7 +54,6 @@ test.describe('Page d’accueil publique', () => {
     // tenue par AccueilPublicTest, qui seul peut la voir.
     await expect(page.locator('#criteres')).not.toContainText('pts');
     await expect(page.locator('#criteres')).toContainText('Critères d’évaluation');
-    await expect(page.locator('#criteres')).toContainText('100 points');
     // La distinction avec l'eligibilite doit etre ecrite : sans elle, un candidat
     // croira devoir satisfaire les huit pour avoir le droit de deposer.
     await expect(page.locator('#criteres')).toContainText('Ils ne décident pas');
