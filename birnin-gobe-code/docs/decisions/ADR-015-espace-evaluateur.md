@@ -209,9 +209,30 @@ Deux conséquences de forme :
   > l'invariant « la somme des poids vaut 100 » reste vérifié sur l'enum dans
   > `EspaceEvaluateurTest`, indépendamment de ce que le portail en publie. **L'espace
   > évaluateur, lui, continue d'afficher les poids** : c'est là qu'ils servent à noter.
-- **Le texte de chaque carte est celui des éléments d'appréciation du cahier des charges**,
+- ~~**Le texte de chaque carte est celui des éléments d'appréciation du cahier des charges**,
   mot pour mot, à la place des questions directrices. Les reformuler était plus engageant,
-  et c'est précisément ce qui avait laissé la liste dériver.
+  et c'est précisément ce qui avait laissé la liste dériver.~~
+
+  > **Renversé le 31/08/2026.** Le portail affiche de nouveau une question directrice par
+  > critère, numérotées de 1 à 8, sur demande du porteur du concours.
+  >
+  > **Le diagnostic d'origine visait le bon coupable au mauvais endroit.** Ce n'est pas la
+  > reformulation qui avait fait dériver la liste, c'est le fait qu'elle vivait dans
+  > `HomeController`, détachée de sa source : rien n'obligeait les deux listes à rester
+  > d'accord, et rien ne signalait qu'elles ne l'étaient plus. `EvaluationCriterion::question()`
+  > est adjacente à `label()` et `elements()` — les trois textes se modifient sous les mêmes
+  > yeux, et un critère ajouté sans sa question ne compile pas.
+  >
+  > **La demande initiale portait les huit intitulés de la maquette** — « Sécurité »,
+  > « Qualité technique », « Impact usager » — qui contredisent le §11.2 et taisent
+  > « Viabilité » et « Inclusion ». La règle de fidélité du dépôt tranche ce cas : la maquette
+  > est la référence visuelle, le cahier des charges la référence fonctionnelle. La **forme**
+  > de la maquette a donc été reprise, son **fond** non, et
+  > `test_les_criteres_de_maquette_ne_sont_pas_revenus` garde la porte.
+  >
+  > `elements()` continue d'être servi à l'espace évaluateur, inchangé : c'est ce texte qui
+  > fait que deux évaluateurs notent la même chose, et une question directrice ne peut pas
+  > jouer ce rôle. Le portail dit sur quoi on juge, la grille dit comment on note.
 
 Le test correspondant assied ses assertions sur `EvaluationCriterion`, pas sur des libellés
 recopiés — recopier serait refaire la seconde liste qu'il existe pour interdire.

@@ -240,6 +240,52 @@ final class AccueilPublicTest extends TestCase
     }
 
     /**
+     * Les critères de maquette ne reviennent pas par la forme.
+     *
+     * La page a porté une fois sa propre liste — « Impact usager »,
+     * « Sécurité », « Qualité technique » — qui ne correspondait à aucun
+     * critère du §11.2 et taisait « Viabilité » et « Inclusion ». Le portail
+     * annonçait donc aux candidats qu'ils seraient jugés sur autre chose que ce
+     * que les évaluateurs notent, et l'écart ne se voyait nulle part.
+     *
+     * Le portail a depuis retrouvé la forme de cette maquette — numéro, titre
+     * court, question directrice — et c'est précisément pourquoi ce test
+     * existe : la forme est revenue, le fond ne doit pas suivre.
+     */
+    public function test_les_criteres_de_maquette_ne_sont_pas_revenus(): void
+    {
+        $this->campagne();
+
+        $rendu = $this->get('/')->assertOk()->getContent();
+
+        foreach (['Impact usager', 'Qualité technique', 'Innovation utile', 'Équipe et pitch'] as $trace) {
+            $this->assertStringNotContainsString($trace, $rendu, "La page sert encore « {$trace} », qui n’est pas un critère du §11.2.");
+        }
+    }
+
+    /**
+     * Chaque critère porte sa question, et deux critères n'en partagent pas une.
+     *
+     * `match` garantit qu'un critère ajouté sans question ne compile pas, mais
+     * pas qu'on n'ait pas collé une chaîne vide ni recopié la ligne du dessus —
+     * les deux erreurs qu'on fait en ajoutant un cas à huit branches.
+     */
+    public function test_chaque_critere_porte_une_question_qui_lui_est_propre(): void
+    {
+        $questions = array_map(
+            static fn (EvaluationCriterion $critere): string => $critere->question(),
+            EvaluationCriterion::cases(),
+        );
+
+        foreach ($questions as $question) {
+            $this->assertNotSame('', trim($question));
+            $this->assertStringEndsWith('?', trim($question), 'Une question directrice se termine par un point d’interrogation.');
+        }
+
+        $this->assertCount(count($questions), array_unique($questions), 'Deux critères partagent la même question.');
+    }
+
+    /**
      * Les huit critères annoncés au public sont ceux du §11.2.
      *
      * Ce test protège une promesse, pas un affichage. La page portait autrefois
@@ -262,9 +308,10 @@ final class AccueilPublicTest extends TestCase
                 foreach (EvaluationCriterion::cases() as $rang => $critere) {
                     $page->where("criteria.{$rang}.key", $critere->value);
                     $page->where("criteria.{$rang}.title", $critere->label());
-                    // Les éléments d'appréciation, mot pour mot : ce ne sont pas
-                    // que des titres, et c'est ce texte qui dit sur quoi on note.
-                    $page->where("criteria.{$rang}.question", $critere->elements());
+                    // La question directrice, prise sur l'enum et non recopiée
+                    // ici : recopier serait refaire la seconde liste que ce
+                    // test existe pour interdire.
+                    $page->where("criteria.{$rang}.question", $critere->question());
                 }
             });
     }

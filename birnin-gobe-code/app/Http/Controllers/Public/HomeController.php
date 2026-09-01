@@ -130,9 +130,18 @@ final class HomeController
      * dire ce qui pèse le plus n'apprend rien qu'un candidat puisse exploiter,
      * et le taire aussi rendrait le score final incompréhensible.
      *
-     * Le texte de chaque carte est celui des éléments d'appréciation du cahier
-     * des charges, mot pour mot. Le reformuler en question directrice était plus
-     * engageant, et c'est précisément ce qui avait laissé la liste dériver.
+     * **Le texte de chaque carte est une question directrice**, revenue après
+     * qu'ADR-015 l'eut remplacée par les éléments d'appréciation mot pour mot.
+     * Le motif d'alors — « reformuler est ce qui a laissé la liste dériver » —
+     * visait le bon coupable au mauvais endroit : la dérive venait de ce que la
+     * reformulation vivait ici, détachée de sa source. `question()` est
+     * désormais sur l'enum, adjacente au libellé et aux éléments qu'elle
+     * résume ; les trois textes se modifient sous les mêmes yeux, et un critère
+     * ajouté sans sa question ne compile pas.
+     *
+     * L'espace évaluateur, lui, continue de recevoir `elements()` : c'est ce
+     * texte qui fait que deux évaluateurs notent la même chose. Le portail dit
+     * sur quoi on juge, la grille dit comment on note.
      *
      * **À ne pas confondre avec l'éligibilité**, et la page le dit explicitement.
      * L'éligibilité décide qui a le droit de déposer — âge, nationalité, zone,
@@ -150,7 +159,7 @@ final class HomeController
             static fn (EvaluationCriterion $critere): array => [
                 'key' => $critere->value,
                 'title' => $critere->label(),
-                'question' => $critere->elements(),
+                'question' => $critere->question(),
             ],
             EvaluationCriterion::cases(),
         );

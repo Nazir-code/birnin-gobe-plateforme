@@ -87,6 +87,43 @@ enum EvaluationCriterion: string
     }
 
     /**
+     * La question directrice du critère, pour le portail public.
+     *
+     * **Une reformulation, et c'est exactement ce qu'ADR-015 avait retiré.** La
+     * page publique portait alors ses propres questions, et elles avaient
+     * dérivé : « Sécurité », « Qualité technique » et « Impact usager » ne
+     * correspondaient à aucun critère du §11.2, tandis que « Viabilité » et
+     * « Inclusion » avaient disparu. Le portail annonçait donc aux candidats
+     * qu'ils seraient jugés sur autre chose que ce que les évaluateurs notent.
+     *
+     * **Ce qui change, c'est l'endroit.** La dérive n'est pas venue du fait de
+     * reformuler, mais du fait que la reformulation vivait dans
+     * `HomeController`, détachée de sa source : rien n'obligeait les deux
+     * listes à rester d'accord, et rien ne signalait qu'elles ne l'étaient
+     * plus. Ici, la question est adjacente au `label()` et aux `elements()`
+     * qu'elle résume — ajouter un critère sans sa question ne compile pas, et
+     * en modifier un met les trois textes sous les yeux de qui édite.
+     *
+     * `elements()` reste servi tel quel à l'espace évaluateur : c'est lui qui
+     * fait que deux évaluateurs notent la même chose, et une question
+     * directrice ne peut pas jouer ce rôle. Le portail dit sur quoi on juge,
+     * la grille dit comment on note.
+     */
+    public function question(): string
+    {
+        return match ($this) {
+            self::RELEVANCE => 'La solution répond-elle précisément au défi et aux usages prioritaires ?',
+            self::INNOVATION => 'La proposition améliore-t-elle significativement l’existant sans complexité inutile ?',
+            self::TECHNICAL_FEASIBILITY => 'Le MVP peut-il fonctionner avec les ressources, données et délais disponibles ?',
+            self::VIABILITY => 'Le modèle économique et le portage par la collectivité sont-ils crédibles ?',
+            self::IMPACT => 'Le bénéfice attendu est-il mesurable, utile et inclusif ?',
+            self::SUSTAINABILITY => 'Maintenance, support, interopérabilité et coût total sont-ils crédibles ?',
+            self::TEAM => 'L’équipe et sa présentation inspirent-elles confiance ?',
+            self::INCLUSION => 'La solution profite-t-elle à tous les usagers, sur tout le territoire visé ?',
+        };
+    }
+
+    /**
      * Le score pondéré d'une note, en points sur le poids du critère.
      *
      * `note / 5 × poids`. Aucun arrondi ici : l'arrondi appartient à

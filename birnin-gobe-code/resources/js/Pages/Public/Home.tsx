@@ -306,10 +306,19 @@ export default function Home({ campaign, themes, criteria }: {
             {criteria.map(({ key, title, question }, index) => (
               <Reveal key={key} delay={index * 40}>
                 <Card className="hover-lift h-full p-4" data-testid={`critere-${index + 1}`}>
-                  {/* Aucune pastille : la pondération du §11.2 n'est pas
-                      publiée, et un numéro d'ordre n'apprendrait rien — le rang
-                      d'une carte dans une grille responsive ne veut rien dire. */}
-                  <h3 className="text-sm font-extrabold text-brand-950">{title}</h3>
+                  <div className="flex items-start gap-2.5">
+                    {/* Le numéro donne à la grille un ordre de lecture stable —
+                        « le critère 4 » se cite, « la quatrième carte » non, car
+                        la grille se replie de quatre colonnes à une. Il ne dit
+                        rien du poids : la pondération du §11.2 n'est pas
+                        publiée. `aria-hidden`, parce que le titre suffit à
+                        identifier le critère et qu'un lecteur d'écran n'a pas
+                        besoin d'égrener huit numéros. */}
+                    <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-brand-800 text-xs font-black text-brand-800">
+                      {index + 1}
+                    </span>
+                    <h3 className="mt-1 text-sm font-extrabold leading-5 text-brand-950">{title}</h3>
+                  </div>
                   <p className="mt-2 text-xs leading-5 text-slate-600">{question}</p>
                 </Card>
               </Reveal>
