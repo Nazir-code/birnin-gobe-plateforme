@@ -38,6 +38,7 @@ enum AuditAction: string
     case EVALUATION_CHARTER_ACCEPTED = 'EVALUATION_CHARTER_ACCEPTED';
     case EVALUATION_LOCKED = 'EVALUATION_LOCKED';
     case EVALUATION_DIVERGENCE_REVIEWED = 'EVALUATION_DIVERGENCE_REVIEWED';
+    case INTERNAL_USER_CREATED = 'INTERNAL_USER_CREATED';
     case CAMPAIGN_CREATED = 'CAMPAIGN_CREATED';
     case CAMPAIGN_UPDATED = 'CAMPAIGN_UPDATED';
     case CAMPAIGN_STATUS_CHANGED = 'CAMPAIGN_STATUS_CHANGED';
@@ -60,6 +61,7 @@ enum AuditAction: string
             self::EVALUATION_CHARTER_ACCEPTED => 'Charte d’évaluation acceptée',
             self::EVALUATION_LOCKED => 'Évaluation verrouillée',
             self::EVALUATION_DIVERGENCE_REVIEWED => 'Écart de notation revu',
+            self::INTERNAL_USER_CREATED => 'Compte interne créé',
             self::CAMPAIGN_CREATED => 'Campagne créée',
             self::CAMPAIGN_UPDATED => 'Campagne modifiée',
             self::CAMPAIGN_STATUS_CHANGED => 'Statut de campagne changé',
@@ -84,6 +86,9 @@ enum AuditAction: string
             self::CAMPAIGN_STATUS_CHANGED,
             self::CAMPAIGN_ELIGIBILITY_UPDATED,
             self::CAMPAIGN_EVALUATION_SETTINGS_UPDATED,
+            // Habiliter quelqu'un à noter des candidatures est décisif : le
+            // geste crée un pouvoir, il ne fait pas qu'enregistrer un fait.
+            self::INTERNAL_USER_CREATED,
             self::EVALUATION_LOCKED => AuditWeight::DECISIVE,
 
             self::APPLICATION_DOCUMENT_DELETED,

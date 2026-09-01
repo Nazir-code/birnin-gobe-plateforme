@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\IndicatorController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\VerificationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -30,6 +31,7 @@ use App\Http\Controllers\Candidate\SubmitApplicationController;
 use App\Http\Controllers\Candidate\SubmittedController;
 use App\Http\Controllers\Candidate\TeamSectionController;
 use App\Http\Controllers\Evaluator\EvaluationController;
+use App\Http\Controllers\Evaluator\EvaluatorSessionController;
 use App\Http\Controllers\Public\HomeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -85,6 +87,16 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
     Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.update');
 });
+
+/*
+| Invitation d'un compte interne (ADR-022).
+|
+| Hors du groupe `guest` : quelqu'un dont le navigateur garde une session
+| candidat doit pouvoir definir le mot de passe du compte interne qu'on vient
+| de lui creer. Le jeton, lui, ne depend d'aucune session.
+*/
+Route::get('/invitation/{token}', [InvitationController::class, 'create'])->name('invitation.create');
+Route::post('/invitation', [InvitationController::class, 'store'])->name('invitation.store');
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')
@@ -267,9 +279,10 @@ Route::middleware(['auth', 'role:candidate'])
 | l'interface publique ou candidate — /admin/login compris : la page est
 | joignable, jamais liée depuis un écran public ou candidat.
 |
-| Aucun compte interne n'est créable par l'inscription publique : le seul
-| chemin de création est `php artisan admin:create` (ADR-006). Évaluation et
-| jury n'ont pas encore d'accès interne, seule leur règle d'accès est posée.
+| Aucun compte interne n'est créable par l'inscription publique : les seuls
+| chemins de création sont `php artisan admin:create` (ADR-006) et
+| `php artisan evaluator:create` (ADR-021). Le jury n'a pas encore d'accès
+| interne, seule sa règle d'accès est posée.
 */
 Route::prefix('admin')->name('admin.')->group(function (): void {
     // Accès interne. Aucune inscription : les comptes internes sont
@@ -277,8 +290,12 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/login', [AdminSessionController::class, 'create'])->name('login');
     Route::post('/login', [AdminSessionController::class, 'store']);
 
+    // `auth` sans `role:admin` : quelqu'un dont le rôle vient d'être retiré doit
+    // pouvoir fermer sa session, et l'écran de connexion propose ce geste à qui
+    // arrive avec une autre identité — un candidat compris.
+    Route::middleware('auth')->post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
+
     Route::middleware(['auth', 'role:admin'])->group(function (): void {
-        Route::post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
 
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
 
@@ -330,6 +347,16 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         // dossiers a affecter et affectations en vigueur se comparent — et il
         // porte deux ecritures : affecter un lot, lever une affectation.
         Route::get('/evaluators', [EvaluatorController::class, 'index'])->name('evaluators.index');
+        // Creation d'un evaluateur (ADR-022). Le role est impose par l'action,
+        // jamais transmis par le formulaire ; l'invite definit lui-meme son mot
+        // de passe, que personne d'autre ne connaitra jamais.
+        Route::post('/evaluators', [EvaluatorController::class, 'storeEvaluator'])->name('evaluators.store');
+        // Relance d'une invitation restee sans suite : une invitation se perd,
+        // expire, ou atterrit en indesirables. Sans ce geste, le seul recours
+        // serait de supprimer le compte pour le recreer — en effacant ses
+        // affectations.
+        Route::post('/evaluators/{user}/invitation', [EvaluatorController::class, 'resendInvitation'])
+            ->name('evaluators.invitation');
         Route::post('/evaluators/assignments', [EvaluatorController::class, 'storeAssignments'])
             ->name('evaluators.assignments.store');
         Route::delete('/evaluators/assignments/{assignment}', [EvaluatorController::class, 'destroyAssignment'])
@@ -370,6 +397,24 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         // AuditController.
         Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
     });
+});
+
+/*
+| Accès interne évaluateur (ADR-021).
+|
+| Séparé du groupe protégé ci-dessous : la connexion doit rester joignable sans
+| session, sans quoi `redirectGuestsTo` renverrait vers une page elle-même
+| protégée. Aucune inscription — les comptes sont provisionnés par
+| `php artisan evaluator:create`.
+*/
+Route::prefix('evaluator')->name('evaluator.')->group(function (): void {
+    Route::get('/login', [EvaluatorSessionController::class, 'create'])->name('login');
+    Route::post('/login', [EvaluatorSessionController::class, 'store']);
+
+    // La déconnexion exige `auth` mais pas `role:evaluator` : quelqu'un dont le
+    // rôle vient d'être retiré doit pouvoir fermer sa session, pas rester
+    // enfermé dedans.
+    Route::middleware('auth')->post('/logout', [EvaluatorSessionController::class, 'destroy'])->name('logout');
 });
 
 Route::middleware(['auth', 'role:evaluator'])

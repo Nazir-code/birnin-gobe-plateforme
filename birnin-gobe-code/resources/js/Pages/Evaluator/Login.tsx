@@ -34,16 +34,16 @@ function SessionAFermer({ session }: { session: NonNullable<SessionEnCours> }) {
 }
 
 /**
- * Accès interne à l'administration (ADR-003, ADR-006).
+ * Accès interne à l'espace évaluateur (ADR-003, ADR-021).
  *
- * Volontairement dépouillé, et distinct de la connexion candidat : ni « créer
- * un compte », ni « mot de passe oublié », ni lien vers l'espace candidat. Les
- * comptes internes sont provisionnés en ligne de commande, il n'y a donc rien
- * à proposer à qui n'en a pas.
+ * Même dépouillement que l'accès administration, et pour les mêmes raisons : ni
+ * « créer un compte », ni « mot de passe oublié », ni lien vers l'espace
+ * candidat. Les comptes évaluateurs sont provisionnés en ligne de commande
+ * (`evaluator:create`), il n'y a donc rien à proposer à qui n'en a pas.
  *
  * Aucun écran public ou candidat ne pointe vers cette page.
  */
-export default function AdminLogin({ sessionEnCours = null }: { sessionEnCours?: SessionEnCours }) {
+export default function EvaluatorLogin({ sessionEnCours = null }: { sessionEnCours?: SessionEnCours }) {
   const { data, setData, post, processing, errors } = useForm({
     email: '',
     password: '',
@@ -51,22 +51,22 @@ export default function AdminLogin({ sessionEnCours = null }: { sessionEnCours?:
 
   return (
     <AuthShell
-      titre="Accès interne"
-      sousTitre="Administration BIRNIN GOBE — PIDUREM / ANSI."
-      bas="Les comptes internes sont provisionnés par l’administrateur système. Aucune inscription n’est possible depuis cet écran."
+      titre="Accès évaluateur"
+      sousTitre="Évaluation BIRNIN GOBE — PIDUREM / ANSI."
+      bas="Les comptes évaluateurs sont provisionnés par l’administrateur système. Aucune inscription n’est possible depuis cet écran."
     >
       {sessionEnCours ? <SessionAFermer session={sessionEnCours} /> : null}
 
       <p className="mb-6 flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs leading-5 text-slate-600">
         <ShieldCheck size={16} className="mt-0.5 shrink-0 text-brand-800" />
-        Espace réservé aux personnels habilités. Les accès sont nominatifs et journalisés.
+        Espace réservé aux évaluateurs habilités. Les accès sont nominatifs et journalisés.
       </p>
 
       <form
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          post('/admin/login');
+          post('/evaluator/login');
         }}
       >
         <Champ
@@ -93,7 +93,7 @@ export default function AdminLogin({ sessionEnCours = null }: { sessionEnCours?:
         {/* Pas de « rester connecté » : une session interne ne survit pas au
             navigateur fermé. */}
         <Button type="submit" className="w-full" disabled={processing}>
-          {processing ? 'Connexion…' : 'Accéder à l’administration'} <ArrowRight size={17} />
+          {processing ? 'Connexion…' : 'Accéder à mon plan de travail'} <ArrowRight size={17} />
         </Button>
       </form>
     </AuthShell>

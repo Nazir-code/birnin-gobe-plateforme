@@ -199,11 +199,16 @@ final class AuthentificationCandidatTest extends TestCase
     #[DataProvider('espacesInternes')]
     public function test_un_visiteur_ne_peut_pas_ouvrir_un_espace_interne(string $url): void
     {
-        // L'administration a désormais son propre écran de connexion interne
-        // (ADR-006) : y envoyer le visiteur plutôt que vers la connexion candidat,
-        // qui ne pourrait de toute façon pas l'y connecter. Évaluation et jury
-        // n'ont pas encore d'accès interne et retombent sur /login.
-        $attendu = str_starts_with($url, '/admin/') ? '/admin/login' : '/login';
+        // Chaque espace interne renvoie vers *sa* connexion : l'administration
+        // depuis ADR-006, l'évaluation depuis ADR-021. Y envoyer le visiteur
+        // plutôt que vers la connexion candidat, qui ne pourrait de toute façon
+        // pas l'y connecter. Le jury n'a pas encore d'accès interne — il n'a pas
+        // non plus d'écran derrière la porte — et retombe donc sur /login.
+        $attendu = match (true) {
+            str_starts_with($url, '/admin/') => '/admin/login',
+            str_starts_with($url, '/evaluator/') => '/evaluator/login',
+            default => '/login',
+        };
 
         $this->get($url)->assertRedirect($attendu);
     }

@@ -40,7 +40,7 @@ type Dossier = {
   showUrl: string;
 };
 
-type Evaluateur = { id: number; name: string; email: string; load: number; accepted: number; conflicts: number };
+type Evaluateur = { id: number; name: string; email: string; load: number; accepted: number; conflicts: number; invitationPending: boolean };
 
 type Affectation = {
   id: number;
@@ -95,7 +95,10 @@ export default function EvaluatorsIndex({
   assignUrl,
   resetUrl,
 }: Props) {
-  const flash = (usePage().props as { flash?: { status?: string } }).flash;
+  const flash = (usePage().props as { flash?: { status?: string; invitationLink?: string | null } }).flash;
+  // Rendu par le serveur seulement quand personne n'a reçu le courriel : sans
+  // transport configuré, ce lien est la seule façon d'ouvrir le compte.
+  const lienInvitation = flash?.invitationLink ?? null;
 
   const [saisie, setSaisie] = useState(filters);
   const [selection, setSelection] = useState<number[]>([]);
@@ -106,6 +109,7 @@ export default function EvaluatorsIndex({
   });
 
   const levee = useForm({ status: '', reason: '' });
+  const creation = useForm({ name: '', email: '' });
   const [leveeOuverte, setLeveeOuverte] = useState<number | null>(null);
 
   function appliquer(modifications: Partial<typeof filters>) {
@@ -174,6 +178,22 @@ export default function EvaluatorsIndex({
       <Head title="Évaluateurs — BIRNIN GOBE" />
 
       <div className="mx-auto max-w-[1280px] p-5 sm:p-7">
+        {lienInvitation ? (
+          <div
+            className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            data-testid="lien-invitation"
+          >
+            <p className="font-bold">Lien à transmettre vous-même</p>
+            <p className="mt-1 text-xs leading-5">
+              Aucun service d’envoi de courriel n’est configuré : ce lien n’a été envoyé à personne. Transmettez-le
+              à l’intéressé par un canal que vous jugez sûr. Il est valable sept jours et ne sert qu’une fois.
+            </p>
+            <code className="mt-2 block break-all rounded-lg bg-white px-3 py-2 text-xs text-slate-700">
+              {lienInvitation}
+            </code>
+          </div>
+        ) : null}
+
         {flash?.status ? (
           <p className="mb-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm font-bold text-brand-900" role="status">
             {flash.status}
@@ -194,10 +214,61 @@ export default function EvaluatorsIndex({
             }
           />
 
+          {/* Création d'un évaluateur (ADR-022). Deux champs : ni mot de passe —
+              l'invité le définit lui-même et sera seul à le connaître — ni
+              rôle, imposé par le serveur. */}
+          <form
+            className="mt-4 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:grid-cols-[1fr_1fr_auto]"
+            onSubmit={(e) => {
+              e.preventDefault();
+              creation.post('/admin/evaluators', { preserveScroll: true, onSuccess: () => creation.reset() });
+            }}
+            data-testid="creer-evaluateur"
+          >
+            <div>
+              <label htmlFor="evaluateur-nom" className="block text-xs font-bold text-slate-700">
+                Nom complet
+              </label>
+              <input
+                id="evaluateur-nom"
+                value={creation.data.name}
+                onChange={(e) => creation.setData('name', e.target.value)}
+                className="focus-ring mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"
+              />
+              {creation.errors.name ? (
+                <p role="alert" className="mt-1 text-xs font-bold text-rose-700">{creation.errors.name}</p>
+              ) : null}
+            </div>
+            <div>
+              <label htmlFor="evaluateur-email" className="block text-xs font-bold text-slate-700">
+                Adresse e-mail
+              </label>
+              <input
+                id="evaluateur-email"
+                type="email"
+                value={creation.data.email}
+                onChange={(e) => creation.setData('email', e.target.value)}
+                className="focus-ring mt-1 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm"
+              />
+              {creation.errors.email ? (
+                <p role="alert" className="mt-1 text-xs font-bold text-rose-700">{creation.errors.email}</p>
+              ) : null}
+            </div>
+            <div className="flex items-end">
+              <Button type="submit" disabled={creation.processing} className="w-full sm:w-auto">
+                {creation.processing ? 'Envoi…' : 'Créer et inviter'}
+              </Button>
+            </div>
+            <p className="text-xs leading-5 text-slate-500 sm:col-span-3">
+              Un lien de définition de mot de passe part vers cette adresse. Vous ne connaîtrez pas ce mot de passe :
+              l’évaluateur sera seul à le détenir.
+            </p>
+          </form>
+
           {evaluators.length === 0 ? (
             <p className="mt-4 text-sm text-slate-600" data-testid="aucun-evaluateur">
-              Aucun compte évaluateur n’existe encore. Ils sont provisionnés en ligne de commande (ADR-006), jamais
-              par une inscription.
+              Aucun compte évaluateur n’existe encore. Créez-en un ci-dessus, ou provisionnez-le en ligne de commande
+              (`evaluator:create`). Aucune inscription publique ne peut en produire.
             </p>
           ) : (
             <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-testid="evaluateurs">
@@ -205,6 +276,30 @@ export default function EvaluatorsIndex({
                 <li key={evaluateur.id} className="rounded-xl border border-slate-200 p-3">
                   <p className="truncate text-sm font-bold text-slate-900">{evaluateur.name}</p>
                   <p className="truncate text-xs text-slate-500">{evaluateur.email}</p>
+
+                  {/* Un compte jamais activé ne se distinguait en rien d'un
+                      compte actif : on pouvait lui affecter des dossiers qu'il
+                      n'ouvrirait jamais (ADR-022). */}
+                  {evaluateur.invitationPending ? (
+                    <div
+                      className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-2"
+                      data-testid={`invitation-en-attente-${evaluateur.id}`}
+                    >
+                      <p className="text-[11px] font-bold leading-4 text-amber-900">
+                        N’a pas encore défini son mot de passe
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          router.post(`/admin/evaluators/${evaluateur.id}/invitation`, {}, { preserveScroll: true })
+                        }
+                        className="focus-ring mt-1.5 rounded-lg bg-amber-800 px-2.5 py-1 text-[11px] font-bold text-white transition hover:bg-amber-900"
+                      >
+                        Renvoyer l’invitation
+                      </button>
+                    </div>
+                  ) : null}
+
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <Pill tone={evaluateur.load === 0 ? 'neutral' : 'green'}>{evaluateur.load} dossier(s)</Pill>
                     {evaluateur.accepted > 0 ? <Pill tone="green">{evaluateur.accepted} pris en charge</Pill> : null}

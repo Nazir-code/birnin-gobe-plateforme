@@ -58,16 +58,25 @@ final readonly class AdminEvaluatorPresenter
     }
 
     /**
-     * Un évaluateur, avec sa charge.
+     * Un évaluateur, avec sa charge et l'état de son accès.
      *
-     * @return array{id: int, name: string, email: string, load: int, accepted: int, conflicts: int}
+     * **`invitationPending` distingue un compte actif d'un compte jamais
+     * activé** — ADR-022. Rien ne les séparait à l'écran : un évaluateur créé
+     * mais qui n'a jamais reçu son invitation apparaissait comme les autres,
+     * et un responsable pouvait lui affecter des dossiers qu'il n'ouvrirait
+     * jamais. La présence d'un jeton non consommé est la seule preuve dont on
+     * dispose, et elle suffit : le jeton disparaît dès que le mot de passe est
+     * défini.
+     *
+     * @return array{id: int, name: string, email: string, load: int, accepted: int, conflicts: int, invitationPending: bool}
      */
-    public function evaluateurRow(User $evaluateur): array
+    public function evaluateurRow(User $evaluateur, bool $invitationEnAttente = false): array
     {
         return [
             'id' => $evaluateur->getKey(),
             'name' => $evaluateur->name,
             'email' => $evaluateur->email,
+            'invitationPending' => $invitationEnAttente,
             'load' => (int) ($evaluateur->charge_courante ?? 0),
             'accepted' => (int) ($evaluateur->prises_en_charge ?? 0),
             'conflicts' => (int) ($evaluateur->conflits_declares ?? 0),

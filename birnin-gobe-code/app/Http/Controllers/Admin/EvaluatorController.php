@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domain\Auth\CreerUtilisateurInterne;
+use App\Domain\Auth\EnvoyerInvitationInterne;
+use App\Domain\Auth\ResultatDInvitation;
+use App\Domain\Auth\UserRole;
 use App\Domain\Campaign\ActiveCampaign;
 use App\Domain\Evaluation\AssignApplications;
 use App\Domain\Evaluation\AssignmentBoardQuery;
@@ -9,6 +13,7 @@ use App\Domain\Evaluation\EvaluationSettings;
 use App\Domain\Evaluation\ReleaseAssignment;
 use App\Http\Presenters\AdminEvaluatorPresenter;
 use App\Http\Requests\Admin\AssignApplicationsRequest;
+use App\Http\Requests\Admin\InviterEvaluateurRequest;
 use App\Http\Requests\Admin\ReleaseAssignmentRequest;
 use App\Models\Application;
 use App\Models\Campaign;
@@ -17,6 +22,7 @@ use App\Models\User;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -89,9 +95,25 @@ final class EvaluatorController
                 'previousUrl' => $page->previousPageUrl(),
                 'nextUrl' => $page->nextPageUrl(),
             ],
-            'evaluators' => AssignmentBoardQuery::evaluateurs()
-                ->map(fn (User $evaluateur): array => $presenter->evaluateurRow($evaluateur))
-                ->all(),
+            // Les invitations en attente sont lues en **une** requête, jamais
+            // une par évaluateur : la liste en compte autant qu'il y a de
+            // personnes, et interroger la table pour chacune serait un N+1 sur
+            // un écran que le responsable ouvre à chaque affectation.
+            'evaluators' => (function () use ($presenter): array {
+                $evaluateurs = AssignmentBoardQuery::evaluateurs();
+
+                $enAttente = DB::table(config('auth.passwords.invitations.table'))
+                    ->whereIn('email', $evaluateurs->pluck('email')->all())
+                    ->pluck('email')
+                    ->flip();
+
+                return $evaluateurs
+                    ->map(fn (User $evaluateur): array => $presenter->evaluateurRow(
+                        $evaluateur,
+                        $enAttente->has($evaluateur->email),
+                    ))
+                    ->all();
+            })(),
             'assignments' => $presenter->affectations(
                 EvaluationAssignment::query()
                     ->enVigueur()
@@ -134,6 +156,101 @@ final class EvaluatorController
             'assignUrl' => route('admin.evaluators.assignments.store'),
             'resetUrl' => route('admin.evaluators.index'),
         ]);
+    }
+
+    /**
+     * Crée un évaluateur et lui envoie son invitation — ADR-022.
+     *
+     * **Le rôle est écrit ici, en dur.** Il ne vient ni du formulaire ni de la
+     * requête : cette action ne sait créer qu'un évaluateur, et si l'on veut un
+     * jour créer un jury depuis le back-office, ce sera une autre action — pas
+     * un paramètre de celle-ci.
+     *
+     * **L'invitation part après le commit du compte.** Un lien envoyé dans une
+     * transaction qui échouerait ensuite pointerait vers un compte inexistant,
+     * et le destinataire n'aurait aucun moyen de comprendre. C'est la règle
+     * qu'ADR-018 pose pour les notifications.
+     *
+     * **L'échec d'envoi ne défait pas la création.** Le compte est valide, il
+     * est simplement inaccessible tant que personne n'a reçu de lien — l'écran
+     * le dit, et une relance depuis « mot de passe oublié » suffit. Faire
+     * échouer la création laisserait un administrateur devant une erreur sans
+     * savoir si le compte existe.
+     */
+    public function storeEvaluator(
+        InviterEvaluateurRequest $request,
+        CreerUtilisateurInterne $creer,
+        EnvoyerInvitationInterne $inviter,
+    ): RedirectResponse {
+        $evaluateur = $creer->handle(
+            nom: $request->string('name')->toString(),
+            email: $request->string('email')->toString(),
+            role: UserRole::EVALUATOR,
+            motDePasse: null,
+            acteur: $request->user(),
+        );
+
+        return $this->retourDInvitation($inviter->handle($evaluateur), $evaluateur);
+    }
+
+    /**
+     * Relance l'invitation d'un évaluateur qui n'a pas défini son mot de passe.
+     *
+     * **Nécessaire même avec un vrai transport de courriel.** Une invitation se
+     * perd, atterrit en indésirables, ou expire au bout de sept jours. Sans ce
+     * geste, le seul recours serait de supprimer le compte pour le recréer —
+     * ce qui effacerait ses affectations.
+     *
+     * Émettre un nouveau jeton **invalide le précédent** : `email` est la clé
+     * primaire de la table, la nouvelle ligne remplace l'ancienne. C'est le
+     * comportement voulu — deux liens valides pour un même compte
+     * multiplieraient les chemins d'entrée sans rien apporter.
+     *
+     * Refusé si le compte a déjà son mot de passe : relancer alors enverrait à
+     * quelqu'un un lien de définition qu'il n'a pas demandé, et le message
+     * ressemblerait à une usurpation.
+     */
+    public function resendInvitation(
+        Request $request,
+        User $user,
+        EnvoyerInvitationInterne $inviter,
+    ): RedirectResponse {
+        if ($user->role !== UserRole::EVALUATOR) {
+            abort(404);
+        }
+
+        if (! $this->invitationEnAttente($user)) {
+            return back()->withErrors([
+                'status' => sprintf('%s a déjà défini son mot de passe : il n’y a pas d’invitation à relancer.', $user->name),
+            ]);
+        }
+
+        return $this->retourDInvitation($inviter->handle($user), $user);
+    }
+
+    /**
+     * Le retour commun à la création et à la relance.
+     *
+     * Le lien n'est montré que si personne ne l'a reçu — voir
+     * `ResultatDInvitation::lienAMontrer()`. Avec un transport réel, l'afficher
+     * le ferait finir dans une capture d'écran ou un ticket.
+     */
+    private function retourDInvitation(ResultatDInvitation $resultat, User $destinataire): RedirectResponse
+    {
+        $retour = back()->with('status', $resultat->message($destinataire->name, $destinataire->email));
+
+        // La clé n'est posée que s'il y a un lien à montrer. Flasher `null`
+        // ferait exister une clé vide dans la session, que l'écran devrait
+        // alors distinguer de son absence — deux façons de dire « rien ».
+        return $resultat->lienAMontrer() ? $retour->with('invitationLink', $resultat->lien) : $retour;
+    }
+
+    /** Une invitation non consommée subsiste-t-elle pour ce compte ? */
+    private function invitationEnAttente(User $utilisateur): bool
+    {
+        return DB::table(config('auth.passwords.invitations.table'))
+            ->where('email', $utilisateur->email)
+            ->exists();
     }
 
     public function storeAssignments(

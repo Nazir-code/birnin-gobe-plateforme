@@ -21,4 +21,7 @@ export const evaluatorNav: DarkNavItem[] = [
 ];
 
 /** URL de déconnexion, commune aux écrans de l'espace évaluateur. */
-export const EVALUATOR_LOGOUT = '/logout';
+// La déconnexion de l'espace évaluateur, pas celle du candidat : `/logout`
+// ramenait un évaluateur sur l'écran de connexion candidat, qui ne peut pas le
+// reconnecter (ADR-021).
+export const EVALUATOR_LOGOUT = '/evaluator/logout';

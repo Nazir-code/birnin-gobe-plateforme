@@ -4,6 +4,7 @@ namespace App\Domain\Audit;
 
 use App\Models\Application;
 use App\Models\Campaign;
+use App\Models\User;
 
 /**
  * Les objets sur lesquels le journal porte aujourd'hui.
@@ -20,12 +21,14 @@ enum AuditTargetType: string
 {
     case APPLICATION = Application::class;
     case CAMPAIGN = Campaign::class;
+    case USER = User::class;
 
     public function label(): string
     {
         return match ($this) {
             self::APPLICATION => 'Candidature',
             self::CAMPAIGN => 'Campagne',
+            self::USER => 'Compte',
         };
     }
 

@@ -63,9 +63,22 @@ return Application::configure(basePath: dirname(__DIR__))
         // qu'il visait : le portail public n'expose que la connexion candidat,
         // et envoyer vers celle-ci quelqu'un qui tape /admin/... l'enverrait dans
         // un formulaire qui ne peut pas le connecter.
-        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin', 'admin/*')
-            ? route('admin.login')
-            : route('login'));
+        //
+        // Même raison pour /evaluator/... depuis ADR-021 : l'espace évaluateur
+        // avait bien sa protection, mais ses visiteurs atterrissaient sur la
+        // connexion candidat, incapable de les authentifier. Une porte fermée
+        // dont la sonnette mène chez le voisin.
+        $middleware->redirectGuestsTo(function (Request $request): string {
+            if ($request->is('admin', 'admin/*')) {
+                return route('admin.login');
+            }
+
+            if ($request->is('evaluator', 'evaluator/*')) {
+                return route('evaluator.login');
+            }
+
+            return route('login');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Central exception mapping / error codes will be added with domain use cases.
