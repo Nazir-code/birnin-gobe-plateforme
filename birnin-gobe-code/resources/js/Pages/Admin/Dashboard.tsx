@@ -5,7 +5,7 @@ import { ADMIN_LOGOUT, adminNav } from '@/Layouts/adminNav';
 import { Card, Pill, SectionTitle } from '@/Components/Ui';
 import { StatCard } from '@/Components/StatCard';
 import { Reveal } from '@/Components/Reveal';
-import { NigerRegionsMap, type RegionIntensity } from '@/Components/NigerRegionsMap';
+import { NigerRegionsMap, type NigerRegionCode, type RegionCount, type RegionIntensity } from '@/Components/NigerRegionsMap';
 import { useAuthUser } from '@/hooks/useAuth';
 
 /**
@@ -45,6 +45,7 @@ export default function AdminDashboard({
   applications,
   alerts,
   regionIntensities = null,
+  regionCounts = null,
 }: {
   campaign: Campagne | null;
   campaignsCount: number;
@@ -62,6 +63,7 @@ export default function AdminDashboard({
   alerts: { count: number; url: string };
   /** Paliers par code de région, ou `null` quand rien n'est publiable. */
   regionIntensities?: Record<string, RegionIntensity> | null;
+  regionCounts?: Partial<Record<NigerRegionCode, RegionCount>> | null;
 }) {
   const user = useAuthUser();
 
@@ -203,6 +205,7 @@ export default function AdminDashboard({
                   géographie est réelle, la donnée est absente et se voit. */}
               <NigerRegionsMap
                 intensities={regionIntensities ?? undefined}
+                counts={regionCounts ?? undefined}
                 label={
                   regionIntensities
                     ? 'Carte du Niger : répartition des dossiers par région d’intervention'
