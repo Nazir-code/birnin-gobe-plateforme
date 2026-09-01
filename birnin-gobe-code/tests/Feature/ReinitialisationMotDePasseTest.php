@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Auth\UserRole;
 use App\Models\User;
 use App\Notifications\ReinitialisationMotDePasse;
 use Illuminate\Auth\Events\PasswordReset;
@@ -366,6 +367,47 @@ final class ReinitialisationMotDePasseTest extends TestCase
      * Ce test ne prouve que cela, et c'est tout ce que le code fait : une
      * session serveur déjà ouverte ailleurs n'est pas révoquée par ce geste.
      */
+    /**
+     * Chacun repart vers l'écran de son espace, pas vers celui du candidat.
+     *
+     * La méthode renvoyait tout le monde vers `/login`. Un administrateur ou un
+     * évaluateur qui réinitialisait son mot de passe atterrissait donc sur un
+     * formulaire incapable de le connecter, et rien ne le lui disait — le même
+     * cul-de-sac que celui des visiteurs anonymes, corrigé par ADR-021 pour les
+     * uns et resté ouvert pour les autres.
+     *
+     * L'assertion porte sur `UserRole::routeDeConnexion()` plutôt que sur une
+     * URL recopiée : la règle vit sur le rôle, et un test qui la recopie
+     * cesserait de la vérifier le jour où un espace s'ajoute.
+     */
+    #[DataProvider('rolesInternes')]
+    public function test_la_reinitialisation_renvoie_vers_l_espace_du_role(string $role): void
+    {
+        $utilisateur = User::factory()->role(UserRole::from($role))->create([
+            'email' => 'interne@example.test',
+        ]);
+
+        $jeton = Password::createToken($utilisateur);
+
+        $this->post('/reset-password', [
+            'token' => $jeton,
+            'email' => $utilisateur->email,
+            'password' => self::NOUVEAU,
+            'password_confirmation' => self::NOUVEAU,
+        ])->assertRedirect(route(UserRole::from($role)->routeDeConnexion()));
+
+        $this->assertTrue(Hash::check(self::NOUVEAU, $utilisateur->fresh()->password));
+    }
+
+    /** @return array<string, list<string>> */
+    public static function rolesInternes(): array
+    {
+        return [
+            'administrateur' => [UserRole::ADMIN->value],
+            'evaluateur' => [UserRole::EVALUATOR->value],
+        ];
+    }
+
     public function test_la_reinitialisation_invalide_les_sessions_persistantes(): void
     {
         $candidat = $this->candidat();

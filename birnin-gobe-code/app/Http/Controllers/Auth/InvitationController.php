@@ -32,10 +32,10 @@ use Inertia\Response;
  * jeton expiré, adresse inconnue — un seul message. Les distinguer rendrait le
  * formulaire bavard sur l'existence des comptes internes.
  *
- * **Le retour se fait vers l'espace de la personne**, et c'est ce qui manquait
- * au parcours de réinitialisation existant : celui-ci renvoie tout le monde
- * vers `/login`, l'écran candidat, qui ne peut connecter ni un administrateur
- * ni un évaluateur. Une porte fermée dont la sonnette mène chez le voisin.
+ * **Le retour se fait vers l'espace de la personne**, par
+ * `UserRole::routeDeConnexion()`. La règle vit sur le rôle et non ici, parce
+ * que la réinitialisation de mot de passe rend la main de la même façon : deux
+ * copies auraient divergé le jour où un espace s'ajoute.
  */
 final class InvitationController
 {
@@ -79,25 +79,8 @@ final class InvitationController
             ]);
         }
 
-        return redirect()->route($this->connexionDe($destination))->with('status', __(
+        return redirect()->route(($destination ?? UserRole::CANDIDATE)->routeDeConnexion())->with('status', __(
             'Votre mot de passe est défini. Vous pouvez maintenant vous connecter.'
         ));
-    }
-
-    /**
-     * L'écran de connexion de l'espace auquel le compte appartient.
-     *
-     * Un compte candidat ne devrait jamais arriver ici — l'invitation ne
-     * s'adresse qu'aux comptes internes — mais le cas est traité plutôt que
-     * supposé impossible : renvoyer `null` vers une route inexistante
-     * produirait une erreur serveur au lieu d'un écran.
-     */
-    private function connexionDe(?UserRole $role): string
-    {
-        return match ($role) {
-            UserRole::ADMIN => 'admin.login',
-            UserRole::EVALUATOR => 'evaluator.login',
-            default => 'login',
-        };
     }
 }
