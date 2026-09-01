@@ -319,7 +319,19 @@ export default function Evaluate({
                 return (
                   <li key={critere.value} className="rounded-xl border border-slate-200 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0">
+                      {/* `flex-1 basis-64` plutôt qu'une largeur laissée au
+                          contenu : sans base de flex, un texte long occupait
+                          toute la ligne et renvoyait les contrôles en dessous,
+                          pour ce seul critère. « Innovation » fait 126
+                          caractères d'éléments d'appréciation contre 58 à 92
+                          pour les autres — sa rangée décrochait donc seule,
+                          et l'écart se lisait comme un défaut d'alignement.
+                          Le bloc se rétrécit désormais au lieu de pousser, et
+                          les huit rangées s'alignent quelle que soit la
+                          longueur du texte. La base de 16rem garde le repli
+                          sous les contrôles sur les écrans étroits — pour les
+                          huit à la fois, jamais pour un seul. */}
+                      <div className="min-w-0 flex-1 basis-64">
                         <label htmlFor={noteId} className="text-sm font-bold text-slate-900">
                           {critere.label}
                         </label>

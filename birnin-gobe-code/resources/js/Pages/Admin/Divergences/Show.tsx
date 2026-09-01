@@ -181,7 +181,15 @@ export default function DivergencesShow({
                 data-testid={`critere-${c.criterion}`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
+                  {/* Même base de flex que sur l'écran de notation, et pour la
+                      même raison : sans elle, un libellé long occupe la ligne
+                      entière et renvoie l'écart en dessous, pour ce seul
+                      critère — sa rangée décroche alors que rien ne la
+                      distingue. Le défaut ne se déclenche pas encore ici, les
+                      libellés étant courts, mais « Viabilité économique et
+                      institutionnelle » en fait déjà quarante caractères. On
+                      ferme la porte avant que le texte grandisse. */}
+                  <div className="min-w-0 flex-1 basis-64">
                     <p className="text-sm font-bold text-slate-900">{c.label}</p>
                     <p className="mt-0.5 text-[11px] text-slate-500">{c.weight} pts</p>
                   </div>
@@ -322,7 +330,7 @@ export default function DivergencesShow({
               {reviews.map((r) => (
                 <li key={r.id} className="rounded-xl border border-slate-200 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <p className="text-sm font-bold text-slate-900">{r.outcomeLabel}</p>
+                    <p className="min-w-0 flex-1 basis-48 text-sm font-bold text-slate-900">{r.outcomeLabel}</p>
                     <span className="text-[11px] text-slate-500">
                       {jour(r.reviewedAt)} · {r.actor ?? 'compte supprimé'}
                     </span>
