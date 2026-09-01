@@ -74,10 +74,17 @@ enum ApplicationSection: string
      * 200. La branche qui a livré l'étape 9 n'a pas touché ce fichier, et la
      * fusion ne pouvait pas le signaler.
      *
-     * Ce que l'ajout ne change pas, et qui a été vérifié : la progression, qui
-     * compte des `completed_at` et n'en trouvera jamais pour « Relecture » ; et
-     * la recevabilité, dont `SubmissionReadiness::requiredSections()` exclut
-     * explicitement cette section.
+     * Ce que l'ajout ne change pas : la recevabilité, dont
+     * `SubmissionReadiness::requiredSections()` exclut explicitement cette
+     * section.
+     *
+     * Ce qu'il a changé, contrairement à ce que ce paragraphe affirmait : la
+     * progression. Elle compte des `completed_at` et n'en trouvera jamais pour
+     * « Relecture » — c'était exact — mais son dénominateur valait alors
+     * `total()`, donc neuf. Ajouter cette section au parcours ouvert l'a fait
+     * entrer au dénominateur sans qu'elle puisse jamais entrer au numérateur,
+     * et un dossier déposé plafonnait à 89 %. Le constat était juste, la
+     * conclusion non.
      */
     public function isImplemented(): bool
     {
@@ -97,9 +104,13 @@ enum ApplicationSection: string
     /**
      * Section atteignable sans sauter d'étape depuis l'étape 1.
      *
-     * Le parcours s'arrête à la première étape non développée : aujourd'hui
-     * « Relecture / envoi » (étape 9). Les huit premières sont donc toutes sur
-     * le parcours ouvert.
+     * Le parcours s'arrête à la première étape non développée. Les neuf sont
+     * développées aujourd'hui, donc toutes sont sur le parcours ouvert — cette
+     * phrase disait encore le contraire longtemps après la livraison de
+     * l'étape 9, et c'est ce qui a laissé passer un plafond de progression à
+     * 89 % : `ApplicationProgress` comptait « Relecture » au dénominateur sans
+     * pouvoir la compter au numérateur. Elle en est désormais exclue par
+     * `countableSections()`.
      *
      * C'est ce qui empêche l'écran d'annoncer un parcours que le produit ne
      * tient pas, et la progression de compter une étape que le candidat n'aurait

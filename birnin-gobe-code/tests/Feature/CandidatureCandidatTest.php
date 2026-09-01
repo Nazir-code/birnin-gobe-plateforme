@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\ChallengeSection;
@@ -375,11 +376,17 @@ final class CandidatureCandidatTest extends TestCase
             ->assertOk();
 
         // Depuis la Phase 1F, l'étape 3 est développée : le parcours n'a plus
-        // de trou et « Défi » y est revenu. Une section achevée sur les neuf,
-        // donc — ni 65 %, ni 0 % : la valeur affichée est celle que le backend
-        // sait démontrer. Le détail de la règle est couvert par
+        // de trou et « Défi » y est revenu. Une section achevée, donc — ni
+        // 65 %, ni 0 % : la valeur affichée est celle que le backend sait
+        // démontrer. Le détail de la règle est couvert par
         // StructureEquipeCandidatTest.
-        $attendu = (int) round(1 / ApplicationSection::total() * 100);
+        //
+        // Le pourcentage est demandé à la règle, pas recalculé ici : recopier
+        // `round(n / total * 100)` dans un test le ferait suivre l'ancienne
+        // arithmétique le jour où la règle change — ce qui est précisément
+        // arrivé quand « Relecture » est entrée au dénominateur sans jamais
+        // pouvoir entrer au numérateur.
+        $attendu = ApplicationProgress::percentFromCompleted(1);
 
         $this->assertSame($attendu, (int) $application->fresh()->completion_percent);
 

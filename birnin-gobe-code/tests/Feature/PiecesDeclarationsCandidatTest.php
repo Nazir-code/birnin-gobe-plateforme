@@ -712,7 +712,7 @@ final class PiecesDeclarationsCandidatTest extends TestCase
         );
     }
 
-    public function test_la_progression_atteint_huit_neuviemes(): void
+    public function test_la_progression_atteint_les_huit_sections(): void
     {
         $candidat = $this->candidat();
         $campagne = $this->campagne();
@@ -1202,7 +1202,7 @@ final class PiecesDeclarationsCandidatTest extends TestCase
             'challenge' => [
                 // La thématique est devenue une réponse exigée de l'étape 4 à
                 // l'intégration de `feat/application-project-theme`. Sans elle,
-                // le défi reste inachevé et le dossier n'atteint jamais 8/9 —
+                // le défi reste inachevé et le dossier n'atteint jamais 8/8 —
                 // ce fichier testerait alors l'étape 8 sur un parcours que le
                 // candidat ne peut pas terminer.
                 ChallengeSection::THEME_FIELD => ProjectTheme::URBAN_MANAGEMENT->value,
@@ -1243,6 +1243,6 @@ final class PiecesDeclarationsCandidatTest extends TestCase
 
     private function pourcentage(int $sections): int
     {
-        return (int) round($sections / ApplicationSection::total() * 100);
+        return ApplicationProgress::percentFromCompleted($sections);
     }
 }

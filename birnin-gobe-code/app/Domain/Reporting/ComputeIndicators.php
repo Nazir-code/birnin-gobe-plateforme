@@ -2,6 +2,7 @@
 
 namespace App\Domain\Reporting;
 
+use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\ChallengeSection;
@@ -354,14 +355,11 @@ final readonly class ComputeIndicators
         $achevees = (clone $brouillons)
             ->withCount(['sections as achevees' => fn (Builder $q) => $q
                 ->whereNotNull('completed_at')
-                ->whereIn('section', array_map(
-                    static fn (ApplicationSection $s): string => $s->value,
-                    ApplicationSection::openPath(),
-                ))])
+                ->whereIn('section', ApplicationProgress::countableSections())])
             ->get()
             ->avg('achevees');
 
-        return round(((float) $achevees) / ApplicationSection::total() * 100, 1);
+        return round(((float) $achevees) / ApplicationProgress::total() * 100, 1);
     }
 
     /**

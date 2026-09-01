@@ -715,7 +715,10 @@ final class AdministrationCandidaturesTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('applications.0.completionPercent', $attendu)
                 ->where('applications.0.completedSections', 2)
-                ->where('applications.0.totalSections', ApplicationSection::total()));
+                // Le total des sections comptées, et non celui des étapes :
+                // « Relecture / envoi » est une étape sans contenu, et
+                // l'afficher au dénominateur ferait dire « 100 % · 8/9 ».
+                ->where('applications.0.totalSections', ApplicationProgress::total()));
 
         $this->actingAs($this->admin())
             ->get("/admin/applications/{$dossier->getKey()}")
@@ -777,7 +780,10 @@ final class AdministrationCandidaturesTest extends TestCase
         $this->actingAs($this->admin())
             ->get('/admin/applications')
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('applications.0.completionPercent', 11));
+            // La valeur attendue est demandée à la règle ; ce que le test
+            // interdit est de retrouver le 99 de la colonne.
+            ->assertInertia(fn ($page) => $page
+                ->where('applications.0.completionPercent', ApplicationProgress::percentFromCompleted(1)));
     }
 
     // — Performance ————————————————————————————————————————————————

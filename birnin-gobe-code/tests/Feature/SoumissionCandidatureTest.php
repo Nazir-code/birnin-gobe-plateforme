@@ -146,15 +146,72 @@ final class SoumissionCandidatureTest extends TestCase
         return $fabrique->create();
     }
 
-    /** Le pourcentage qu'un nombre de sections achevées vaut, sur les neuf. */
+    /**
+     * Le pourcentage qu'un nombre de sections achevées vaut.
+     *
+     * Demandé à la règle, jamais recalculé ici : un test qui recopie
+     * `round(n / total * 100)` continue de passer avec l'ancienne arithmétique
+     * le jour où la règle change, et cesse alors de vérifier quoi que ce soit.
+     */
     private function pourcentage(int $sections): int
     {
-        return (int) round($sections / ApplicationSection::total() * 100);
+        return ApplicationProgress::percentFromCompleted($sections);
     }
 
     private function deposer(User $candidat, Application $dossier): TestResponse
     {
         return $this->actingAs($candidat)->postJson("/candidate/application/{$dossier->getKey()}/submit");
+    }
+
+    // — La progression atteint bien 100 % ————————————————————————
+
+    /**
+     * Un dossier déposable affiche 100 %, et non 89 %.
+     *
+     * Le défaut que ce test verrouille : la progression comptait « Relecture /
+     * envoi » au dénominateur alors que cette section n'écrit jamais de
+     * `completed_at` — c'est un écran de lecture. Le plafond était donc 8/9,
+     * soit 89 %, y compris pour un dossier complet, recevable et déposé. Aucun
+     * geste du candidat ne pouvait le porter plus haut.
+     *
+     * L'assertion porte sur le **chiffre littéral 100**, et c'est voulu :
+     * l'écrire `percentFromCompleted(8)` rendrait le test vrai par
+     * construction, y compris si la règle replafonnait à 89 %.
+     */
+    public function test_un_dossier_deposable_atteint_cent_pour_cent(): void
+    {
+        $campagne = $this->campagne($this->reglesCompletes());
+        $candidat = User::factory()->create();
+        $dossier = $this->dossierComplet($campagne, $candidat);
+
+        $this->assertSame(
+            100,
+            app(ApplicationProgress::class)->percent($dossier),
+            'Un dossier dont toutes les sections exigées sont achevées est fait à 100 %.',
+        );
+    }
+
+    /**
+     * Le dénominateur est celui des sections remplissables, pas des étapes.
+     *
+     * Les deux chiffres ont coexisté — neuf étapes, huit sections de contenu —
+     * et c'est leur confusion qui a produit le plafond. Les écrans affichent
+     * « x/total » à côté du pourcentage : si le total repassait à neuf, un
+     * dossier déposé annoncerait « 100 % · 8/9 », deux chiffres côte à côte
+     * dont l'un contredirait l'autre.
+     */
+    public function test_le_denominateur_ignore_la_section_de_relecture(): void
+    {
+        $this->assertSame(
+            count(SubmissionReadiness::requiredSections()),
+            ApplicationProgress::total(),
+        );
+
+        $this->assertNotContains(
+            ApplicationSection::REVIEW->value,
+            ApplicationProgress::countableSections(),
+            'La relecture n’écrit aucun completed_at : la compter plafonnerait la progression.',
+        );
     }
 
     // — Le dépôt lui-même ——————————————————————————————————————————
@@ -296,7 +353,7 @@ final class SoumissionCandidatureTest extends TestCase
      * Le garde-fou éprouvé par la route elle-même : un candidat à qui il manque
      * les pièces reçoit un refus motivé, pas un numéro de dépôt.
      */
-    public function test_un_dossier_a_sept_neuviemes_n_est_pas_deposable(): void
+    public function test_un_dossier_incomplet_n_est_pas_deposable(): void
     {
         $campagne = $this->campagne($this->reglesCompletes());
         $candidat = User::factory()->create();

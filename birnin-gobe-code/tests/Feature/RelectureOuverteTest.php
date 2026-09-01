@@ -168,14 +168,20 @@ final class RelectureOuverteTest extends TestCase
         ]);
     }
 
-    /** La progression ne bouge pas : elle compte des dates, pas des ecrans. */
-    public function test_la_progression_reste_a_huit_neuviemes(): void
+    /**
+     * La progression ne bouge pas : elle compte des dates, pas des ecrans.
+     *
+     * Ouvrir l'ecran de relecture n'ecrit aucun `completed_at`, et ne doit donc
+     * rien ajouter. Ce test figeait `89` — le plafond que cette meme section
+     * imposait en occupant le denominateur sans pouvoir occuper le numerateur.
+     */
+    public function test_la_progression_ne_bouge_pas_a_la_relecture(): void
     {
         $dossier = $this->dossierDeposable($this->candidat());
         $progression = app(ApplicationProgress::class);
 
         $this->assertSame(8, $progression->completedOnOpenPath($dossier));
-        $this->assertSame(89, $progression->percent($dossier));
+        $this->assertSame(100, $progression->percent($dossier));
     }
 
     /** 7. Le depot fonctionne toujours, et reste le seul a figer le dossier. */

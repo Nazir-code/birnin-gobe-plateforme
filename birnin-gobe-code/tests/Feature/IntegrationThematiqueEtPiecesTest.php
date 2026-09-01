@@ -43,7 +43,7 @@ use Tests\TestCase;
  *     achevait le défi sans elle, ce que la fusion rend impossible.
  *
  * D'où le seul test qui compte ici : **un dossier réel, construit par les
- * vraies routes de l'étape 1 à l'étape 8**, atteint 8/9, devient déposable, et
+ * vraies routes de l'étape 1 à l'étape 8**, atteint 8/8, devient déposable, et
  * sa copie figée porte les deux apports à la fois.
  *
  * Ce que ce fichier surveille en creux : que l'ouverture de l'étape 8 n'a pas
@@ -65,16 +65,21 @@ final class IntegrationThematiqueEtPiecesTest extends TestCase
     }
 
     /**
-     * Le dossier complet des deux vagues : 8/9, déposable, copie complète.
+     * Le dossier complet des deux vagues : 8/8, déposable, copie complète.
+     *
+     * Ce test a longtemps figé `89`, c'est-à-dire le plafond que « Relecture /
+     * envoi » imposait en occupant le dénominateur sans jamais pouvoir occuper
+     * le numérateur. Un défaut inscrit dans une assertion cesse d'être un
+     * défaut visible : il devient la référence.
      */
     public function test_un_dossier_thematise_et_documente_est_deposable(): void
     {
         $candidat = $this->candidat();
         $dossier = $this->dossierDeBoutEnBout($candidat);
 
-        // — Les huit étapes ouvertes sont achevées, sur neuf au total.
+        // — Les huit sections de contenu sont achevées : le dossier est fait.
         $this->assertSame(8, app(ApplicationProgress::class)->completedOnOpenPath($dossier));
-        $this->assertSame(89, app(ApplicationProgress::class)->percent($dossier));
+        $this->assertSame(100, app(ApplicationProgress::class)->percent($dossier));
 
         // — Et le dossier est réellement déposable.
         $verdict = SubmissionReadiness::for($dossier->fresh(), app(EvaluateEligibility::class));
@@ -244,7 +249,7 @@ final class IntegrationThematiqueEtPiecesTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('answers.'.ChallengeSection::THEME_FIELD, null));
 
-        // — Le dossier retombe à 7/9, et le motif est le défi.
+        // — Le dossier retombe à sept sections sur huit, et le motif est le défi.
         $this->assertSame(7, app(ApplicationProgress::class)->completedOnOpenPath($dossier->fresh()));
 
         $avant = SubmissionReadiness::for($dossier->fresh(), app(EvaluateEligibility::class));

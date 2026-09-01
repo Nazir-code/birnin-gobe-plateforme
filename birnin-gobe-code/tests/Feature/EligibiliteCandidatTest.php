@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\ChallengeSection;
@@ -880,8 +881,8 @@ final class EligibiliteCandidatTest extends TestCase
 
         $this->actingAs($candidat)->patchJson($this->urlEligibilite($application), $this->reponsesConformes())->assertOk();
 
-        $uneSurNeuf = (int) round(1 / ApplicationSection::total() * 100);
-        $this->assertSame($uneSurNeuf, (int) $application->fresh()->completion_percent);
+        $uneSection = ApplicationProgress::percentFromCompleted(1);
+        $this->assertSame($uneSection, (int) $application->fresh()->completion_percent);
 
         // L'étape 3 ayant été développée en Phase 1F, « Défi » est revenu dans
         // le parcours ouvert : le remplir fait de nouveau avancer la
@@ -894,8 +895,8 @@ final class EligibiliteCandidatTest extends TestCase
             'root_causes' => 'Une extension urbaine plus rapide que le réseau.',
         ])->assertOk();
 
-        $deuxSurNeuf = (int) round(2 / ApplicationSection::total() * 100);
-        $this->assertSame($deuxSurNeuf, (int) $application->fresh()->completion_percent);
+        $deuxSections = ApplicationProgress::percentFromCompleted(2);
+        $this->assertSame($deuxSections, (int) $application->fresh()->completion_percent);
     }
 
     public function test_une_section_ouverte_mais_incomplete_ne_compte_pas(): void
