@@ -173,6 +173,19 @@ test.describe('Page d’accueil publique', () => {
   });
 
   /**
+   * La mention de realisation est contractuelle : elle ne disparait pas au
+   * detour d'une refonte du pied de page. Le coeur est du contenu, pas une
+   * icone — une synthese vocale doit le lire comme il se voit.
+   */
+  test('le pied de page porte la mention de realisation', async ({ page }) => {
+    await accueil(page);
+
+    await expect(page.locator('footer')).toContainText(
+      'Développé avec ❤️ par NOVATECH & FME Consult',
+    );
+  });
+
+  /**
    * Le pied de page ne promet rien.
    *
    * Les quatre mentions du bas de page n'ont pas encore de page derriere. Elles

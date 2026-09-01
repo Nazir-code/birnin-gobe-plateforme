@@ -26,6 +26,9 @@ export const fr = {
     ctaClosed: 'Candidatures closes',
     contact: 'Contact',
     rights: 'Tous droits réservés.',
+    // Le cœur est du contenu, pas une icône : il porte le sens de la phrase et
+    // doit être lu par une synthèse vocale comme il est vu.
+    credits: 'Développé avec ❤️ par NOVATECH & FME Consult',
     links: {
       home: 'Accueil',
       about: 'À propos',

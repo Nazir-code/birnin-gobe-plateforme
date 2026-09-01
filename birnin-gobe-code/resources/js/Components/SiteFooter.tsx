@@ -223,22 +223,28 @@ function PublicFooter() {
           <p className="text-xs text-white/65">
             © {currentYear()} BIRNI’NGOBE. {t.footer.rights}
           </p>
-          {/* Seules les destinations qui existent sont annoncées. Les quatre
+          {/* Bloc de droite : les mentions légales quand elles existeront, puis
+              la mention de réalisation, qui ferme la ligne.
+
+              Seules les destinations qui existent sont annoncées. Les quatre
               mentions du bas de page n'ont pas encore de page derrière : elles
               portaient un marqueur « Bientôt », qui donnait au pied de page
               l'air d'un chantier. Un pied de page ne promet rien ; il mène
               quelque part, ou il se tait. Le jour où l'une de ces pages
               existera, lui donner un `href` dans `config/site.ts` la fera
               réapparaître ici sans toucher à ce composant. */}
-          {mentionsDisponibles.length ? (
-            <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              {mentionsDisponibles.map((link) => (
-                <li key={link.key}>
-                  <FooterLink link={link} tone="inline" />
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 lg:justify-end">
+            {mentionsDisponibles.length ? (
+              <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                {mentionsDisponibles.map((link) => (
+                  <li key={link.key}>
+                    <FooterLink link={link} tone="inline" />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <p className="text-xs text-white/50">{t.footer.credits}</p>
+          </div>
         </div>
       </div>
     </footer>
@@ -261,19 +267,24 @@ function CompactFooter() {
         <p className="text-xs text-slate-500">
           © {currentYear()} BIRNI’NGOBE — {t.footer.brandTagline}. {t.footer.rights}
         </p>
-        {links.length ? (
-          <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {links.map((link) => (
-              <li key={link.key}>
-                {isAnchorHref(link.href) ? (
-                  <a href={link.href} className={linkClass}>{label(link)}</a>
-                ) : (
-                  <Link href={link.href} className={linkClass}>{label(link)}</Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {/* Bloc de droite : les destinations disponibles, puis la mention de
+            réalisation, qui ferme la ligne comme sur le pied public. */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 sm:justify-end">
+          {links.length ? (
+            <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              {links.map((link) => (
+                <li key={link.key}>
+                  {isAnchorHref(link.href) ? (
+                    <a href={link.href} className={linkClass}>{label(link)}</a>
+                  ) : (
+                    <Link href={link.href} className={linkClass}>{label(link)}</Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p className="text-xs text-slate-400">{t.footer.credits}</p>
+        </div>
       </div>
     </footer>
   );
