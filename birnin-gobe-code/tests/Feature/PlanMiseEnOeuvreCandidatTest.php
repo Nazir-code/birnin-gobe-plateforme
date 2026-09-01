@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\ChallengeSection;
@@ -29,7 +30,7 @@ use Tests\TestCase;
  *
  * Ce fichier porte aussi le test de bout en bout de la progression : c'est ici
  * que le parcours ouvert s'arrête aujourd'hui, et donc ici que se vérifie qu'il
- * mène bien de 1/9 à 7/9 sans trou.
+ * mène bien d'une section à sept sans trou.
  */
 final class PlanMiseEnOeuvreCandidatTest extends TestCase
 {
@@ -387,9 +388,9 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
         ]);
     }
 
-    // — Progression 4/9 → 5/9 → 6/9 → 7/9 —————————————————————————
+    // — Progression : quatre sections, puis cinq, six, sept ———————
 
-    public function test_la_progression_atteint_sept_neuviemes(): void
+    public function test_la_progression_atteint_sept_sections(): void
     {
         $candidat = $this->candidat();
         $application = $this->brouillon($candidat, $this->campagne());
@@ -616,6 +617,6 @@ final class PlanMiseEnOeuvreCandidatTest extends TestCase
 
     private function pourcentage(int $sections): int
     {
-        return (int) round($sections / ApplicationSection::total() * 100);
+        return ApplicationProgress::percentFromCompleted($sections);
     }
 }

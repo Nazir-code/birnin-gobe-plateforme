@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Domain\Auth\UserRole;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
@@ -63,9 +64,11 @@ final class NewPasswordController
             'password' => ['required', 'confirmed', ReglesMotDePasse::min(8)],
         ]);
 
+        $destination = null;
+
         $verdict = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $utilisateur, string $motDePasse): void {
+            function (User $utilisateur, string $motDePasse) use (&$destination): void {
                 $utilisateur->forceFill([
                     // Le cast `hashed` du modèle chiffre la valeur : on ne
                     // hache pas ici, sous peine de hacher deux fois.
@@ -74,6 +77,8 @@ final class NewPasswordController
                     // changement.
                     'remember_token' => Str::random(60),
                 ])->save();
+
+                $destination = $utilisateur->role;
 
                 event(new PasswordReset($utilisateur));
             }
@@ -88,7 +93,13 @@ final class NewPasswordController
             ]);
         }
 
-        return redirect()->route('login')->with('status', __(
+        // **Chacun repart vers l'écran de son espace.** Cette méthode renvoyait
+        // tout le monde vers `login`, la connexion candidat : un administrateur
+        // ou un évaluateur qui réinitialisait son mot de passe atterrissait sur
+        // un formulaire incapable de le connecter, sans rien pour le lui dire.
+        // Le même cul-de-sac que celui des visiteurs anonymes, corrigé par
+        // ADR-021 — il restait ici.
+        return redirect()->route(($destination ?? UserRole::CANDIDATE)->routeDeConnexion())->with('status', __(
             'Votre mot de passe a été modifié. Vous pouvez maintenant vous connecter.'
         ));
     }

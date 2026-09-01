@@ -1,11 +1,19 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminSessionController;
+use App\Http\Controllers\Admin\AlertController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
+use App\Http\Controllers\Admin\AuditController;
 use App\Http\Controllers\Admin\CampaignController;
 use App\Http\Controllers\Admin\CampaignEligibilityController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\DivergenceController;
+use App\Http\Controllers\Admin\EvaluatorController;
+use App\Http\Controllers\Admin\IndicatorController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\VerificationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -19,9 +27,11 @@ use App\Http\Controllers\Candidate\ImplementationSectionController;
 use App\Http\Controllers\Candidate\ProfileSectionController;
 use App\Http\Controllers\Candidate\ReviewController;
 use App\Http\Controllers\Candidate\SolutionSectionController;
-use App\Http\Controllers\Candidate\SubmittedController;
 use App\Http\Controllers\Candidate\SubmitApplicationController;
+use App\Http\Controllers\Candidate\SubmittedController;
 use App\Http\Controllers\Candidate\TeamSectionController;
+use App\Http\Controllers\Evaluator\EvaluationController;
+use App\Http\Controllers\Evaluator\EvaluatorSessionController;
 use App\Http\Controllers\Public\HomeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -77,6 +87,16 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
     Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.update');
 });
+
+/*
+| Invitation d'un compte interne (ADR-022).
+|
+| Hors du groupe `guest` : quelqu'un dont le navigateur garde une session
+| candidat doit pouvoir definir le mot de passe du compte interne qu'on vient
+| de lui creer. Le jeton, lui, ne depend d'aucune session.
+*/
+Route::get('/invitation/{token}', [InvitationController::class, 'create'])->name('invitation.create');
+Route::post('/invitation', [InvitationController::class, 'store'])->name('invitation.store');
 
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
     ->middleware('auth')
@@ -259,9 +279,10 @@ Route::middleware(['auth', 'role:candidate'])
 | l'interface publique ou candidate — /admin/login compris : la page est
 | joignable, jamais liée depuis un écran public ou candidat.
 |
-| Aucun compte interne n'est créable par l'inscription publique : le seul
-| chemin de création est `php artisan admin:create` (ADR-006). Évaluation et
-| jury n'ont pas encore d'accès interne, seule leur règle d'accès est posée.
+| Aucun compte interne n'est créable par l'inscription publique : les seuls
+| chemins de création sont `php artisan admin:create` (ADR-006) et
+| `php artisan evaluator:create` (ADR-021). Le jury n'a pas encore d'accès
+| interne, seule sa règle d'accès est posée.
 */
 Route::prefix('admin')->name('admin.')->group(function (): void {
     // Accès interne. Aucune inscription : les comptes internes sont
@@ -269,8 +290,12 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/login', [AdminSessionController::class, 'create'])->name('login');
     Route::post('/login', [AdminSessionController::class, 'store']);
 
+    // `auth` sans `role:admin` : quelqu'un dont le rôle vient d'être retiré doit
+    // pouvoir fermer sa session, et l'écran de connexion propose ce geste à qui
+    // arrive avec une autre identité — un candidat compris.
+    Route::middleware('auth')->post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
+
     Route::middleware(['auth', 'role:admin'])->group(function (): void {
-        Route::post('/logout', [AdminSessionController::class, 'destroy'])->name('logout');
 
         Route::get('/dashboard', AdminDashboardController::class)->name('dashboard');
 
@@ -305,21 +330,132 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         // lire — aucun remplacement, aucune suppression, aucun statut.
         Route::get('/applications/{application}/documents/{type}', [AdminApplicationController::class, 'downloadDocument'])
             ->name('applications.documents.download');
+
+        // Controle d'admissibilite (§10). Le premier endroit ou
+        // l'administration ecrit sur une candidature : elle ajoute un verdict a
+        // cote du dossier et fait bouger son statut, jamais son contenu. Aucune
+        // route ici ne reecrit une reponse ni une piece.
+        Route::get('/verification', [VerificationController::class, 'index'])->name('verification.index');
+        Route::get('/verification/{application}', [VerificationController::class, 'show'])
+            ->name('verification.show');
+        Route::post('/verification/{application}/checks', [VerificationController::class, 'storeChecks'])
+            ->name('verification.checks.store');
+        Route::post('/verification/{application}/decision', [VerificationController::class, 'storeDecision'])
+            ->name('verification.decision.store');
+
+        // Affectation aux evaluateurs (§11.1). L'ecran est unique — charge,
+        // dossiers a affecter et affectations en vigueur se comparent — et il
+        // porte deux ecritures : affecter un lot, lever une affectation.
+        Route::get('/evaluators', [EvaluatorController::class, 'index'])->name('evaluators.index');
+        // Creation d'un evaluateur (ADR-022). Le role est impose par l'action,
+        // jamais transmis par le formulaire ; l'invite definit lui-meme son mot
+        // de passe, que personne d'autre ne connaitra jamais.
+        Route::post('/evaluators', [EvaluatorController::class, 'storeEvaluator'])->name('evaluators.store');
+        // Relance d'une invitation restee sans suite : une invitation se perd,
+        // expire, ou atterrit en indesirables. Sans ce geste, le seul recours
+        // serait de supprimer le compte pour le recreer — en effacant ses
+        // affectations.
+        Route::post('/evaluators/{user}/invitation', [EvaluatorController::class, 'resendInvitation'])
+            ->name('evaluators.invitation');
+        Route::post('/evaluators/assignments', [EvaluatorController::class, 'storeAssignments'])
+            ->name('evaluators.assignments.store');
+        Route::delete('/evaluators/assignments/{assignment}', [EvaluatorController::class, 'destroyAssignment'])
+            ->name('evaluators.assignments.destroy');
+
+        // Revue d'ecart entre evaluateurs (§11.3). Trois routes, dont une
+        // seule ecrit — et elle n'ecrit pas de note : le §11.3 n'accorde au
+        // gestionnaire que l'avancement, jamais la retouche d'une notation.
+        Route::get('/divergences', [DivergenceController::class, 'index'])->name('divergences.index');
+        Route::get('/divergences/{application}', [DivergenceController::class, 'show'])->name('divergences.show');
+        Route::post('/divergences/{application}/reviews', [DivergenceController::class, 'store'])
+            ->name('divergences.store');
+
+        // Indicateurs (§13.1, §13.4). Deux routes en lecture : l'ecran et
+        // l'export CSV du §13.2. Chaque indicateur voyage avec sa definition,
+        // sa formule et sa source — un chiffre exporte sans sa fiche finit par
+        // etre cite pour autre chose que ce qu'il mesure.
+        Route::get('/indicators', [IndicatorController::class, 'index'])->name('indicators.index');
+        Route::get('/indicators/export', [IndicatorController::class, 'export'])->name('indicators.export');
+
+        // Alertes de pilotage (§9.3). Une seule route, en lecture : une alerte
+        // est un calcul sur l'etat reel, pas un enregistrement qu'on acquitte.
+        // Aucun bouton « ignorer » — une alerte eteinte alors que sa cause
+        // persiste apprend a ne plus lire l'ecran.
+        Route::get('/alerts', AlertController::class)->name('alerts.index');
+
+        // Parametres (§9.2). L'ecran est d'abord un inventaire : les neuf
+        // domaines du cahier des charges, avec l'etat reel de leur outillage.
+        // La seule ecriture qu'il porte est celle des parametres d'evaluation,
+        // dont l'affectation du §11.1 depend.
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+        Route::put('/settings/campaigns/{campaign}/evaluation', [SettingsController::class, 'updateEvaluation'])
+            ->name('settings.evaluation.update');
+
+        // Journal d'audit (§13). Une seule route, en lecture, et il ne faut
+        // jamais en ajouter une autre : un journal qu'on peut corriger ne
+        // prouve plus rien. La consultation n'y est pas consignee — voir
+        // AuditController.
+        Route::get('/audit', [AuditController::class, 'index'])->name('audit.index');
     });
+});
+
+/*
+| Accès interne évaluateur (ADR-021).
+|
+| Séparé du groupe protégé ci-dessous : la connexion doit rester joignable sans
+| session, sans quoi `redirectGuestsTo` renverrait vers une page elle-même
+| protégée. Aucune inscription — les comptes sont provisionnés par
+| `php artisan evaluator:create`.
+*/
+Route::prefix('evaluator')->name('evaluator.')->group(function (): void {
+    Route::get('/login', [EvaluatorSessionController::class, 'create'])->name('login');
+    Route::post('/login', [EvaluatorSessionController::class, 'store']);
+
+    // La déconnexion exige `auth` mais pas `role:evaluator` : quelqu'un dont le
+    // rôle vient d'être retiré doit pouvoir fermer sa session, pas rester
+    // enfermé dedans.
+    Route::middleware('auth')->post('/logout', [EvaluatorSessionController::class, 'destroy'])->name('logout');
 });
 
 Route::middleware(['auth', 'role:evaluator'])
     ->prefix('evaluator')
     ->name('evaluator.')
     ->group(function (): void {
-        Route::get('/assignments', fn () => Inertia::render('Evaluator/Assignments'))->name('assignments');
+        // L'espace évaluateur (§11.1 à §11.3). Cinq routes, et une seule porte :
+        // `show` rend la charte tant qu'elle n'est pas acceptée, le dossier
+        // ensuite. Aucune route ne prend d'identifiant d'évaluateur — c'est
+        // toujours l'utilisateur authentifié, sans quoi la file de chacun
+        // deviendrait une URL devinable.
+        Route::get('/assignments', [EvaluationController::class, 'index'])->name('assignments');
+        Route::get('/assignments/{assignment}', [EvaluationController::class, 'show'])
+            ->name('assignments.show');
+        Route::post('/assignments/{assignment}/charter', [EvaluationController::class, 'acceptCharter'])
+            ->name('assignments.charter');
+        Route::put('/assignments/{assignment}/evaluation', [EvaluationController::class, 'save'])
+            ->name('assignments.save');
+        // Le verrouillage enregistre d'abord : séparer les deux ferait perdre
+        // la dernière saisie de quiconque oublie d'enregistrer.
+        Route::post('/assignments/{assignment}/evaluation/lock', [EvaluationController::class, 'lock'])
+            ->name('assignments.lock');
+        Route::post('/assignments/{assignment}/conflict', [EvaluationController::class, 'declareConflict'])
+            ->name('assignments.conflict');
+        // Les pièces passent par l'affectation, jamais par la route de
+        // l'administration : l'habilitation se lit sur le dossier confié, pas
+        // sur le rôle.
+        Route::get('/assignments/{assignment}/documents/{type}', [EvaluationController::class, 'downloadDocument'])
+            ->name('assignments.documents.download');
     });
 
 Route::middleware(['auth', 'role:jury'])
     ->prefix('jury')
     ->name('jury.')
     ->group(function (): void {
-        // L'espace jury n'a pas encore d'écran. Le groupe existe pour que la
-        // règle d'accès soit posée dès maintenant et testable.
-        Route::get('/dashboard', fn () => Inertia::render('Evaluator/Assignments'))->name('dashboard');
+        // L'espace jury (§12) n'existe pas encore, et son écran le dit. Il
+        // empruntait jusqu'ici celui de l'évaluateur, qui affichait alors des
+        // données de démonstration ; depuis qu'il lit les vraies affectations,
+        // l'emprunt ne tient plus — et il ne devait pas tenir : montrer au jury
+        // une file d'évaluation vide lui laisserait croire qu'il n'a rien à
+        // faire. La route reste pour que la règle d'accès soit posée dès
+        // maintenant et testable.
+        Route::get('/dashboard', fn () => Inertia::render('Jury/Dashboard'))->name('dashboard');
     });

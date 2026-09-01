@@ -1,116 +1,159 @@
-import { Head } from '@inertiajs/react';
-import { AlertTriangle, BriefcaseBusiness, CircleHelp, FileCheck2, Gauge, LogOut, Search, ShieldAlert, Star, UserRound } from 'lucide-react';
-import { DarkSidebarLayout, type DarkNavItem } from '@/Layouts/DarkSidebarLayout';
-import { Button, Card, Pill } from '@/Components/Ui';
-import { Reveal } from '@/Components/Reveal';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { ArrowRight, CheckCircle2, FileSignature, Inbox } from 'lucide-react';
+import { DarkSidebarLayout } from '@/Layouts/DarkSidebarLayout';
+import { EVALUATOR_LOGOUT, evaluatorNav } from '@/Layouts/evaluatorNav';
+import { Card, Pill, SectionTitle } from '@/Components/Ui';
 
-const nav: DarkNavItem[] = [
-  { icon: Gauge, label: 'Tableau de bord' },
-  { icon: BriefcaseBusiness, label: 'Mes dossiers', href: '/evaluator/assignments' },
-  { icon: FileCheck2, label: 'Évaluations' },
-  { icon: ShieldAlert, label: 'Conflits signalés' },
-  { icon: CircleHelp, label: 'Ressources' },
-  { icon: UserRound, label: 'Mon profil' },
-  { icon: LogOut, label: 'Déconnexion' },
-];
+/**
+ * Le plan de travail de l'évaluateur — §11.1.
+ *
+ * **Trois états, jamais confondus** : la charte reste à accepter, la notation
+ * est en cours, l'évaluation est verrouillée. C'est la distinction utile, parce
+ * que les trois appellent des gestes différents — signer, reprendre, ne plus
+ * rien faire. Un unique libellé « à évaluer » les aurait aplatis, et le dossier
+ * dont la charte n'est pas signée est justement celui qu'on oublie.
+ *
+ * **L'avancement se compte en critères notés, pas en pourcentage de note.**
+ * 8/8 dit que la grille est remplie, pas que le dossier est bon : un dossier
+ * entièrement noté peut valoir douze points sur cent. Afficher une barre de
+ * progression à côté d'un score ferait lire l'un pour l'autre.
+ *
+ * **Aucune donnée d'un autre évaluateur.** Ni le nombre de personnes affectées
+ * au même dossier, ni leurs notes : le §11.3 veut les évaluations indépendantes
+ * jusqu'au verrouillage, et savoir que deux collègues ont déjà tranché suffirait
+ * à faire hésiter sur une note isolée.
+ */
+type Affectation = {
+  id: number;
+  submissionNumber: string | null;
+  campaignName: string;
+  themeLabel: string;
+  assignedAt: string | null;
+  charterAccepted: boolean;
+  evaluationStatus: string | null;
+  evaluationStatusLabel: string | null;
+  lockedAt: string | null;
+  scoredCriteria: number;
+  totalCriteria: number;
+  totalScore: number | null;
+  showUrl: string;
+};
 
-const applications = [
-  ['BG-2026-087', 'AgriTech Solutions', 'Gestion urbaine'],
-  ['BG-2026-102', 'Sunu Digital', 'Services numériques'],
-  ['BG-2026-115', 'EcoPack Niger', 'Environnement'],
-  ['BG-2026-129', 'Santé & Nous', 'Santé communautaire'],
-  ['BG-2026-138', 'Kaara Fashion', 'Mode & artisanat'],
-];
+type Props = { assignments: Affectation[]; remaining: number };
 
-const criteria = [
-  ['Pertinence par rapport au défi', 20, 'Compréhension du problème et alignement avec la thématique'],
-  ['Innovation', 15, 'Originalité utile et différenciation de la solution'],
-  ['Faisabilité technique', 15, 'Architecture, maturité, sécurité et dépendances'],
-  ['Viabilité économique / institutionnelle', 10, 'Coûts, maintenance, adoption et soutenabilité'],
-  ['Impact et résilience', 15, 'Résultats mesurables et bénéfices attendus'],
-  ['Durabilité et mise à l’échelle', 10, 'Interopérabilité, réplication et appropriation'],
-  ['Équipe', 10, 'Complémentarité, expérience et disponibilité'],
-  ['Inclusion et ancrage territorial', 5, 'Accessibilité, réalités locales et publics visés'],
-] as const;
+function etat(affectation: Affectation): { tone: 'green' | 'gold' | 'neutral'; label: string } {
+  if (affectation.evaluationStatus === 'LOCKED') return { tone: 'neutral', label: 'Verrouillée' };
+  if (!affectation.charterAccepted) return { tone: 'gold', label: 'Charte à accepter' };
+  return { tone: 'green', label: 'Notation en cours' };
+}
 
-export default function Assignments() {
+function jour(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+export default function Assignments({ assignments, remaining }: Props) {
+  const flash = (usePage().props as { flash?: { status?: string } }).flash;
+
   return (
-    <DarkSidebarLayout items={nav} active="Mes dossiers" title="Mes dossiers affectés" subtitle="Évaluation indépendante — campagne BIRNIN GOBE 2026" user="Mouhamadou Kane" headerActions={<Button variant="ghost" className="hidden sm:inline-flex"><CircleHelp size={16}/> Besoin d’aide ?</Button>}>
+    <DarkSidebarLayout
+      items={evaluatorNav}
+      active="Mes dossiers"
+      title="Mes dossiers affectés"
+      subtitle={
+        remaining === 0
+          ? 'Toutes vos évaluations sont verrouillées.'
+          : `${remaining} dossier${remaining > 1 ? 's' : ''} restant${remaining > 1 ? 's' : ''} à évaluer`
+      }
+      logoutHref={EVALUATOR_LOGOUT}
+    >
       <Head title="Mes dossiers — Évaluation BIRNIN GOBE" />
-      <div className="grid min-h-[calc(100vh-88px)] xl:grid-cols-[330px_1fr]">
-        <aside className="border-r border-slate-200 bg-white p-5">
-          <div className="mb-4"><h2 className="text-lg font-black">Dossiers affectés (8)</h2><p className="mt-1 text-xs leading-5 text-slate-500">Vous devez évaluer tous les dossiers qui vous sont assignés.</p></div>
-          <label className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 px-3"><Search size={16} className="text-slate-400"/><input className="w-full border-0 bg-transparent text-sm outline-none" placeholder="Rechercher un dossier…"/></label>
-          <div className="mt-4 space-y-3">{applications.map(([ref,name,theme],index)=><button key={ref} className={`focus-ring press-feedback w-full rounded-xl border p-4 text-left transition-colors ${index === 0 ? 'border-brand-700 bg-brand-50' : 'border-slate-200 bg-white hover:bg-slate-50'}`}><div className="flex items-start justify-between"><div><div className="text-xs font-black text-brand-900">{ref}</div><div className="mt-1 text-sm font-bold text-slate-800">{name}</div><div className="mt-1 text-[11px] text-slate-400">{theme}</div></div><span className="text-slate-400">›</span></div><div className="mt-2"><Pill tone="gold">À évaluer</Pill></div></button>)}</div>
-        </aside>
 
-        <main className="min-w-0 p-5 sm:p-7">
-          <div className="mx-auto max-w-[1100px]">
-            <Reveal className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h2 className="text-lg font-black text-brand-900">BG-2026-087</h2><Pill tone="green">À évaluer</Pill></div><div className="mt-2 text-lg font-extrabold text-slate-900">AgriTech Solutions</div><div className="mt-1 text-xs text-slate-500">Gestion urbaine et transformation numérique</div></div><Button variant="ghost">Voir le dossier complet ↗</Button></Reveal>
+      <div className="mx-auto max-w-[980px] p-5 sm:p-7">
+        {flash?.status ? (
+          <p
+            className="mb-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm font-bold text-brand-900"
+            role="status"
+          >
+            {flash.status}
+          </p>
+        ) : null}
 
-            <Reveal delay={60} className="mt-5 flex flex-col items-start gap-4 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 sm:flex-row sm:flex-wrap sm:items-center"><div className="grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700"><AlertTriangle size={20}/></div><div className="min-w-0 flex-1"><div className="text-sm font-extrabold text-slate-800">Déclaration de conflit d’intérêts</div><div className="mt-1 text-xs text-slate-600">Veuillez déclarer tout conflit avant de commencer l’évaluation de ce dossier.</div></div><Button variant="ghost">Déclarer un conflit</Button></Reveal>
+        <Card className="p-4 sm:p-5">
+          <SectionTitle
+            eyebrow="§11.1 — Affectation"
+            title={`${assignments.length} dossier${assignments.length > 1 ? 's' : ''} affecté${assignments.length > 1 ? 's' : ''}`}
+            aside={
+              <span className="text-xs font-bold text-slate-500">
+                {assignments.filter((a) => a.evaluationStatus === 'LOCKED').length} verrouillée(s)
+              </span>
+            }
+          />
 
-            <Reveal delay={120}><Card className="mt-5 overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4"><h3 className="text-lg font-black">Grille d’évaluation (100 points)</h3><div className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-extrabold">Total <span className="ml-2">0 / 100</span></div></div>
-              {/* Une seule structure, reorganisee par la mise en page : cartes
-                  empilees sous `lg`, colonnes alignees au-dela. Dupliquer un
-                  tableau et une liste aurait mis deux champs de saisie par
-                  critere dans le DOM. `lg:contents` fait remonter les trois
-                  valeurs dans la grille de la ligne au lieu de les imbriquer. */}
-              <div className="hidden bg-slate-50 px-5 py-3 text-[11px] uppercase tracking-wide text-slate-500 lg:grid lg:grid-cols-[1fr_120px_128px_140px] lg:items-center lg:gap-4">
-                <div>Critères d’évaluation</div>
-                <div>Pondération</div>
-                <div>Note (0–5)</div>
-                <div className="text-right">Score pondéré</div>
-              </div>
+          {assignments.length === 0 ? (
+            <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 p-8 text-center">
+              <Inbox className="h-8 w-8 text-slate-400" aria-hidden />
+              <p className="text-sm font-bold text-slate-700">Aucun dossier ne vous est affecté.</p>
+              <p className="max-w-md text-xs text-slate-500">
+                Les dossiers vous sont confiés par le responsable de campagne une fois leur recevabilité tranchée.
+                Vous serez averti dès qu’un lot vous parvient.
+              </p>
+            </div>
+          ) : (
+            <ul className="mt-4 space-y-3" data-testid="affectations">
+              {assignments.map((affectation) => {
+                const { tone, label } = etat(affectation);
 
-              <ul className="space-y-3 p-4 lg:space-y-0 lg:divide-y lg:divide-slate-100 lg:p-0">
-                {criteria.map(([name, weight, desc], index) => {
-                  const noteId = `note-critere-${index}`;
-                  return (
-                    <li
-                      key={name}
-                      className="rounded-xl border border-slate-200 p-4 transition-colors lg:grid lg:grid-cols-[1fr_120px_128px_140px] lg:items-center lg:gap-4 lg:rounded-none lg:border-0 lg:px-5 lg:py-4 lg:hover:bg-slate-50/70"
+                return (
+                  <li key={affectation.id}>
+                    <Link
+                      href={affectation.showUrl}
+                      className="focus-ring press-feedback block rounded-xl border border-slate-200 p-4 transition-colors hover:bg-slate-50"
+                      data-testid={`affectation-${affectation.id}`}
                     >
-                      <div className="flex gap-3">
-                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-50 text-brand-800"><Star size={15} /></div>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <label htmlFor={noteId} className="text-sm font-extrabold text-slate-800">{name}</label>
-                          <div className="mt-0.5 text-[11px] leading-4 text-slate-400">{desc}</div>
+                          <p className="text-xs font-black text-brand-900">
+                            {affectation.submissionNumber ?? 'Dossier sans numéro'}
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-slate-800">{affectation.themeLabel}</p>
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            {affectation.campaignName} · affecté le {jour(affectation.assignedAt)}
+                          </p>
+                        </div>
+
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          <Pill tone={tone}>{label}</Pill>
+                          {affectation.evaluationStatus === 'LOCKED' ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                              {affectation.totalScore === null
+                                ? 'Verrouillée'
+                                : `${affectation.totalScore.toFixed(2).replace('.', ',')} / 100`}
+                            </span>
+                          ) : affectation.charterAccepted ? (
+                            <span className="text-xs font-bold text-slate-600">
+                              {affectation.scoredCriteria} / {affectation.totalCriteria} critères notés
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800">
+                              <FileSignature className="h-3.5 w-3.5" aria-hidden />
+                              Engagement requis
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-800">
+                            Ouvrir
+                            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                          </span>
                         </div>
                       </div>
-
-                      <div className="mt-4 grid grid-cols-3 items-start gap-3 lg:mt-0 lg:contents">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden">Pondération</div>
-                          <div className="mt-1 text-sm font-bold text-slate-600 lg:mt-0">{weight} pts</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden" aria-hidden="true">Note</div>
-                          <input
-                            id={noteId}
-                            type="number"
-                            min="0"
-                            max="5"
-                            defaultValue="0"
-                            inputMode="numeric"
-                            className="focus-ring mt-1 h-11 w-full rounded-lg border border-slate-300 px-3 text-sm transition-shadow lg:mt-0 lg:h-10 lg:w-20"
-                          />
-                        </div>
-                        <div className="lg:text-right">
-                          <div className="text-[10px] uppercase tracking-wide text-slate-400 lg:hidden">Score</div>
-                          <div className="mt-1 text-sm font-bold text-slate-700 lg:mt-0">0,00</div>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-
-              <div className="border-t border-slate-200 p-5"><label className="block"><span className="text-sm font-extrabold text-slate-800">Commentaires obligatoires</span><span className="mt-1 block text-xs text-slate-500">Vos commentaires doivent justifier les scores et recommandations.</span><textarea className="focus-ring mt-3 min-h-28 w-full rounded-xl border border-slate-300 p-4 text-sm transition-shadow" placeholder="Saisissez vos commentaires ici…"/></label><div className="mt-5 flex flex-wrap gap-3"><Button variant="danger">Signaler un conflit sur ce dossier</Button><Button variant="ghost" className="ml-auto">Enregistrer en brouillon</Button><Button variant="secondary">🔒 Verrouiller l’évaluation</Button></div></div>
-            </Card></Reveal>
-          </div>
-        </main>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
       </div>
     </DarkSidebarLayout>
   );

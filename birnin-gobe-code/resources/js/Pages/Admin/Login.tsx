@@ -1,7 +1,37 @@
-import { useForm } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import { Button } from '@/Components/Ui';
 import { AuthShell, Champ } from '@/Pages/Auth/AuthShell';
+
+type SessionEnCours = { name: string; roleLabel: string; logoutUrl: string } | null;
+
+/**
+ * Bandeau affiché quand une autre identité est déjà connectée.
+ *
+ * Sans lui, la page renvoyait vers l'accueil sans un mot : quelqu'un qui tapait
+ * l'URL de son espace atterrissait sur la page publique, sans rien pour
+ * comprendre ni rien à faire. Nommer la session en cours et offrir le geste qui
+ * la ferme coûte trois lignes et lève un cul-de-sac.
+ */
+function SessionAFermer({ session }: { session: NonNullable<SessionEnCours> }) {
+  return (
+    <div className="mb-6 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-3 text-xs leading-5 text-amber-900">
+      <p className="font-bold">Une autre session est ouverte.</p>
+      <p className="mt-1">
+        Vous êtes connecté en tant que <strong>{session.name}</strong> ({session.roleLabel}). Fermez cette
+        session pour accéder à cet espace.
+      </p>
+      <Link
+        href={session.logoutUrl}
+        method="post"
+        as="button"
+        className="focus-ring mt-2.5 inline-flex min-h-9 items-center rounded-lg bg-amber-800 px-3 text-xs font-bold text-white transition hover:bg-amber-900"
+      >
+        Fermer la session en cours
+      </Link>
+    </div>
+  );
+}
 
 /**
  * Accès interne à l'administration (ADR-003, ADR-006).
@@ -13,7 +43,7 @@ import { AuthShell, Champ } from '@/Pages/Auth/AuthShell';
  *
  * Aucun écran public ou candidat ne pointe vers cette page.
  */
-export default function AdminLogin() {
+export default function AdminLogin({ sessionEnCours = null }: { sessionEnCours?: SessionEnCours }) {
   const { data, setData, post, processing, errors } = useForm({
     email: '',
     password: '',
@@ -25,6 +55,8 @@ export default function AdminLogin() {
       sousTitre="Administration BIRNIN GOBE — PIDUREM / ANSI."
       bas="Les comptes internes sont provisionnés par l’administrateur système. Aucune inscription n’est possible depuis cet écran."
     >
+      {sessionEnCours ? <SessionAFermer session={sessionEnCours} /> : null}
+
       <p className="mb-6 flex items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs leading-5 text-slate-600">
         <ShieldCheck size={16} className="mt-0.5 shrink-0 text-brand-800" />
         Espace réservé aux personnels habilités. Les accès sont nominatifs et journalisés.

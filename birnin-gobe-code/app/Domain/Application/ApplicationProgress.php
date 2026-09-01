@@ -74,26 +74,74 @@ final readonly class ApplicationProgress
      * Les sections que la progression a le droit de compter, en valeurs
      * persistées — donc directement utilisables dans une requête.
      *
+     * **L'intersection de deux conditions, et il faut les deux.** Une section
+     * compte si elle est *remplissable* — `SubmissionReadiness::requiredSections()`,
+     * donc tout sauf « Relecture / envoi », qui n'écrit jamais de `completed_at`
+     * — et si elle est sur le *parcours ouvert*, pour qu'une section développée
+     * en avance derrière une étape fermée ne fasse pas avancer un parcours que
+     * le candidat ne peut pas suivre (ADR-009).
+     *
+     * Ne garder que la seconde condition, comme c'était le cas, faisait compter
+     * « Relecture » au dénominateur sans jamais pouvoir la compter au
+     * numérateur : le plafond était 8/9, soit 89 %, y compris pour un dossier
+     * déposé.
+     *
      * @return list<string>
      */
     public static function countableSections(): array
     {
-        return array_map(
+        $remplissables = SubmissionReadiness::requiredSections();
+
+        return array_values(array_map(
             static fn (ApplicationSection $section): string => $section->value,
-            ApplicationSection::openPath(),
-        );
+            array_filter(
+                ApplicationSection::openPath(),
+                static fn (ApplicationSection $section): bool => in_array($section, $remplissables, strict: true),
+            ),
+        ));
     }
 
     /**
      * Pourcentage à partir d'un nombre de sections achevées.
      *
-     * Le dénominateur est le total des neuf étapes, et non la longueur du
-     * parcours ouvert : le candidat doit voir la part de son dossier réellement
-     * faite, pas une fraction d'un parcours qui s'allongera.
+     * **Le dénominateur est le nombre de sections remplissables, pas le total
+     * des étapes.** Il valait `ApplicationSection::total()`, soit neuf, et le
+     * raisonnement d'alors était juste : les étapes 8 et 9 n'existaient pas, le
+     * parcours ouvert s'arrêtait à la 7, et compter sur neuf empêchait
+     * d'annoncer 100 % à un candidat dont le dossier était en réalité
+     * incomplet.
+     *
+     * L'étape 9 a depuis été livrée et rejointe au parcours ouvert, et la garde
+     * s'est retournée contre elle-même : « Relecture / envoi » n'écrit aucun
+     * `completed_at`, donc le numérateur plafonnait à huit pendant que le
+     * dénominateur restait à neuf. **Un dossier complet, recevable et déposé
+     * affichait 89 %**, sans qu'aucun geste du candidat puisse le porter plus
+     * haut.
+     *
+     * Ce que le dénominateur d'origine protégeait est conservé : il compte
+     * **toutes** les sections remplissables, y compris celles dont l'étape
+     * n'est pas encore ouverte. Le jour où une dixième étape de contenu
+     * s'ajoutera sans être ouverte, le plafond redescendra — ce qui est
+     * exactement le comportement voulu, cette fois pour une section qu'un
+     * candidat pourra un jour remplir.
      */
     public static function percentFromCompleted(int $completed): int
     {
-        return (int) round($completed / ApplicationSection::total() * 100);
+        return (int) round($completed / self::total() * 100);
+    }
+
+    /**
+     * Le dénominateur de la progression : combien de sections un dossier
+     * complet compte.
+     *
+     * Exposé parce que les écrans l'affichent à côté du pourcentage — « 100 % ·
+     * 8/8 ». Le laisser à `ApplicationSection::total()` ferait dire « 100 % ·
+     * 8/9 » à un dossier déposé : deux chiffres issus de deux règles, côte à
+     * côte, dont l'un contredirait l'autre.
+     */
+    public static function total(): int
+    {
+        return count(SubmissionReadiness::requiredSections());
     }
 
     /**

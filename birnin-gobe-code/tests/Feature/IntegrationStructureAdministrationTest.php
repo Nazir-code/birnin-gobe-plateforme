@@ -123,9 +123,10 @@ final class IntegrationStructureAdministrationTest extends TestCase
             ->assertOk();
     }
 
+    /** Demandé à la règle, jamais recalculé ici : voir ApplicationProgress. */
     private function pourcentage(int $sections): int
     {
-        return (int) round($sections / ApplicationSection::total() * 100);
+        return ApplicationProgress::percentFromCompleted($sections);
     }
 
     // — Le parcours complet, vu des deux côtés ————————————————————
@@ -352,8 +353,8 @@ final class IntegrationStructureAdministrationTest extends TestCase
      *
      * Note sur le compte attendu : la règle d'ADR-009 est un **ensemble** —
      * « sections achevées qui appartiennent au parcours ouvert » — et non un
-     * préfixe. Trois sections achevées sur le parcours donnent donc 3/9 dès
-     * l'ouverture de l'étape 3, et non 2/9 : « Défi » est repris à cet
+     * préfixe. Trois sections achevées sur le parcours en donnent donc trois
+     * dès l'ouverture de l'étape 3, et non deux : « Défi » est repris à cet
      * instant-là, pas à la complétion de « Structure ».
      */
     public function test_un_ancien_brouillon_reprend_son_defi_des_l_ouverture_de_l_etape_3(): void

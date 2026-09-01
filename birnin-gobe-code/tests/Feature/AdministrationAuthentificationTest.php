@@ -197,9 +197,22 @@ final class AdministrationAuthentificationTest extends TestCase
         $this->actingAs($this->admin())->get('/admin/login')->assertRedirect('/admin/dashboard');
     }
 
-    public function test_un_candidat_connecte_est_sorti_de_l_acces_interne(): void
+    /**
+     * Une autre identité voit l'écran, avec le moyen d'en sortir.
+     *
+     * Elle était renvoyée vers l'accueil sans un mot : quelqu'un dont le
+     * navigateur gardait une session tapait l'URL de l'espace interne et
+     * atterrissait sur la page publique, sans rien pour comprendre. Afficher le
+     * formulaire ne concède rien — le rôle reste vérifié au `store()`.
+     */
+    public function test_un_candidat_connecte_voit_l_ecran_et_le_moyen_d_en_sortir(): void
     {
-        $this->actingAs($this->candidat())->get('/admin/login')->assertRedirect('/');
+        $this->actingAs($this->candidat())
+            ->get('/admin/login')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('sessionEnCours.logoutUrl', url('/admin/logout'))
+                ->has('sessionEnCours.name'));
 
         // Et il reste candidat : consulter l'écran ne change rien.
         $this->get('/admin/dashboard')->assertForbidden();
@@ -241,9 +254,28 @@ final class AdministrationAuthentificationTest extends TestCase
         $this->assertAuthenticatedAs($admin);
     }
 
-    public function test_un_candidat_ne_peut_pas_utiliser_la_deconnexion_interne(): void
+    /**
+     * La déconnexion interne ferme la session de qui la demande, quel qu'il soit.
+     *
+     * Ce test attendait auparavant un 403 pour un candidat. Ce refus n'était pas
+     * une protection voulue mais un effet de bord de `role:admin` sur la route :
+     * fermer sa *propre* session ne met rien en danger, et l'interdire créait
+     * deux culs-de-sac. Le premier, l'écran de connexion interne propose
+     * désormais ce geste à qui arrive avec une autre identité — il fallait donc
+     * qu'il aboutisse. Le second, plus grave : quelqu'un dont le rôle vient
+     * d'être retiré restait enfermé dans une session valide qu'aucune route ne
+     * lui permettait plus de terminer.
+     *
+     * Ce qui reste interdit est inchangé et vérifié ailleurs : un candidat
+     * n'ouvre pas l'espace interne, et n'y entre pas avec ses identifiants.
+     */
+    public function test_la_deconnexion_interne_ferme_la_session_de_qui_la_demande(): void
     {
-        $this->actingAs($this->candidat())->post('/admin/logout')->assertForbidden();
+        $this->actingAs($this->candidat())
+            ->post('/admin/logout')
+            ->assertRedirect('/admin/login');
+
+        $this->assertGuest();
     }
 
     // — Limitation des tentatives ————————————————————————————————————

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Application\AttachmentScanStatus;
 use App\Domain\Application\DocumentType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -19,10 +20,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * l'emplacement, et l'emplacement ne sort jamais vers le navigateur — le
  * téléchargement passe par une route qui vérifie la propriété.
  *
- * `scan_status` vient du squelette initial et attend l'analyse antivirus. Tant
- * qu'aucun analyseur ne tourne, la valeur écrite le dit — voir
- * `AttachmentScanStatus`. Rien dans le produit ne prétend qu'une pièce est
- * saine.
+ * `scan_status` porte le verdict de l'analyse antivirus, et **c'est lui qui
+ * ouvre ou ferme le téléchargement** : seul `CLEAN` laisse passer. Un fichier
+ * en attente, en quarantaine, ou dont l'analyseur n'a pas pu se prononcer reste
+ * fermé — voir `AttachmentScanStatus` et `StoreApplicationDocument::servir()`.
+ * Rien dans le produit ne prétend qu'une pièce est saine sans l'avoir lue.
  */
 class Attachment extends Model
 {
@@ -32,7 +34,9 @@ class Attachment extends Model
     {
         return [
             'type' => DocumentType::class,
+            'scan_status' => AttachmentScanStatus::class,
             'size' => 'integer',
+            'scanned_at' => 'immutable_datetime',
             'created_at' => 'immutable_datetime',
             'updated_at' => 'immutable_datetime',
         ];

@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Auth\UserRole;
 use App\Domain\Campaign\CampaignStatus;
+use App\Domain\Content\PortalCriterion;
+use App\Domain\Evaluation\EvaluationCriterion;
 use App\Models\Application;
 use App\Models\Campaign;
 use App\Models\User;
@@ -218,7 +220,7 @@ final class AccueilPublicTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->has('themes', 4)
                 ->where('themes.0.title', 'Gestion urbaine et services de base')
-                ->where('themes.1.title', 'Gestion foncière et cadastrale')
+                ->where('themes.1.title', 'Gestion cadastrale')
                 ->where('themes.2.title', 'État civil et services administratifs')
                 ->where('themes.3.title', 'Cartographie, géolocalisation, risques et résilience')
                 // Les deux volets restent distincts, et le premier est cité au mot près.
@@ -238,28 +240,124 @@ final class AccueilPublicTest extends TestCase
         }
     }
 
-    /** Les huit critères d'évaluation, avec leur question directrice. */
-    public function test_l_accueil_porte_les_huit_criteres_d_evaluation(): void
+    /**
+     * Le portail annonce la liste choisie par le porteur du concours.
+     *
+     * Ce test a d'abord **interdit** ces huit intitulés, au motif qu'ils
+     * contredisent le §11.2. Le porteur a tranché l'inverse (ADR-023) : le
+     * portail parle aux candidats avec ses mots, la grille note avec les siens.
+     *
+     * L'assertion porte sur `PortalCriterion` et non sur des libellés recopiés
+     * ici : recopier ferait une troisième liste, et c'est la multiplication des
+     * listes qui a produit la dérive qu'ADR-015 avait corrigée.
+     */
+    public function test_l_accueil_porte_les_criteres_du_portail(): void
     {
         $this->campagne();
 
         $this->get('/')
             ->assertOk()
             ->assertInertia(function ($page) {
-                $page->has('criteria', 8);
+                $page->has('criteria', count(PortalCriterion::cases()));
 
-                $attendus = [
-                    'Pertinence', 'Impact usager', 'Faisabilité', 'Qualité technique',
-                    'Innovation utile', 'Sécurité', 'Durabilité', 'Équipe et pitch',
-                ];
-
-                foreach ($attendus as $rang => $titre) {
-                    $page->where("criteria.{$rang}.title", $titre);
+                foreach (PortalCriterion::cases() as $rang => $critere) {
+                    $page->where("criteria.{$rang}.key", $critere->value);
+                    $page->where("criteria.{$rang}.title", $critere->label());
+                    $page->where("criteria.{$rang}.question", $critere->question());
                 }
-
-                // Une question au moins, au mot près : ce ne sont pas que des titres.
-                $page->where('criteria.2.question', 'Le MVP peut-il fonctionner avec les ressources, données et délais disponibles ?');
             });
+    }
+
+    /**
+     * L'écart entre le portail et la grille est mesuré, pas subi.
+     *
+     * Les deux listes diffèrent volontairement. Ce test ne l'interdit pas — il
+     * **le nomme**, pour que personne ne redécouvre l'écart en production et le
+     * prenne pour un défaut. C'est la seule leçon d'ADR-015 qui vaille encore :
+     * une liste distincte n'est pas fautive, une liste distincte *invisible*
+     * l'est.
+     *
+     * Le jour où le comité alignera les deux, ce test échouera — et ce sera le
+     * signal que `PortalCriterion` peut disparaître.
+     */
+    public function test_l_ecart_entre_le_portail_et_la_grille_est_connu(): void
+    {
+        $portail = array_map(
+            static fn (PortalCriterion $critere): string => $critere->label(),
+            PortalCriterion::cases(),
+        );
+
+        $grille = array_map(
+            static fn (EvaluationCriterion $critere): string => $critere->label(),
+            EvaluationCriterion::cases(),
+        );
+
+        // Annoncés au public, jamais notés.
+        $this->assertSame(
+            ['Qualité technique', 'Sécurité'],
+            array_values(array_intersect($portail, ['Qualité technique', 'Sécurité'])),
+            'Le portail annonce ces critères ; aucun évaluateur ne les note.',
+        );
+
+        // Notés, jamais annoncés.
+        foreach (['Viabilité économique et institutionnelle', 'Inclusion et ancrage territorial'] as $tu) {
+            $this->assertContains($tu, $grille);
+            $this->assertNotContains($tu, $portail, "« {$tu} » est noté sans être annoncé au candidat.");
+        }
+
+        // Les deux listes comptent huit entrées : c'est ce que la page affirme.
+        $this->assertCount(8, $portail);
+        $this->assertCount(8, $grille);
+    }
+
+    /**
+     * Chaque critère porte sa question, et deux critères n'en partagent pas une.
+     *
+     * `match` garantit qu'un critère ajouté sans question ne compile pas, mais
+     * pas qu'on n'ait pas collé une chaîne vide ni recopié la ligne du dessus —
+     * les deux erreurs qu'on fait en ajoutant un cas à huit branches.
+     */
+    public function test_chaque_critere_porte_une_question_qui_lui_est_propre(): void
+    {
+        $questions = array_map(
+            static fn (PortalCriterion $critere): string => $critere->question(),
+            PortalCriterion::cases(),
+        );
+
+        foreach ($questions as $question) {
+            $this->assertNotSame('', trim($question));
+            $this->assertStringEndsWith('?', trim($question), 'Une question directrice se termine par un point d’interrogation.');
+        }
+
+        $this->assertCount(count($questions), array_unique($questions), 'Deux critères partagent la même question.');
+    }
+
+    /**
+     * La pondération du §11.2 ne quitte pas le serveur.
+     *
+     * ADR-015 l'affichait ; le porteur du concours a tranché l'inverse. Ce test
+     * porte sur les **props**, pas sur le rendu, et c'est tout son intérêt :
+     * retirer la pastille dans le composant React aurait laissé `weight` dans
+     * la charge Inertia, donc en clair dans le HTML servi à chaque visiteur.
+     * La pondération aurait été masquée à l'œil et lisible à qui regarde la
+     * source — l'illusion du retrait, qui est pire que l'affichage assumé.
+     *
+     * Le total de 100 points reste vérifié sur l'enum lui-même, dans
+     * `EspaceEvaluateurTest` : c'est un invariant de la grille, indépendant de
+     * ce que le portail choisit d'en publier.
+     */
+    public function test_l_accueil_ne_publie_pas_la_ponderation(): void
+    {
+        $this->campagne();
+
+        $this->get('/')
+            ->assertInertia(function ($page) {
+                foreach (array_keys(PortalCriterion::cases()) as $rang) {
+                    $page->missing("criteria.{$rang}.weight");
+                }
+            })
+            // Et pas davantage dans le HTML rendu, où la charge Inertia voyage.
+            ->assertDontSee('"weight"', false);
     }
 
     /**

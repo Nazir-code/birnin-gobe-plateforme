@@ -6,6 +6,8 @@ use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\ProjectTheme;
 use App\Domain\Auth\UserRole;
 use App\Domain\Campaign\ActiveCampaign;
+use App\Domain\Content\PortalCriterion;
+use App\Domain\Evaluation\EvaluationCriterion;
 use App\Models\Application;
 use App\Models\Campaign;
 use App\Models\User;
@@ -103,32 +105,32 @@ final class HomeController
     }
 
     /**
-     * Les huit critères d'évaluation, avec leur question directrice.
+     * Les huit critères annoncés au public — ADR-023.
      *
-     * **À ne pas confondre avec l'éligibilité**, et la page le dit explicitement.
-     * L'éligibilité décide qui a le droit de déposer — âge, nationalité, zone,
-     * forme de candidature — et `EvaluateEligibility` la calcule campagne par
-     * campagne. Ces critères-ci disent comment un dossier recevable sera jugé
-     * ensuite. Les présenter sur la même page sans le préciser ferait croire à
-     * un candidat qu'il doit satisfaire les huit pour avoir le droit de
-     * candidater.
+     * **Cette liste n'est pas la grille de notation, et c'est une décision du
+     * porteur du concours.** Le portail annonce « Sécurité » et « Qualité
+     * technique », qui ne figurent pas au §11.2 ; il tait « Viabilité
+     * économique et institutionnelle » et « Inclusion et ancrage territorial »,
+     * que les évaluateurs notent pourtant. `PortalCriterion` porte ce texte,
+     * `EvaluationCriterion` porte la grille, et un test affiche l'écart entre
+     * les deux plutôt que de le laisser se découvrir en production.
      *
-     * Aucun moteur d'éligibilité n'est touché : ceci est du contenu.
+     * ADR-015 avait supprimé une liste de portail distincte parce qu'elle avait
+     * dérivé sans que personne le voie. Ce qui change ici n'est pas le principe
+     * — une liste distincte reste un risque — mais sa visibilité : elle est
+     * nommée, isolée dans son propre fichier, et comparée par un test.
+     *
+     * **À ne pas confondre avec l'éligibilité**, et la page le dit
+     * explicitement. L'éligibilité décide qui a le droit de déposer — âge,
+     * nationalité, zone, forme de candidature — et `EvaluateEligibility` la
+     * calcule campagne par campagne. Ces critères-ci disent comment un dossier
+     * recevable sera jugé ensuite.
      *
      * @return list<array{key: string, title: string, question: string}>
      */
     private function criteres(): array
     {
-        return [
-            ['key' => 'pertinence', 'title' => 'Pertinence', 'question' => 'La solution répond-elle précisément au défi et aux usages prioritaires ?'],
-            ['key' => 'impact', 'title' => 'Impact usager', 'question' => 'Le bénéfice attendu est-il mesurable, utile et inclusif ?'],
-            ['key' => 'faisabilite', 'title' => 'Faisabilité', 'question' => 'Le MVP peut-il fonctionner avec les ressources, données et délais disponibles ?'],
-            ['key' => 'technique', 'title' => 'Qualité technique', 'question' => 'L’architecture, les performances, les données et la documentation sont-elles solides ?'],
-            ['key' => 'innovation', 'title' => 'Innovation utile', 'question' => 'La proposition améliore-t-elle significativement l’existant sans complexité inutile ?'],
-            ['key' => 'securite', 'title' => 'Sécurité', 'question' => 'Les accès, données, sauvegardes et risques sont-ils correctement maîtrisés ?'],
-            ['key' => 'durabilite', 'title' => 'Durabilité', 'question' => 'Maintenance, support, interopérabilité et coût total sont-ils crédibles ?'],
-            ['key' => 'equipe', 'title' => 'Équipe et pitch', 'question' => 'L’équipe réunit-elle les compétences et la capacité d’exécution requises ?'],
-        ];
+        return PortalCriterion::content();
     }
 
     /**

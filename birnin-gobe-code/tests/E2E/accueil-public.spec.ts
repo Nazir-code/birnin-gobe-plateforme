@@ -36,16 +36,25 @@ test.describe('Page d’accueil publique', () => {
     }
     await expect(page.getByTestId('thematique-1')).toContainText('Gestion urbaine et services de base');
     await expect(page.getByTestId('thematique-1')).toContainText('Problèmes prioritaires');
-    await expect(page.getByTestId('thematique-1')).toContainText('Résultats attendus');
+    // « Resultats attendus » n'est plus affiche : son intitule n'avait jamais de
+    // <dd>, et montrait donc un titre suivi de rien.
+    await expect(page.locator('#thematiques')).not.toContainText('Résultats attendus');
     await expect(page.getByTestId('thematique-4')).toContainText('Cartographie, géolocalisation, risques et résilience');
 
     // — Les huit criteres d'evaluation, annonces comme tels
     for (let rang = 1; rang <= 8; rang += 1) {
       await expect(page.getByTestId(`critere-${rang}`)).toBeVisible();
     }
+    // Les intitules sont ceux de PortalCriterion — la liste choisie par le
+    // porteur du concours (ADR-023), distincte de la grille de notation.
     await expect(page.getByTestId('critere-1')).toContainText('Pertinence');
     await expect(page.getByTestId('critere-8')).toContainText('Équipe et pitch');
+    // La ponderation n'est plus publiee : ni pastille, ni valeur dans la charge
+    // Inertia. On verifie l'absence a l'ecran ; l'absence dans les props est
+    // tenue par AccueilPublicTest, qui seul peut la voir.
+    await expect(page.locator('#criteres')).not.toContainText('pts');
     await expect(page.locator('#criteres')).toContainText('Critères d’évaluation');
+    await expect(page.locator('#criteres')).toContainText('100 points');
     // La distinction avec l'eligibilite doit etre ecrite : sans elle, un candidat
     // croira devoir satisfaire les huit pour avoir le droit de deposer.
     await expect(page.locator('#criteres')).toContainText('Ils ne décident pas');
@@ -161,6 +170,30 @@ test.describe('Page d’accueil publique', () => {
     await expect(pied.getByRole('link', { name: '+227 99 99 93 19' })).toHaveAttribute('href', 'tel:+22799999319');
     await expect(pied.getByRole('link', { name: 'hello@birningobe.ne' })).toHaveAttribute('href', 'mailto:hello@birningobe.ne');
     await expect(pied).toContainText('Email :');
+  });
+
+  /**
+   * Le pied de page ne promet rien.
+   *
+   * Les quatre mentions du bas de page n'ont pas encore de page derriere. Elles
+   * ont porte un marqueur « Bientot », qui donnait au pied de page l'air d'un
+   * chantier ; elles ne sont plus affichees du tout. Un pied de page mene
+   * quelque part, ou il se tait.
+   *
+   * Le test verifie les deux faces : ni libelle inerte, ni lien mort. Le jour
+   * ou l'une de ces pages existera, lui donner un `href` la fera reapparaitre —
+   * et c'est la seconde assertion qui devra alors changer.
+   */
+  test('le pied de page n’annonce aucune page inexistante', async ({ page }) => {
+    await accueil(page);
+    const pied = page.locator('footer');
+
+    await expect(pied).not.toContainText('Bientôt');
+
+    for (const intitule of ['Mentions légales', 'Confidentialité', 'Protection des données', 'Accessibilité']) {
+      await expect(pied.getByText(intitule, { exact: true })).toHaveCount(0);
+      await expect(pied.getByRole('link', { name: intitule })).toHaveCount(0);
+    }
   });
 
   /**

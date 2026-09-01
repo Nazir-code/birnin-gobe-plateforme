@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Domain\Auth\LimiteurDInscriptions;
 use App\Domain\Auth\UserRole;
+use App\Domain\Notification\NotificationEvent;
+use App\Domain\Notification\SendNotification;
 use App\Models\User;
+use App\Notifications\Candidat\CompteCree;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,9 +62,17 @@ final class RegisteredUserController
         $user->save();
 
         // Émis pour que la vérification d'e-mail puisse s'y brancher plus tard
-        // sans retoucher ce contrôleur (Phase 1B). Aucun listener aujourd'hui :
-        // aucun message n'est envoyé, rien n'est simulé.
+        // sans retoucher ce contrôleur (Phase 1B).
         event(new Registered($user));
+
+        // §8.3, ligne 1. Après l'enregistrement du compte, jamais avant : un
+        // message annonçant un compte que la base n'a pas encore accepté
+        // enverrait le candidat vers une connexion impossible.
+        app(SendNotification::class)->handle(
+            NotificationEvent::ACCOUNT_CREATED,
+            $user,
+            new CompteCree,
+        );
 
         Auth::login($user);
         $request->session()->regenerate();

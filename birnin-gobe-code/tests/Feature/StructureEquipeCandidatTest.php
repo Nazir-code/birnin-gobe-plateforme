@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\ChallengeSection;
@@ -843,6 +844,6 @@ final class StructureEquipeCandidatTest extends TestCase
 
     private function pourcentage(int $sections): int
     {
-        return (int) round($sections / ApplicationSection::total() * 100);
+        return ApplicationProgress::percentFromCompleted($sections);
     }
 }

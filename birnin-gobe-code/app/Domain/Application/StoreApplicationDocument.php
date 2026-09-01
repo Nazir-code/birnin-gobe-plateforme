@@ -3,6 +3,7 @@
 namespace App\Domain\Application;
 
 use App\Domain\Audit\AuditWriter;
+use App\Jobs\ScanAttachment;
 use App\Models\Application;
 use App\Models\Attachment;
 use Illuminate\Contracts\Filesystem\Filesystem;
@@ -10,6 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Dépose, remplace et supprime les pièces d'une candidature.
@@ -78,7 +80,10 @@ final readonly class StoreApplicationDocument
                 'mime_type' => $fichier->getMimeType() ?? 'application/octet-stream',
                 'size' => $fichier->getSize() ?: 0,
                 'checksum' => hash_file('sha256', $fichier->getRealPath()) ?: '',
-                'scan_status' => AttachmentScanStatus::NOT_SCANNED->value,
+                // `PENDING`, jamais `NOT_SCANNED` : l'analyse existe désormais
+                // et va tourner. `NOT_SCANNED` est réservé aux pièces déposées
+                // avant sa mise en service — voir `AttachmentScanStatus`.
+                'scan_status' => AttachmentScanStatus::PENDING->value,
             ]);
         });
 
@@ -97,6 +102,11 @@ final readonly class StoreApplicationDocument
             newValue: ['type' => $type->value, 'filename' => $piece->original_filename, 'size' => $piece->size],
             reason: null,
         );
+
+        // Après le `commit`, jamais dedans : un job mis en file dans une
+        // transaction peut être consommé avant qu'elle ne soit validée, et
+        // chercherait alors une ligne qui n'existe pas encore.
+        ScanAttachment::dispatch($piece->getKey());
 
         return $piece;
     }
@@ -173,6 +183,50 @@ final readonly class StoreApplicationDocument
             static fn (Attachment $piece): DocumentType => $piece->type,
             self::existingFor($application),
         ));
+    }
+
+    /**
+     * Sert une pièce, si et seulement si son analyse antivirus l'autorise — §15.1.
+     *
+     * **Le contrôle est ici, et nulle part ailleurs.** Trois écrans servent des
+     * pièces : le candidat qui relit son dossier, le vérificateur du §10, et
+     * l'évaluateur du §11.2. Trois `if` recopiés auraient fini par diverger, et
+     * celui qu'on aurait oublié de mettre à jour serait devenu le chemin par
+     * lequel un fichier vérolé sort — sur le poste de quelqu'un qui n'avait
+     * aucune raison de se méfier.
+     *
+     * **`$versLeDeposant` sépare deux questions qu'on aurait eu tort de
+     * confondre.** Servir la pièce d'un inconnu à un vérificateur est une
+     * redistribution, et elle exige un verdict. La rendre au candidat qui vient
+     * de l'envoyer est un aller-retour : le fichier vient de sa machine, la lui
+     * refuser n'aurait rien protégé — et sans analyseur configuré, plus aucun
+     * candidat ne pourrait relire ce qu'il a déposé. Seule la quarantaine
+     * ferme aussi ce chemin-là, parce qu'une plateforme publique ne sert pas un
+     * binaire dont elle sait qu'il porte une menace.
+     *
+     * Le refus est un **423 Locked** et non un 403 : la pièce existe, la
+     * personne a le droit de la voir, et l'obstacle est temporaire dans quatre
+     * cas sur cinq. Un 403 laisserait croire à un problème d'habilitation, et
+     * enverrait chercher un droit qu'on a déjà.
+     *
+     * Le message vient de l'état lui-même : un refus muet se lit comme une
+     * panne, et la personne réessaie en boucle.
+     */
+    public static function servir(Attachment $piece, bool $versLeDeposant = false): StreamedResponse
+    {
+        $etat = $piece->scan_status;
+
+        $autorise = $versLeDeposant
+            ? $etat->autoriseLeRetourAuDeposant()
+            : $etat->autoriseLaRedistribution();
+
+        abort_unless($autorise, 423, $etat->explication());
+
+        return self::disk()->download(
+            $piece->storage_key,
+            $piece->original_filename,
+            ['Content-Type' => $piece->mime_type],
+        );
     }
 
     private static function pieceExistante(Application $application, DocumentType $type): ?Attachment

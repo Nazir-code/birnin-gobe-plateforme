@@ -170,6 +170,24 @@ final class AuthentificationCandidatTest extends TestCase
         ];
     }
 
+    /**
+     * Chaque espace interne rend bien l'écran qui lui appartient.
+     *
+     * Les deux tests suivants vérifient qui est refusé ; celui-ci vérifie ce
+     * qui est servi. Sans lui, une route peut emprunter l'écran d'un autre
+     * espace sans que rien ne le signale — c'est ce que faisait `/jury/dashboard`,
+     * qui rendait la file de l'évaluateur.
+     */
+    public function test_chaque_espace_interne_rend_son_propre_ecran(): void
+    {
+        $jure = User::factory()->role(UserRole::JURY)->create();
+
+        $this->actingAs($jure)
+            ->get('/jury/dashboard')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Jury/Dashboard'));
+    }
+
     #[DataProvider('espacesInternes')]
     public function test_un_candidat_ne_peut_pas_ouvrir_un_espace_interne(string $url): void
     {
@@ -181,11 +199,16 @@ final class AuthentificationCandidatTest extends TestCase
     #[DataProvider('espacesInternes')]
     public function test_un_visiteur_ne_peut_pas_ouvrir_un_espace_interne(string $url): void
     {
-        // L'administration a désormais son propre écran de connexion interne
-        // (ADR-006) : y envoyer le visiteur plutôt que vers la connexion candidat,
-        // qui ne pourrait de toute façon pas l'y connecter. Évaluation et jury
-        // n'ont pas encore d'accès interne et retombent sur /login.
-        $attendu = str_starts_with($url, '/admin/') ? '/admin/login' : '/login';
+        // Chaque espace interne renvoie vers *sa* connexion : l'administration
+        // depuis ADR-006, l'évaluation depuis ADR-021. Y envoyer le visiteur
+        // plutôt que vers la connexion candidat, qui ne pourrait de toute façon
+        // pas l'y connecter. Le jury n'a pas encore d'accès interne — il n'a pas
+        // non plus d'écran derrière la porte — et retombe donc sur /login.
+        $attendu = match (true) {
+            str_starts_with($url, '/admin/') => '/admin/login',
+            str_starts_with($url, '/evaluator/') => '/evaluator/login',
+            default => '/login',
+        };
 
         $this->get($url)->assertRedirect($attendu);
     }

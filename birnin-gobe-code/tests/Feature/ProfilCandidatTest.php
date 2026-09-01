@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\ChallengeSection;
@@ -467,7 +468,7 @@ final class ProfilCandidatTest extends TestCase
         $this->assertSame($this->pourcentage(2), (int) $application->fresh()->completion_percent);
     }
 
-    public function test_les_sept_premieres_etapes_sont_sur_le_parcours_ouvert(): void
+    public function test_les_premieres_etapes_sont_sur_le_parcours_ouvert(): void
     {
         $candidat = $this->candidat();
         $application = $this->brouillonDe($candidat, $this->campagne());
@@ -485,8 +486,8 @@ final class ProfilCandidatTest extends TestCase
             ],
         )->assertOk();
 
-        $unSurNeuf = (int) round(1 / ApplicationSection::total() * 100);
-        $this->assertSame($unSurNeuf, (int) $application->fresh()->completion_percent);
+        $uneSection = ApplicationProgress::percentFromCompleted(1);
+        $this->assertSame($uneSection, (int) $application->fresh()->completion_percent);
 
         $this->actingAs($candidat)->get('/candidate/dashboard')
             ->assertOk()
@@ -743,6 +744,6 @@ final class ProfilCandidatTest extends TestCase
     /** Pourcentage attendu pour n sections achevées sur les neuf. */
     private function pourcentage(int $sections): int
     {
-        return (int) round($sections / ApplicationSection::total() * 100);
+        return ApplicationProgress::percentFromCompleted($sections);
     }
 }

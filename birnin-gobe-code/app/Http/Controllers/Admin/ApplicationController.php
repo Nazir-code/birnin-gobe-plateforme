@@ -109,11 +109,7 @@ final class ApplicationController
             abort(404);
         }
 
-        return StoreApplicationDocument::disk()->download(
-            $ligne->storage_key,
-            $ligne->original_filename,
-            ['Content-Type' => $ligne->mime_type],
-        );
+        return StoreApplicationDocument::servir($ligne);
     }
 
     /**

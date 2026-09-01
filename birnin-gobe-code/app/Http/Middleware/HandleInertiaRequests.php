@@ -32,6 +32,12 @@ final class HandleInertiaRequests extends Middleware
             // exigence d'interface du projet (BLUEPRINT-UI-FOUNDATION).
             'flash' => [
                 'status' => $request->session()->get('status'),
+                // Le lien d'invitation d'un compte interne, quand aucun
+                // transport de courriel ne l'a remis à son destinataire
+                // (ADR-022). Partagé ici comme `status` : il voyage par la
+                // session, sur la redirection qui suit la création, et n'existe
+                // que le temps d'un affichage.
+                'invitationLink' => $request->session()->get('invitationLink'),
             ],
         ];
     }

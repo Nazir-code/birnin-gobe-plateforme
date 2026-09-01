@@ -26,7 +26,6 @@ export const fr = {
     ctaClosed: 'Candidatures closes',
     contact: 'Contact',
     rights: 'Tous droits réservés.',
-    comingSoon: 'Bientôt',
     links: {
       home: 'Accueil',
       about: 'À propos',

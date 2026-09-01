@@ -1,4 +1,4 @@
-import { BarChart3, Bell, CalendarRange, FileStack, FolderKanban, Gauge, Layers3, Settings, UsersRound } from 'lucide-react';
+import { BarChart3, Bell, CalendarRange, FileStack, FolderKanban, Gauge, Layers3, Scale, Settings, UsersRound } from 'lucide-react';
 import type { DarkNavItem } from '@/Layouts/DarkSidebarLayout';
 
 /**
@@ -7,21 +7,28 @@ import type { DarkNavItem } from '@/Layouts/DarkSidebarLayout';
  * Une seule liste : dupliquée par page, elle finit par diverger et l'entrée
  * active ne correspond plus à l'écran affiché.
  *
- * Les entrées sans `href` désignent des écrans qui n'existent pas encore
- * (Admin Phase 3 et suivantes). Elles restent visibles parce qu'elles décrivent
- * l'architecture cible du back-office, et inertes parce que les rendre
- * cliquables sur un écran absent serait pire que de ne rien promettre.
+ * Toutes les entrées portent désormais un `href` : les dix écrans du
+ * back-office existent. La règle qui a présidé à leur ouverture reste valable
+ * pour toute entrée future — une entrée sans `href` désigne un écran absent, et
+ * elle reste inerte, parce que la rendre cliquable serait pire que de ne rien
+ * promettre.
+ *
+ * « Existe » ne veut pas dire « couvre tout son domaine » : Paramètres, par
+ * exemple, inventorie les neuf domaines du §9.2 et n'en rend administrables que
+ * trois. C'est l'écran lui-même qui dit ce qu'il ne fait pas — pas l'absence de
+ * lien.
  */
 export const adminNav: DarkNavItem[] = [
   { icon: Gauge, label: 'Tableau de bord', href: '/admin/dashboard' },
   { icon: CalendarRange, label: 'Campagnes', href: '/admin/campaigns' },
-  { icon: Layers3, label: 'Files de vérification' },
+  { icon: Layers3, label: 'Files de vérification', href: '/admin/verification' },
   { icon: FolderKanban, label: 'Candidatures', href: '/admin/applications' },
-  { icon: UsersRound, label: 'Évaluateurs' },
-  { icon: BarChart3, label: 'Indicateurs' },
-  { icon: Bell, label: 'Alertes' },
-  { icon: Settings, label: 'Paramètres' },
-  { icon: FileStack, label: 'Journal d’audit' },
+  { icon: UsersRound, label: 'Évaluateurs', href: '/admin/evaluators' },
+  { icon: Scale, label: 'Écarts de notation', href: '/admin/divergences' },
+  { icon: BarChart3, label: 'Indicateurs', href: '/admin/indicators' },
+  { icon: Bell, label: 'Alertes', href: '/admin/alerts' },
+  { icon: Settings, label: 'Paramètres', href: '/admin/settings' },
+  { icon: FileStack, label: 'Journal d’audit', href: '/admin/audit' },
 ];
 
 /** URL de déconnexion interne, commune aux écrans d'administration. */

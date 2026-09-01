@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Check, ChevronDown, Download, Lightbulb, Save, UserCircle2 } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, Lightbulb, Save, UserCircle2 } from 'lucide-react';
 import { CandidateLayout } from '@/Layouts/CandidateLayout';
 import { Button, Card } from '@/Components/Ui';
 import { Reveal } from '@/Components/Reveal';
@@ -10,6 +10,19 @@ import { SectionStepsAside, type SectionStep } from '@/Components/SectionStepsAs
 import { useAuthUser } from '@/hooks/useAuth';
 import { useAutosave } from '@/hooks/useAutosave';
 
+/**
+ * Les conseils de rédaction de l'étape.
+ *
+ * Un bouton « Guide : Identifier un défi — Télécharger le guide (PDF) » les
+ * accompagnait, et ne téléchargeait rien : le guide n'existe pas, et il
+ * viendra du CMS (§9.2 « Publication ») quand celui-ci existera. Un candidat
+ * qui clique sans rien obtenir doute de la plateforme au moment précis où on
+ * lui demande de rédiger. Les conseils, eux, sont réels et restent.
+ *
+ * Ils sont encore en dur : c'est du contenu, et il devra lui aussi venir du
+ * CMS. La différence avec le bouton est qu'ils tiennent leur promesse en
+ * attendant.
+ */
 const advice = [
   ['Soyez spécifique', 'Décrivez un défi précis, pas un problème trop large.'],
   ['Appuyez-vous sur des faits', 'Utilisez des données, des chiffres ou des exemples concrets.'],
@@ -120,7 +133,6 @@ export default function Challenge({ steps, section, answers, regions, themes, ma
               <Reveal delay={100}><Card className="self-start border-amber-200 bg-[#fffdf5] p-6">
                 <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-full bg-amber-100 text-amber-700"><Lightbulb size={22}/></div><h2 className="text-xl font-black text-brand-950">Conseils</h2></div>
                 <div className="mt-5 divide-y divide-amber-100">{advice.map(([title, text]) => <div key={title} className="flex gap-3 py-4"><div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-50 text-amber-700"><Lightbulb size={16}/></div><div><div className="text-sm font-extrabold text-slate-800">{title}</div><p className="mt-1 text-xs leading-5 text-slate-600">{text}</p></div></div>)}</div>
-                <button className="focus-ring press-feedback mt-5 flex w-full items-center gap-3 rounded-xl border border-amber-200 bg-white p-4 text-left transition-colors hover:bg-amber-50/60"><Download className="text-brand-800"/><span><strong className="block text-sm text-brand-900">Guide : Identifier un défi</strong><span className="text-xs text-slate-500">Télécharger le guide (PDF)</span></span></button>
               </Card></Reveal>
             </div>
             <div className="mt-6 flex items-center gap-2 text-xs text-slate-500"><Check className="text-brand-700" size={16}/> Vos données sont sécurisées et confidentielles.</div>

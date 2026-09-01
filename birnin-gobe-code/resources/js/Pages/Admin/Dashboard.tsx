@@ -5,7 +5,7 @@ import { ADMIN_LOGOUT, adminNav } from '@/Layouts/adminNav';
 import { Card, Pill, SectionTitle } from '@/Components/Ui';
 import { StatCard } from '@/Components/StatCard';
 import { Reveal } from '@/Components/Reveal';
-import { NigerRegionsMap } from '@/Components/NigerRegionsMap';
+import { NigerRegionsMap, type RegionIntensity } from '@/Components/NigerRegionsMap';
 import { useAuthUser } from '@/hooks/useAuth';
 
 /**
@@ -43,11 +43,25 @@ export default function AdminDashboard({
   campaignsCount,
   campaignsUrl,
   applications,
+  alerts,
+  regionIntensities = null,
 }: {
   campaign: Campagne | null;
   campaignsCount: number;
   campaignsUrl: string;
-  applications: { total: number; drafts: number; submitted: number; url: string };
+  applications: {
+    total: number;
+    drafts: number;
+    submitted: number;
+    admissible: number;
+    url: string;
+    draftsUrl: string;
+    submittedUrl: string;
+    admissibleUrl: string;
+  };
+  alerts: { count: number; url: string };
+  /** Paliers par code de région, ou `null` quand rien n'est publiable. */
+  regionIntensities?: Record<string, RegionIntensity> | null;
 }) {
   const user = useAuthUser();
 
@@ -107,21 +121,29 @@ export default function AdminDashboard({
           </Card>
         </Reveal>
 
-        {/* Trois compteurs sont comptés pour de bon : ils viennent de
-            `applications`. « Dossiers soumis » a rejoint les deux premiers avec
-            le workflow de dépôt — son zéro est désormais un vrai comptage, et
-            non l'aveu d'une fonctionnalité absente. Les deux derniers gardent
-            leur tiret : un « 0 » affirmerait qu'on a compté et trouvé zéro,
-            alors que le workflow qui produirait ces nombres n'existe pas encore.
-            Un tiret dit « inconnu », un zéro dit « aucun » : la différence
-            compte pour qui pilote. */}
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {/* Les cinq compteurs sont de vrais comptages, et chacun mène à la
+            liste de ce qu'il a compté — filtrée sur exactement le même
+            périmètre. Un chiffre qui ouvre une liste plus large ferait douter du
+            chiffre ; c'est la règle déjà posée pour les alertes du §9.3.
+
+            « Admissibles » et « Alertes actives » affichaient un tiret et la
+            mention « à venir ». C'était vrai à l'écriture de cet écran, et faux
+            depuis que le contrôle d'admissibilité et les alertes de pilotage
+            existent. Un tableau de bord qui annonce « à venir » ce qui est livré
+            détourne de fonctionnalités disponibles. */}
+        {/* Cinq colonnes seulement à partir de 2xl. En dessous, la barre
+            latérale prend 300 px et il ne reste que ~170 px par carte : moins
+            que « Candidatures » en gras à côté d'une icône de 48 px. Le mot se
+            coupait au milieu. Trois colonnes laissent ~290 px, ce qui tient. */}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
           <StatCard
             icon={FolderKanban}
             value={applications.total}
             label="Candidatures"
             hint="Tous statuts, toutes campagnes"
             tone="blue"
+            href={applications.url}
+            testId="carte-candidatures"
           />
           <StatCard
             icon={Gauge}
@@ -129,6 +151,8 @@ export default function AdminDashboard({
             label="Brouillons en cours"
             hint="Dossiers commencés, non soumis"
             tone="gold"
+            href={applications.draftsUrl}
+            testId="carte-brouillons"
           />
           <StatCard
             icon={ClipboardCheck}
@@ -136,21 +160,28 @@ export default function AdminDashboard({
             label="Dossiers soumis"
             hint="Dossiers déposés, numéro attribué"
             tone="blue"
+            href={applications.submittedUrl}
+            testId="carte-soumis"
           />
-          <StatCard icon={ShieldCheck} value="—" label="Admissibles" hint="Admissibilité à venir" tone="green" />
-          <StatCard icon={AlertTriangle} value="—" label="Alertes actives" hint="À venir" tone="red" />
+          <StatCard
+            icon={ShieldCheck}
+            value={applications.admissible}
+            label="Admissibles"
+            hint="Recevables, en attente d’affectation"
+            tone="green"
+            href={applications.admissibleUrl}
+            testId="carte-admissibles"
+          />
+          <StatCard
+            icon={AlertTriangle}
+            value={alerts.count}
+            label="Alertes actives"
+            hint="Retards, écarts et pièces à traiter"
+            tone="red"
+            href={alerts.url}
+            testId="carte-alertes"
+          />
         </div>
-
-        {applications.total > 0 ? (
-          <div className="mt-3">
-            <Link
-              href={applications.url}
-              className="focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg text-sm font-bold text-brand-800 hover:underline"
-            >
-              <FolderKanban size={16} /> Consulter les candidatures
-            </Link>
-          </div>
-        ) : null}
 
         <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_1.1fr_1.15fr]">
           <Reveal delay={100}>
@@ -171,10 +202,24 @@ export default function AdminDashboard({
               {/* Sans `intensities`, la carte se rend en gris neutre : la
                   géographie est réelle, la donnée est absente et se voit. */}
               <NigerRegionsMap
-                label="Carte du Niger : aucune donnée de répartition disponible"
+                intensities={regionIntensities ?? undefined}
+                label={
+                  regionIntensities
+                    ? 'Carte du Niger : répartition des dossiers par région d’intervention'
+                    : 'Carte du Niger : aucune donnée de répartition disponible'
+                }
                 className="mx-auto mt-3 block h-auto w-full max-w-[260px]"
               />
-              <p className="mt-3 text-center text-[11px] text-slate-400">Aucun dossier à répartir.</p>
+              {/* Le seuil du §13.4 s'applique en amont : une région sous cinq
+                  dossiers est rendue `null` par la ventilation et reste grise,
+                  comme une région vide. La carte donne une forme, pas un
+                  décompte — la table des indicateurs, elle, distingue « aucun »
+                  de « trop peu pour le dire ». */}
+              <p className="mt-3 text-center text-[11px] text-slate-400">
+                {regionIntensities
+                  ? 'Densité relative à la région la plus fournie. Les effectifs trop faibles restent gris.'
+                  : 'Aucun dossier à répartir.'}
+              </p>
             </Card>
           </Reveal>
         </div>

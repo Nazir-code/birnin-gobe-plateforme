@@ -140,8 +140,9 @@ par messagerie.**
 | `SESSION_DOMAIN` | non défini | le domaine si sous-domaines |
 | `REDIS_PASSWORD` | non défini | à définir si Redis est exposé |
 | `REDIS_DB` / `REDIS_CACHE_DB` | `0` / `1` | |
-| `QUEUE_FAILED_DRIVER` | `database-uuids` | table `failed_jobs` **non migrée** |
-| `MAIL_*` | — | aucun `config/mail.php` : mail non implémenté |
+| `QUEUE_FAILED_DRIVER` | `database-uuids` | table `failed_jobs` migrée (ADR-019) |
+| `MAIL_MAILER` | `log` | le transport réel de production reste à choisir |
+| `MAIL_FROM_ADDRESS` / `MAIL_FROM_NAME` | valeurs de développement | à régler : le §8.3 exige un contact lisible |
 
 ---
 

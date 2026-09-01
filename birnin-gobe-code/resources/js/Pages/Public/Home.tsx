@@ -23,7 +23,7 @@ const iconesThematiques: Record<string, typeof Building2> = {
   cartographie: MapPinned,
 };
 
-type Thematique = { key: string; title: string; problems: string; results: string };
+type Thematique = { key: string; title: string; problems: string };
 type Critere = { key: string; title: string; question: string };
 
 /** Les cinq etapes du parcours, de la candidature aux resultats. */
@@ -275,19 +275,16 @@ export default function Home({ campaign, themes, criteria }: {
 
             return (
               <Reveal key={key} delay={index * 60}>
-                <Card className="hover-lift h-full p-5 sm:p-6" data-testid={`thematique-${index + 1}`}>
+                <Card className="hover-lift hover-accent h-full p-5 sm:p-6" data-testid={`thematique-${index + 1}`}>
                   <div className="flex items-start gap-3">
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-900 text-white"><Icone size={21} /></div>
                     <h3 className="mt-1 text-base font-extrabold leading-6 text-brand-950">{title}</h3>
                   </div>
-                  <dl className="mt-4 space-y-3">
-                    <div>
-                      <dt className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Problèmes prioritaires</dt>
-                      <dd className="mt-1 text-sm leading-6 text-slate-600">{problems}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] font-bold uppercase tracking-wide text-brand-700">Résultats attendus</dt>
-                    </div>
+                  {/* « Résultats attendus » a été retiré : son intitulé n'avait
+                      jamais de <dd>, et affichait donc un titre suivi de rien. */}
+                  <dl className="mt-4">
+                    <dt className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Problèmes prioritaires</dt>
+                    <dd className="mt-1 text-sm leading-6 text-slate-600">{problems}</dd>
                   </dl>
                 </Card>
               </Reveal>
@@ -301,18 +298,25 @@ export default function Home({ campaign, themes, criteria }: {
         <div className="mx-auto max-w-[1500px] px-6 py-12 lg:px-12 xl:px-16">
           <SectionTitle eyebrow="Comment les dossiers sont jugés" title="Critères d’évaluation" />
           <p className="-mt-2 mb-5 max-w-3xl text-sm leading-6 text-slate-600">
-            Ces huit critères servent à <strong>évaluer</strong> les dossiers recevables. Ils ne décident pas
-            qui a le droit de candidater : cela relève de l’éligibilité, présentée juste en dessous.
+            Ces huit critères servent à <strong>évaluer</strong> les dossiers recevables. Ils ne décident
+            pas qui a le droit de candidater : cela relève de l’éligibilité, présentée juste en dessous.
           </p>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {criteria.map(({ key, title, question }, index) => (
               <Reveal key={key} delay={index * 40}>
                 <Card className="hover-lift h-full p-4" data-testid={`critere-${index + 1}`}>
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-brand-800 text-xs font-black text-brand-800">
+                  <div className="flex items-start gap-2.5">
+                    {/* Le numéro donne à la grille un ordre de lecture stable —
+                        « le critère 4 » se cite, « la quatrième carte » non, car
+                        la grille se replie de quatre colonnes à une. Il ne dit
+                        rien du poids : la pondération du §11.2 n'est pas
+                        publiée. `aria-hidden`, parce que le titre suffit à
+                        identifier le critère et qu'un lecteur d'écran n'a pas
+                        besoin d'égrener huit numéros. */}
+                    <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-brand-800 text-xs font-black text-brand-800">
                       {index + 1}
                     </span>
-                    <h3 className="text-sm font-extrabold text-brand-950">{title}</h3>
+                    <h3 className="mt-1 text-sm font-extrabold leading-5 text-brand-950">{title}</h3>
                   </div>
                   <p className="mt-2 text-xs leading-5 text-slate-600">{question}</p>
                 </Card>

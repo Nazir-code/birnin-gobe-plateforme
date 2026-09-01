@@ -30,29 +30,33 @@ export function SiteFooter({ variant = 'public' }: { variant?: 'public' | 'compa
 
 const currentYear = () => new Date().getFullYear();
 
+/**
+ * Ne garde que les entrées qui mènent réellement quelque part.
+ *
+ * Le pied compact filtrait déjà ; le pied public, non — d'où les quatre
+ * marqueurs « Bientôt » sur les mentions légales. Un seul prédicat pour les
+ * deux, sans quoi la prochaine divergence se rejouera.
+ */
+function destinationsExistantes(liens: SiteLink[]): (SiteLink & { href: string })[] {
+  return liens.filter((lien): lien is SiteLink & { href: string } => lien.href !== null);
+}
+
 function useLinkLabel() {
   const t = useI18n();
   return (link: SiteLink) => t.footer.links[link.key];
 }
 
-/** Lien actif si la destination existe, sinon libellé inerte marqué « bientôt ». */
-function FooterLink({ link, tone = 'column' }: { link: SiteLink; tone?: 'column' | 'inline' }) {
-  const t = useI18n();
+/**
+ * Un lien du pied de page, toujours cliquable.
+ *
+ * Le type l'impose : `href` n'est plus nullable ici. Les entrées sans
+ * destination sont écartées par l'appelant, et ne peuvent donc plus produire un
+ * libellé inerte — ni le marqueur « Bientôt » qu'elles portaient, qui donnait
+ * au pied de page l'air d'un chantier.
+ */
+function FooterLink({ link, tone = 'column' }: { link: SiteLink & { href: string }; tone?: 'column' | 'inline' }) {
   const label = useLinkLabel()(link);
   const size = tone === 'column' ? 'text-sm' : 'text-xs';
-
-  if (!link.href) {
-    return (
-      <span className={`inline-flex flex-wrap items-center gap-2 ${size} text-white/60`}>
-        {label}
-        {tone === 'column' ? (
-          <span className="rounded-full border border-white/25 px-2 py-px text-[10px] font-semibold uppercase tracking-wide">
-            {t.footer.comingSoon}
-          </span>
-        ) : null}
-      </span>
-    );
-  }
 
   const className = `footer-link focus-ring rounded-sm ${size} text-white/75 hover:text-white`;
   return isAnchorHref(link.href) ? (
@@ -146,6 +150,7 @@ function ContactBlock() {
 }
 
 function PublicFooter() {
+  const mentionsDisponibles = destinationsExistantes(legalLinks);
   const t = useI18n();
   const partnersHeadingId = useId();
 
@@ -218,13 +223,22 @@ function PublicFooter() {
           <p className="text-xs text-white/65">
             © {currentYear()} BIRNI’NGOBE. {t.footer.rights}
           </p>
-          <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {legalLinks.map((link) => (
-              <li key={link.key}>
-                <FooterLink link={link} tone="inline" />
-              </li>
-            ))}
-          </ul>
+          {/* Seules les destinations qui existent sont annoncées. Les quatre
+              mentions du bas de page n'ont pas encore de page derrière : elles
+              portaient un marqueur « Bientôt », qui donnait au pied de page
+              l'air d'un chantier. Un pied de page ne promet rien ; il mène
+              quelque part, ou il se tait. Le jour où l'une de ces pages
+              existera, lui donner un `href` dans `config/site.ts` la fera
+              réapparaître ici sans toucher à ce composant. */}
+          {mentionsDisponibles.length ? (
+            <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              {mentionsDisponibles.map((link) => (
+                <li key={link.key}>
+                  <FooterLink link={link} tone="inline" />
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
       </div>
     </footer>
@@ -238,9 +252,7 @@ function PublicFooter() {
 function CompactFooter() {
   const t = useI18n();
   const label = useLinkLabel();
-  const links = [publicSiteLink, supportLink, ...legalLinks].filter(
-    (link): link is SiteLink & { href: string } => link.href !== null,
-  );
+  const links = destinationsExistantes([publicSiteLink, supportLink, ...legalLinks]);
   const linkClass = 'focus-ring rounded-sm text-xs font-semibold text-slate-500 transition-colors hover:text-brand-800';
 
   return (

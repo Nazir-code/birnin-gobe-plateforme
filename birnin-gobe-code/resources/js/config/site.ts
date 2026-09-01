@@ -29,13 +29,6 @@ export const quickLinks: SiteLink[] = [
   { key: 'howToApply', href: null },
 ];
 
-export const resourceLinks: SiteLink[] = [
-  { key: 'faq', href: null },
-  { key: 'news', href: null },
-  { key: 'resources', href: null },
-  { key: 'results', href: null },
-];
-
 export const legalLinks: SiteLink[] = [
   { key: 'legalNotice', href: null },
   { key: 'privacy', href: null },

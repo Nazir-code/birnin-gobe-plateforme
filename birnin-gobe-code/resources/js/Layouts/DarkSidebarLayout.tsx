@@ -1,13 +1,39 @@
 import { useState, type PropsWithChildren, type ReactNode } from 'react';
 import { Link } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
-import { Bell, LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu } from 'lucide-react';
+import { BoutonActualiser } from '@/Components/BoutonActualiser';
 import { BrandLogo } from '@/Components/Brand';
 import { MobileNavDrawer } from '@/Components/Ui';
 import { SiteFooter } from '@/Components/SiteFooter';
 import { initiales, useAuthUser } from '@/hooks/useAuth';
 
 export type DarkNavItem = { icon: LucideIcon; label: string; href?: string };
+
+/**
+ * Ossature des espaces internes — administration, évaluation, jury.
+ *
+ * **Le bouton « Actualiser » est ici, donc sur les douze écrans internes à la
+ * fois.** Ce sont tous des écrans de pilotage : des files qui se vident, des
+ * compteurs qui bougent, des alertes qui s'éteignent, regardés en continu
+ * pendant une campagne. Le poser écran par écran aurait garanti qu'il en manque
+ * un — et celui qui manque est toujours celui qu'on regarde le plus longtemps.
+ *
+ * Il n'est **pas** posé sur l'espace candidat, qui partage un autre layout : ces
+ * écrans sont des formulaires à enregistrement continu, et un bouton qui
+ * recharge la page à côté d'un champ en cours de saisie est une invitation à
+ * perdre ce qu'on écrit. Ni sur le portail public, qui n'affiche aucune donnée
+ * vivante.
+ *
+ * **Il n'y a pas de cloche de notifications dans l'en-tête, et c'est
+ * délibéré.** Elle y a figuré, inerte, sur les douze écrans internes : un
+ * bouton au curseur de pointeur qui ne menait à rien. Le §8.3 n'est pas
+ * implémenté — aucune notification n'est envoyée, aucun centre ne les
+ * rassemble — et une cloche muette n'est pas un emplacement réservé, c'est une
+ * promesse que l'écran ne tient pas. Même règle que pour `adminNav` et
+ * `evaluatorNav` : pas d'écran derrière, pas de commande devant. Elle
+ * reviendra avec ce qu'elle ouvre.
+ */
 
 export function DarkSidebarLayout({
   children,
@@ -17,8 +43,9 @@ export function DarkSidebarLayout({
   subtitle,
   user,
   logoutHref,
-  notifications,
   headerActions,
+  refreshOnly,
+  showRefresh = true,
 }: PropsWithChildren<{
   items: DarkNavItem[];
   active: string;
@@ -32,10 +59,11 @@ export function DarkSidebarLayout({
   user?: string;
   /** Rend le bouton de déconnexion, qui poste vers cette URL. */
   logoutHref?: string;
-  /** Compteur du badge de notifications. Omis = pas de badge, plutôt qu'un
-   *  nombre inventé sur un écran de production. */
-  notifications?: number;
   headerActions?: ReactNode;
+  /** Propriétés à recharger seules. Omis : tout l'écran est redemandé. */
+  refreshOnly?: string[];
+  /** Retire le bouton d'actualisation, pour un écran qui n'affiche aucune donnée vivante. */
+  showRefresh?: boolean;
 }>) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const authUser = useAuthUser();
@@ -87,12 +115,9 @@ export function DarkSidebarLayout({
             <h1 className="text-xl font-extrabold text-brand-950 sm:text-2xl">{title}</h1>
             {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
           </div>
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto flex items-center gap-3 sm:gap-4">
             {headerActions}
-            <button className="focus-ring relative grid h-10 w-10 place-items-center rounded-full hover:bg-slate-50" aria-label="Notifications">
-              <Bell size={20} />
-              {notifications ? <span className="absolute right-1 top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-gold-500 px-1 text-[10px] font-bold">{notifications}</span> : null}
-            </button>
+            {showRefresh ? <BoutonActualiser only={refreshOnly} /> : null}
             {nom ? (
               <div className="hidden items-center gap-3 sm:flex">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-50 text-xs font-extrabold text-brand-900">{initiales(nom)}</div>

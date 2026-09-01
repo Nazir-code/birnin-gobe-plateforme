@@ -113,7 +113,7 @@ final class AdminApplicationPresenter
             'statusLabel' => $application->status->label(),
             'completionPercent' => ApplicationProgress::percentFromCompleted($achevees),
             'completedSections' => $achevees,
-            'totalSections' => ApplicationSection::total(),
+            'totalSections' => ApplicationProgress::total(),
             'currentStep' => $application->current_step?->value,
             'currentStepLabel' => $application->current_step?->label(),
             // Extraite par une sous-requête de `ApplicationIndexQuery`, et non
@@ -171,7 +171,7 @@ final class AdminApplicationPresenter
             'statusLabel' => $application->status->label(),
             'completionPercent' => ApplicationProgress::percentFromCompleted($achevees),
             'completedSections' => $achevees,
-            'totalSections' => ApplicationSection::total(),
+            'totalSections' => ApplicationProgress::total(),
             'currentStep' => $application->current_step?->value,
             'currentStepLabel' => $application->current_step?->label(),
             'submissionNumber' => $application->submission_number,

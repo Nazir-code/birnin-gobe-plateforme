@@ -59,7 +59,7 @@ Routes in `routes/web.php` are currently prototype-only (`Route::get` closures r
 - `Layouts/` — `PublicLayout`, `CandidateLayout`, `DarkSidebarLayout` (admin/evaluator).
 - `Components/` — shared UI (`Ui.tsx`, `Brand.tsx`, `ProgressSteps.tsx`, `StatCard.tsx`).
 - `i18n/fr.ts` — static UI strings. Only French is populated; Hausa/Zarma are intentionally not invented for sensitive text and must fall back to French until institutionally validated translations exist (see `resources/js/i18n/README.md`). Dynamic content (FAQ, themes, criteria, help text, notifications) must come from the CMS/DB, not be hardcoded.
-- `data/demo.ts` — demo/sample data only. Per ADR-002 and `docs/design/SCREEN_MAP.md`, dates/stats/names/counters visible in mockups are demo data and must never be hardcoded as business rules — real values come from `Campaign` config or application data.
+- **No demo-data module.** `data/demo.ts` was deleted once the last screen stopped importing it (ADR-020): it still held the mockups' invented figures — « 5 000+ jeunes impactés », a hardcoded 30 June 2026 deadline — and an unused file full of plausible-looking constants is an invitation to import them back. Per ADR-002 and `docs/design/SCREEN_MAP.md`, dates/stats/names/counters visible in mockups are demo data and must never be hardcoded as business rules — real values come from `Campaign` config or application data, served as Inertia props.
 
 Design tokens (colors, radii, shadows, spacing, focus states, form components) are centralized in `resources/css/app.css` (ADR-002, `docs/decisions/ADR-002-design-system.md`) — mockups are rebuilt as real React/CSS components, not rendered as images.
 

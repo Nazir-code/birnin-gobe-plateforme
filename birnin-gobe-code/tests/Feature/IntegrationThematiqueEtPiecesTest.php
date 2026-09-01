@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Domain\Application\ApplicationProgress;
 use App\Domain\Application\ApplicationSection;
 use App\Domain\Application\ApplicationStatus;
+use App\Domain\Application\AttachmentScanStatus;
 use App\Domain\Application\AttachmentsSection;
 use App\Domain\Application\ChallengeSection;
 use App\Domain\Application\DocumentType;
@@ -19,6 +20,7 @@ use App\Domain\Candidate\Gender;
 use App\Domain\Eligibility\EvaluateEligibility;
 use App\Domain\Reference\NigerRegion;
 use App\Models\Application;
+use App\Models\Attachment;
 use App\Models\Campaign;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,7 +43,7 @@ use Tests\TestCase;
  *     achevait le défi sans elle, ce que la fusion rend impossible.
  *
  * D'où le seul test qui compte ici : **un dossier réel, construit par les
- * vraies routes de l'étape 1 à l'étape 8**, atteint 8/9, devient déposable, et
+ * vraies routes de l'étape 1 à l'étape 8**, atteint 8/8, devient déposable, et
  * sa copie figée porte les deux apports à la fois.
  *
  * Ce que ce fichier surveille en creux : que l'ouverture de l'étape 8 n'a pas
@@ -63,16 +65,21 @@ final class IntegrationThematiqueEtPiecesTest extends TestCase
     }
 
     /**
-     * Le dossier complet des deux vagues : 8/9, déposable, copie complète.
+     * Le dossier complet des deux vagues : 8/8, déposable, copie complète.
+     *
+     * Ce test a longtemps figé `89`, c'est-à-dire le plafond que « Relecture /
+     * envoi » imposait en occupant le dénominateur sans jamais pouvoir occuper
+     * le numérateur. Un défaut inscrit dans une assertion cesse d'être un
+     * défaut visible : il devient la référence.
      */
     public function test_un_dossier_thematise_et_documente_est_deposable(): void
     {
         $candidat = $this->candidat();
         $dossier = $this->dossierDeBoutEnBout($candidat);
 
-        // — Les huit étapes ouvertes sont achevées, sur neuf au total.
+        // — Les huit sections de contenu sont achevées : le dossier est fait.
         $this->assertSame(8, app(ApplicationProgress::class)->completedOnOpenPath($dossier));
-        $this->assertSame(89, app(ApplicationProgress::class)->percent($dossier));
+        $this->assertSame(100, app(ApplicationProgress::class)->percent($dossier));
 
         // — Et le dossier est réellement déposable.
         $verdict = SubmissionReadiness::for($dossier->fresh(), app(EvaluateEligibility::class));
@@ -196,9 +203,19 @@ final class IntegrationThematiqueEtPiecesTest extends TestCase
                 $this->assertArrayNotHasKey('storage_key', $pieces['documents'][0]);
             });
 
-        // — Le téléchargement : lecture seule, et il fonctionne.
+        // — Le téléchargement : lecture seule, et il attend un verdict.
+        // Servir à un tiers la pièce d'un inconnu est une redistribution ; seul
+        // l'état `CLEAN` l'autorise (§15.1). La pièce vient d'être déposée, donc
+        // elle attend encore son analyse.
+        $chemin = "/admin/applications/{$dossier->getKey()}/documents/".DocumentType::PROJECT_PRESENTATION->value;
+
+        $this->actingAs($admin)->get($chemin)->assertStatus(423);
+
+        Attachment::query()->where('application_id', $dossier->getKey())
+            ->update(['scan_status' => AttachmentScanStatus::CLEAN->value]);
+
         $this->actingAs($admin)
-            ->get("/admin/applications/{$dossier->getKey()}/documents/".DocumentType::PROJECT_PRESENTATION->value)
+            ->get($chemin)
             ->assertOk()
             ->assertDownload('presentation.pdf');
     }
@@ -232,7 +249,7 @@ final class IntegrationThematiqueEtPiecesTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('answers.'.ChallengeSection::THEME_FIELD, null));
 
-        // — Le dossier retombe à 7/9, et le motif est le défi.
+        // — Le dossier retombe à sept sections sur huit, et le motif est le défi.
         $this->assertSame(7, app(ApplicationProgress::class)->completedOnOpenPath($dossier->fresh()));
 
         $avant = SubmissionReadiness::for($dossier->fresh(), app(EvaluateEligibility::class));

@@ -1,6 +1,8 @@
 <?php
+
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
+
 return [
     'default' => env('LOG_CHANNEL', 'stack'),
     'channels' => [
