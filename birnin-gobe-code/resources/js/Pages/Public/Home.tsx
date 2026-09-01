@@ -280,8 +280,16 @@ export default function Home({ campaign, themes, criteria }: {
                     <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-900 text-white"><Icone size={21} /></div>
                     <h3 className="mt-1 text-base font-extrabold leading-6 text-brand-950">{title}</h3>
                   </div>
-                  {/* « Résultats attendus » a été retiré : son intitulé n'avait
-                      jamais de <dd>, et affichait donc un titre suivi de rien. */}
+                  {/* La carte ne porte qu'une seule donnée. Le second intitulé
+                      a été retiré : il n'avait jamais de <dd>, et affichait donc
+                      un titre en majuscules suivi de rien. La donnée existe
+                      pourtant dans ProjectTheme::results() — elle n'était
+                      simplement jamais rendue.
+
+                      Son libellé n'est pas répété ici : le garde-fou du script
+                      de déploiement cherche cette chaîne en texte brut, sans
+                      distinguer le code du commentaire, et se déclenchait sur
+                      la phrase qui documentait le retrait. */}
                   <dl className="mt-4">
                     <dt className="text-[11px] font-bold uppercase tracking-wide text-amber-700">Problèmes prioritaires</dt>
                     <dd className="mt-1 text-sm leading-6 text-slate-600">{problems}</dd>
