@@ -173,6 +173,47 @@ test.describe('Page d’accueil publique', () => {
   });
 
   /**
+   * La mention de realisation est contractuelle : elle ne disparait pas au
+   * detour d'une refonte du pied de page. Le coeur est du contenu, pas une
+   * icone — une synthese vocale doit le lire comme il se voit.
+   */
+  test('le pied de page porte la mention de realisation', async ({ page }) => {
+    await accueil(page);
+
+    await expect(page.locator('footer')).toContainText(
+      'Développé avec ❤️ par NOVATECH & FME Consult',
+    );
+  });
+
+  /**
+   * Chaque realisateur mene a son propre site.
+   *
+   * Deux choses sont verifiees, et la seconde compte autant que la premiere :
+   * le lien existe, et il pointe la ou il doit. Une inversion des deux `href`
+   * passerait le premier test sans que rien ne se voie a l'ecran — c'est
+   * exactement le genre d'erreur qu'un partenaire remarque avant nous.
+   *
+   * Les sites sont externes : ils s'ouvrent dans un nouvel onglet, avec le
+   * `rel` qui empeche la page ouverte d'agir sur celle-ci.
+   */
+  test('chaque realisateur pointe vers son propre site', async ({ page }) => {
+    await accueil(page);
+
+    const pied = page.locator('footer');
+
+    for (const [nom, url] of [
+      ['NOVATECH', 'https://novatech.ne/'],
+      ['FME Consult', 'https://www.fmeconsult.com/'],
+    ] as const) {
+      const lien = pied.getByRole('link', { name: nom, exact: true });
+
+      await expect(lien).toHaveAttribute('href', url);
+      await expect(lien).toHaveAttribute('target', '_blank');
+      await expect(lien).toHaveAttribute('rel', /noopener/);
+    }
+  });
+
+  /**
    * Le pied de page ne promet rien.
    *
    * Les quatre mentions du bas de page n'ont pas encore de page derriere. Elles

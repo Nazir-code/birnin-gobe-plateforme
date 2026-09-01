@@ -38,6 +38,31 @@ export const legalLinks: SiteLink[] = [
 
 export const supportLink: SiteLink = { key: 'support', href: null };
 
+/**
+ * Un réalisateur de la plateforme, tel qu'il est crédité au pied de page.
+ *
+ * Le nom est porté ici et non dans le dictionnaire : c'est un nom propre, il ne
+ * se traduit pas, et une entrée par locale finirait par en produire des
+ * variantes. Le pied de page ne connaît que cette liste.
+ */
+export type SiteMaker = { name: string; href: string | null };
+
+/**
+ * Les réalisateurs crédités au pied de page.
+ *
+ * Même règle que pour `SiteLink` : `href: null` = **aucune URL inventée**. Le
+ * nom reste alors affiché en texte simple, pas en lien mort. Renseigner le
+ * `href` suffit à le rendre cliquable, sans toucher au composant.
+ *
+ * Ce sont des sites tiers : ils s'ouvrent dans un nouvel onglet, comme les liens
+ * sociaux, pour ne pas arracher un candidat au formulaire qu'il est en train de
+ * remplir.
+ */
+export const siteMakers: SiteMaker[] = [
+  { name: 'NOVATECH', href: 'https://novatech.ne/' },
+  { name: 'FME Consult', href: 'https://www.fmeconsult.com/' },
+];
+
 export const publicSiteLink: SiteLink = { key: 'publicSite', href: '/' };
 
 /**

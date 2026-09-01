@@ -10,6 +10,7 @@ import {
   legalLinks,
   prototypeApplyTarget,
   publicSiteLink,
+  siteMakers,
   supportLink,
   useSiteData,
   type SiteLink,
@@ -39,6 +40,45 @@ const currentYear = () => new Date().getFullYear();
  */
 function destinationsExistantes(liens: SiteLink[]): (SiteLink & { href: string })[] {
   return liens.filter((lien): lien is SiteLink & { href: string } => lien.href !== null);
+}
+
+/**
+ * La mention de réalisation, avec ses deux noms cliquables.
+ *
+ * La phrase est assemblée ici plutôt que servie d'un bloc par le dictionnaire,
+ * parce que deux de ses mots mènent ailleurs. Trois choses en découlent :
+ *
+ * - un réalisateur sans `href` reste du **texte**, jamais un lien mort — c'est
+ *   la même règle que les mentions légales, qui ne se rendent pas tant qu'aucune
+ *   page n'existe derrière ;
+ * - le séparateur ne s'écrit qu'entre deux noms, pas après le dernier ;
+ * - la couleur du lien vient de l'appelant : le pied public est sombre, le pied
+ *   compact est clair, et un ton unique serait illisible sur l'un des deux.
+ */
+function Credits({ tone }: { tone: 'dark' | 'light' }) {
+  const t = useI18n();
+  const linkClass =
+    tone === 'dark'
+      ? 'focus-ring rounded-sm font-semibold text-white/75 underline-offset-2 transition-colors hover:text-white hover:underline'
+      : 'focus-ring rounded-sm font-semibold text-slate-500 underline-offset-2 transition-colors hover:text-brand-800 hover:underline';
+
+  return (
+    <p className={tone === 'dark' ? 'text-xs text-white/50' : 'text-xs text-slate-400'}>
+      {t.footer.credits.prefix}{' '}
+      {siteMakers.map((maker, rang) => (
+        <span key={maker.name}>
+          {rang > 0 ? <>{' '}{t.footer.credits.separator}{' '}</> : null}
+          {maker.href ? (
+            <a className={linkClass} href={maker.href} rel="noopener noreferrer" target="_blank">
+              {maker.name}
+            </a>
+          ) : (
+            maker.name
+          )}
+        </span>
+      ))}
+    </p>
+  );
 }
 
 function useLinkLabel() {
@@ -223,22 +263,28 @@ function PublicFooter() {
           <p className="text-xs text-white/65">
             © {currentYear()} BIRNI’NGOBE. {t.footer.rights}
           </p>
-          {/* Seules les destinations qui existent sont annoncées. Les quatre
+          {/* Bloc de droite : les mentions légales quand elles existeront, puis
+              la mention de réalisation, qui ferme la ligne.
+
+              Seules les destinations qui existent sont annoncées. Les quatre
               mentions du bas de page n'ont pas encore de page derrière : elles
               portaient un marqueur « Bientôt », qui donnait au pied de page
               l'air d'un chantier. Un pied de page ne promet rien ; il mène
               quelque part, ou il se tait. Le jour où l'une de ces pages
               existera, lui donner un `href` dans `config/site.ts` la fera
               réapparaître ici sans toucher à ce composant. */}
-          {mentionsDisponibles.length ? (
-            <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
-              {mentionsDisponibles.map((link) => (
-                <li key={link.key}>
-                  <FooterLink link={link} tone="inline" />
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 lg:justify-end">
+            {mentionsDisponibles.length ? (
+              <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                {mentionsDisponibles.map((link) => (
+                  <li key={link.key}>
+                    <FooterLink link={link} tone="inline" />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <Credits tone="dark" />
+          </div>
         </div>
       </div>
     </footer>
@@ -261,19 +307,24 @@ function CompactFooter() {
         <p className="text-xs text-slate-500">
           © {currentYear()} BIRNI’NGOBE — {t.footer.brandTagline}. {t.footer.rights}
         </p>
-        {links.length ? (
-          <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {links.map((link) => (
-              <li key={link.key}>
-                {isAnchorHref(link.href) ? (
-                  <a href={link.href} className={linkClass}>{label(link)}</a>
-                ) : (
-                  <Link href={link.href} className={linkClass}>{label(link)}</Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {/* Bloc de droite : les destinations disponibles, puis la mention de
+            réalisation, qui ferme la ligne comme sur le pied public. */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 sm:justify-end">
+          {links.length ? (
+            <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              {links.map((link) => (
+                <li key={link.key}>
+                  {isAnchorHref(link.href) ? (
+                    <a href={link.href} className={linkClass}>{label(link)}</a>
+                  ) : (
+                    <Link href={link.href} className={linkClass}>{label(link)}</Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <Credits tone="light" />
+        </div>
       </div>
     </footer>
   );
