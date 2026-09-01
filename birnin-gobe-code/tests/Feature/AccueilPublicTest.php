@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Domain\Application\ApplicationStatus;
 use App\Domain\Auth\UserRole;
 use App\Domain\Campaign\CampaignStatus;
+use App\Domain\Content\PortalCriterion;
 use App\Domain\Evaluation\EvaluationCriterion;
 use App\Models\Application;
 use App\Models\Campaign;
@@ -240,27 +241,73 @@ final class AccueilPublicTest extends TestCase
     }
 
     /**
-     * Les critères de maquette ne reviennent pas par la forme.
+     * Le portail annonce la liste choisie par le porteur du concours.
      *
-     * La page a porté une fois sa propre liste — « Impact usager »,
-     * « Sécurité », « Qualité technique » — qui ne correspondait à aucun
-     * critère du §11.2 et taisait « Viabilité » et « Inclusion ». Le portail
-     * annonçait donc aux candidats qu'ils seraient jugés sur autre chose que ce
-     * que les évaluateurs notent, et l'écart ne se voyait nulle part.
+     * Ce test a d'abord **interdit** ces huit intitulés, au motif qu'ils
+     * contredisent le §11.2. Le porteur a tranché l'inverse (ADR-023) : le
+     * portail parle aux candidats avec ses mots, la grille note avec les siens.
      *
-     * Le portail a depuis retrouvé la forme de cette maquette — numéro, titre
-     * court, question directrice — et c'est précisément pourquoi ce test
-     * existe : la forme est revenue, le fond ne doit pas suivre.
+     * L'assertion porte sur `PortalCriterion` et non sur des libellés recopiés
+     * ici : recopier ferait une troisième liste, et c'est la multiplication des
+     * listes qui a produit la dérive qu'ADR-015 avait corrigée.
      */
-    public function test_les_criteres_de_maquette_ne_sont_pas_revenus(): void
+    public function test_l_accueil_porte_les_criteres_du_portail(): void
     {
         $this->campagne();
 
-        $rendu = $this->get('/')->assertOk()->getContent();
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(function ($page) {
+                $page->has('criteria', count(PortalCriterion::cases()));
 
-        foreach (['Impact usager', 'Qualité technique', 'Innovation utile', 'Équipe et pitch'] as $trace) {
-            $this->assertStringNotContainsString($trace, $rendu, "La page sert encore « {$trace} », qui n’est pas un critère du §11.2.");
+                foreach (PortalCriterion::cases() as $rang => $critere) {
+                    $page->where("criteria.{$rang}.key", $critere->value);
+                    $page->where("criteria.{$rang}.title", $critere->label());
+                    $page->where("criteria.{$rang}.question", $critere->question());
+                }
+            });
+    }
+
+    /**
+     * L'écart entre le portail et la grille est mesuré, pas subi.
+     *
+     * Les deux listes diffèrent volontairement. Ce test ne l'interdit pas — il
+     * **le nomme**, pour que personne ne redécouvre l'écart en production et le
+     * prenne pour un défaut. C'est la seule leçon d'ADR-015 qui vaille encore :
+     * une liste distincte n'est pas fautive, une liste distincte *invisible*
+     * l'est.
+     *
+     * Le jour où le comité alignera les deux, ce test échouera — et ce sera le
+     * signal que `PortalCriterion` peut disparaître.
+     */
+    public function test_l_ecart_entre_le_portail_et_la_grille_est_connu(): void
+    {
+        $portail = array_map(
+            static fn (PortalCriterion $critere): string => $critere->label(),
+            PortalCriterion::cases(),
+        );
+
+        $grille = array_map(
+            static fn (EvaluationCriterion $critere): string => $critere->label(),
+            EvaluationCriterion::cases(),
+        );
+
+        // Annoncés au public, jamais notés.
+        $this->assertSame(
+            ['Qualité technique', 'Sécurité'],
+            array_values(array_intersect($portail, ['Qualité technique', 'Sécurité'])),
+            'Le portail annonce ces critères ; aucun évaluateur ne les note.',
+        );
+
+        // Notés, jamais annoncés.
+        foreach (['Viabilité économique et institutionnelle', 'Inclusion et ancrage territorial'] as $tu) {
+            $this->assertContains($tu, $grille);
+            $this->assertNotContains($tu, $portail, "« {$tu} » est noté sans être annoncé au candidat.");
         }
+
+        // Les deux listes comptent huit entrées : c'est ce que la page affirme.
+        $this->assertCount(8, $portail);
+        $this->assertCount(8, $grille);
     }
 
     /**
@@ -273,8 +320,8 @@ final class AccueilPublicTest extends TestCase
     public function test_chaque_critere_porte_une_question_qui_lui_est_propre(): void
     {
         $questions = array_map(
-            static fn (EvaluationCriterion $critere): string => $critere->question(),
-            EvaluationCriterion::cases(),
+            static fn (PortalCriterion $critere): string => $critere->question(),
+            PortalCriterion::cases(),
         );
 
         foreach ($questions as $question) {
@@ -283,37 +330,6 @@ final class AccueilPublicTest extends TestCase
         }
 
         $this->assertCount(count($questions), array_unique($questions), 'Deux critères partagent la même question.');
-    }
-
-    /**
-     * Les huit critères annoncés au public sont ceux du §11.2.
-     *
-     * Ce test protège une promesse, pas un affichage. La page portait autrefois
-     * sa propre liste — « Impact usager », « Sécurité », « Équipe et pitch » —
-     * qui ne correspondait à aucun critère du cahier des charges et omettait
-     * l'inclusion. Un candidat lisait donc qu'il serait jugé sur autre chose que
-     * ce que les évaluateurs notent. L'assertion porte sur `EvaluationCriterion`
-     * et non sur des libellés recopiés : recopier serait refaire la seconde
-     * liste que ce test existe pour interdire.
-     */
-    public function test_l_accueil_porte_les_criteres_reels_du_paragraphe_11_2(): void
-    {
-        $this->campagne();
-
-        $this->get('/')
-            ->assertOk()
-            ->assertInertia(function ($page) {
-                $page->has('criteria', count(EvaluationCriterion::cases()));
-
-                foreach (EvaluationCriterion::cases() as $rang => $critere) {
-                    $page->where("criteria.{$rang}.key", $critere->value);
-                    $page->where("criteria.{$rang}.title", $critere->label());
-                    // La question directrice, prise sur l'enum et non recopiée
-                    // ici : recopier serait refaire la seconde liste que ce
-                    // test existe pour interdire.
-                    $page->where("criteria.{$rang}.question", $critere->question());
-                }
-            });
     }
 
     /**
@@ -336,7 +352,7 @@ final class AccueilPublicTest extends TestCase
 
         $this->get('/')
             ->assertInertia(function ($page) {
-                foreach (array_keys(EvaluationCriterion::cases()) as $rang) {
+                foreach (array_keys(PortalCriterion::cases()) as $rang) {
                     $page->missing("criteria.{$rang}.weight");
                 }
             })

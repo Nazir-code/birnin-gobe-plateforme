@@ -45,10 +45,10 @@ test.describe('Page d’accueil publique', () => {
     for (let rang = 1; rang <= 8; rang += 1) {
       await expect(page.getByTestId(`critere-${rang}`)).toBeVisible();
     }
-    // Les intitules sont ceux du §11.2 : la page portait autrefois une liste a
-    // elle, qui ne correspondait a aucun critere du cahier des charges.
-    await expect(page.getByTestId('critere-1')).toContainText('Pertinence par rapport au défi');
-    await expect(page.getByTestId('critere-8')).toContainText('Inclusion et ancrage territorial');
+    // Les intitules sont ceux de PortalCriterion — la liste choisie par le
+    // porteur du concours (ADR-023), distincte de la grille de notation.
+    await expect(page.getByTestId('critere-1')).toContainText('Pertinence');
+    await expect(page.getByTestId('critere-8')).toContainText('Équipe et pitch');
     // La ponderation n'est plus publiee : ni pastille, ni valeur dans la charge
     // Inertia. On verifie l'absence a l'ecran ; l'absence dans les props est
     // tenue par AccueilPublicTest, qui seul peut la voir.
@@ -158,8 +158,8 @@ test.describe('Page d’accueil publique', () => {
     await expect(conditions.nth(4)).toContainText('toutes les étapes de la compétition');
 
     // Les criteres d'evaluation, eux, n'ont pas bouge.
-    await expect(page.getByTestId('critere-1')).toContainText('Pertinence par rapport au défi');
-    await expect(page.getByTestId('critere-8')).toContainText('Inclusion et ancrage territorial');
+    await expect(page.getByTestId('critere-1')).toContainText('Pertinence');
+    await expect(page.getByTestId('critere-8')).toContainText('Équipe et pitch');
   });
 
   test('le pied de page ne garde ni colonne vide ni centre d’aide', async ({ page }) => {
@@ -173,26 +173,27 @@ test.describe('Page d’accueil publique', () => {
   });
 
   /**
-   * Une destination absente se voit, elle ne se devine pas.
+   * Le pied de page ne promet rien.
    *
    * Les quatre mentions du bas de page n'ont pas encore de page derriere. Elles
-   * s'affichaient en gris pale, sans rien qui les distingue d'un lien : le
-   * marqueur « Bientot » etait conditionne a une densite d'affichage que le seul
-   * appelant du composant n'utilise pas. Un libelle qui a l'air d'un lien et n'en
-   * est pas se lit comme une page cassee.
+   * ont porte un marqueur « Bientot », qui donnait au pied de page l'air d'un
+   * chantier ; elles ne sont plus affichees du tout. Un pied de page mene
+   * quelque part, ou il se tait.
+   *
+   * Le test verifie les deux faces : ni libelle inerte, ni lien mort. Le jour
+   * ou l'une de ces pages existera, lui donner un `href` la fera reapparaitre —
+   * et c'est la seconde assertion qui devra alors changer.
    */
-  test('les mentions legales annoncent qu’elles n’existent pas encore', async ({ page }) => {
+  test('le pied de page n’annonce aucune page inexistante', async ({ page }) => {
     await accueil(page);
     const pied = page.locator('footer');
 
-    for (const cle of ['legalNotice', 'privacy', 'dataProtection', 'accessibility']) {
-      const mention = pied.getByTestId(`bientot-${cle}`);
-      await expect(mention).toBeVisible();
-      await expect(mention).toContainText('Bientôt');
-    }
+    await expect(pied).not.toContainText('Bientôt');
 
-    // Et elles ne sont pas cliquables : ce ne sont pas des liens morts.
-    await expect(pied.getByRole('link', { name: 'Mentions légales' })).toHaveCount(0);
+    for (const intitule of ['Mentions légales', 'Confidentialité', 'Protection des données', 'Accessibilité']) {
+      await expect(pied.getByText(intitule, { exact: true })).toHaveCount(0);
+      await expect(pied.getByRole('link', { name: intitule })).toHaveCount(0);
+    }
   });
 
   /**

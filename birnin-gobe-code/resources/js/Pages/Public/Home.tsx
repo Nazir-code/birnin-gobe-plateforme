@@ -298,9 +298,8 @@ export default function Home({ campaign, themes, criteria }: {
         <div className="mx-auto max-w-[1500px] px-6 py-12 lg:px-12 xl:px-16">
           <SectionTitle eyebrow="Comment les dossiers sont jugés" title="Critères d’évaluation" />
           <p className="-mt-2 mb-5 max-w-3xl text-sm leading-6 text-slate-600">
-            Ces huit critères servent à <strong>évaluer</strong> les dossiers recevables, sur un total de
-            100 points. Ils ne décident pas qui a le droit de candidater : cela relève de l’éligibilité,
-            présentée juste en dessous.
+            Ces huit critères servent à <strong>évaluer</strong> les dossiers recevables. Ils ne décident
+            pas qui a le droit de candidater : cela relève de l’éligibilité, présentée juste en dessous.
           </p>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {criteria.map(({ key, title, question }, index) => (

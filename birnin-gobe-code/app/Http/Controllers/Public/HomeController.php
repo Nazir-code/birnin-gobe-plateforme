@@ -6,6 +6,7 @@ use App\Domain\Application\ApplicationStatus;
 use App\Domain\Application\ProjectTheme;
 use App\Domain\Auth\UserRole;
 use App\Domain\Campaign\ActiveCampaign;
+use App\Domain\Content\PortalCriterion;
 use App\Domain\Evaluation\EvaluationCriterion;
 use App\Models\Application;
 use App\Models\Campaign;
@@ -104,65 +105,32 @@ final class HomeController
     }
 
     /**
-     * Les huit critères d'évaluation du §11.2, avec leur poids.
+     * Les huit critères annoncés au public — ADR-023.
      *
-     * **Ils viennent de `EvaluationCriterion`, jamais d'une liste écrite ici.**
-     * Cette méthode portait auparavant sa propre liste de huit intitulés —
-     * « Impact usager », « Sécurité », « Équipe et pitch » — qui ne
-     * correspondaient à aucun critère du cahier des charges, et qui omettaient
-     * « Inclusion et ancrage territorial ». La page publique annonçait donc aux
-     * candidats qu'ils seraient jugés sur autre chose que ce que les évaluateurs
-     * notent réellement. Deux listes de « critères d'évaluation » dans le même
-     * dépôt ne pouvaient que diverger ; il n'y en a plus qu'une.
+     * **Cette liste n'est pas la grille de notation, et c'est une décision du
+     * porteur du concours.** Le portail annonce « Sécurité » et « Qualité
+     * technique », qui ne figurent pas au §11.2 ; il tait « Viabilité
+     * économique et institutionnelle » et « Inclusion et ancrage territorial »,
+     * que les évaluateurs notent pourtant. `PortalCriterion` porte ce texte,
+     * `EvaluationCriterion` porte la grille, et un test affiche l'écart entre
+     * les deux plutôt que de le laisser se découvrir en production.
      *
-     * **La pondération n'est pas publiée**, et c'est un revirement assumé
-     * d'ADR-015, qui l'affichait au motif que le §11.2 est une grille publique.
-     * L'arbitrage appartient au porteur du concours, pas au code.
+     * ADR-015 avait supprimé une liste de portail distincte parce qu'elle avait
+     * dérivé sans que personne le voie. Ce qui change ici n'est pas le principe
+     * — une liste distincte reste un risque — mais sa visibilité : elle est
+     * nommée, isolée dans son propre fichier, et comparée par un test.
      *
-     * **Le retrait est fait ici, côté serveur, et pas dans le composant.**
-     * Retirer seulement la pastille React laisserait `weight` dans les props
-     * Inertia, donc en clair dans le HTML de chaque visiteur : la pondération
-     * serait masquée à l'œil et lisible à qui regarde la source. Une donnée
-     * qu'on décide de ne pas publier ne doit pas quitter le serveur.
-     *
-     * Le total de 100 points reste annoncé sur la page. C'est l'échelle de
-     * notation, pas sa répartition : dire qu'un dossier est noté sur 100 sans
-     * dire ce qui pèse le plus n'apprend rien qu'un candidat puisse exploiter,
-     * et le taire aussi rendrait le score final incompréhensible.
-     *
-     * **Le texte de chaque carte est une question directrice**, revenue après
-     * qu'ADR-015 l'eut remplacée par les éléments d'appréciation mot pour mot.
-     * Le motif d'alors — « reformuler est ce qui a laissé la liste dériver » —
-     * visait le bon coupable au mauvais endroit : la dérive venait de ce que la
-     * reformulation vivait ici, détachée de sa source. `question()` est
-     * désormais sur l'enum, adjacente au libellé et aux éléments qu'elle
-     * résume ; les trois textes se modifient sous les mêmes yeux, et un critère
-     * ajouté sans sa question ne compile pas.
-     *
-     * L'espace évaluateur, lui, continue de recevoir `elements()` : c'est ce
-     * texte qui fait que deux évaluateurs notent la même chose. Le portail dit
-     * sur quoi on juge, la grille dit comment on note.
-     *
-     * **À ne pas confondre avec l'éligibilité**, et la page le dit explicitement.
-     * L'éligibilité décide qui a le droit de déposer — âge, nationalité, zone,
-     * forme de candidature — et `EvaluateEligibility` la calcule campagne par
-     * campagne. Ces critères-ci disent comment un dossier recevable sera jugé
-     * ensuite. Les présenter sur la même page sans le préciser ferait croire à
-     * un candidat qu'il doit satisfaire les huit pour avoir le droit de
-     * candidater.
+     * **À ne pas confondre avec l'éligibilité**, et la page le dit
+     * explicitement. L'éligibilité décide qui a le droit de déposer — âge,
+     * nationalité, zone, forme de candidature — et `EvaluateEligibility` la
+     * calcule campagne par campagne. Ces critères-ci disent comment un dossier
+     * recevable sera jugé ensuite.
      *
      * @return list<array{key: string, title: string, question: string}>
      */
     private function criteres(): array
     {
-        return array_map(
-            static fn (EvaluationCriterion $critere): array => [
-                'key' => $critere->value,
-                'title' => $critere->label(),
-                'question' => $critere->question(),
-            ],
-            EvaluationCriterion::cases(),
-        );
+        return PortalCriterion::content();
     }
 
     /**

@@ -186,6 +186,18 @@ rendu visible, et qui donne le moyen de le corriger sans en créer un second : *
 désormais l'enum**. Deux listes de « critères d'évaluation » dans le même dépôt ne peuvent
 que diverger, et celle qui diverge est celle que lisent les candidats.
 
+> **Renversé le 01/09/2026 par ADR-023**, sur arbitrage du porteur du concours : le portail
+> porte de nouveau sa propre liste, `PortalCriterion`, volontairement différente de la
+> grille.
+>
+> Le constat ci-dessus reste vrai — deux listes divergent — mais le diagnostic était
+> incomplet. Le problème n'était pas la seconde liste : c'était son **invisibilité**. Elle
+> vivait dans `HomeController`, mêlée à du code de présentation, sans rien qui la désigne
+> comme concurrente. La nouvelle est nommée, isolée dans son propre fichier, et un test
+> mesure l'écart au lieu de l'interdire — il échouera le jour où les deux seront alignées.
+>
+> `EvaluationCriterion` reste la seule grille de notation, inchangée.
+
 Deux conséquences de forme :
 
 - ~~**Le poids est affiché** (« 20 pts », « 5 pts »), à la place du numéro d'ordre. Le §11.2
