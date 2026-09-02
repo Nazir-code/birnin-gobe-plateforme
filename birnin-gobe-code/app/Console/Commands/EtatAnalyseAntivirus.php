@@ -33,6 +33,7 @@ final class EtatAnalyseAntivirus extends Command
 
     public function handle(): int
     {
+        $analyseur = (bool) config('scanning.enabled');
         $total = Attachment::query()->count();
 
         if ($total === 0) {
@@ -56,30 +57,49 @@ final class EtatAnalyseAntivirus extends Command
                 continue;
             }
 
-            $this->line(sprintf('  %-22s %4d   %s', $etat->label(), $compte, $this->consigne($etat)));
+            $this->line(sprintf('  %-22s %4d   %s', $etat->label(), $compte, $this->consigne($etat, $analyseur)));
         }
 
         $this->line('');
-        $this->afficherLaConfiguration();
+        $this->afficherLaConfiguration($analyseur);
 
         return self::SUCCESS;
     }
 
-    /** Ce que cet état appelle, en une phrase actionnable. */
-    private function consigne(AttachmentScanStatus $etat): string
+    /**
+     * Ce que cet état appelle, en une phrase actionnable.
+     *
+     * **La consigne dépend de l'analyseur, pas seulement de l'état.** Cette
+     * commande existe pour empêcher qu'on lance un rattrapage incapable
+     * d'aider ; elle le conseillait pourtant pour `NOT_SCANNED` sans regarder
+     * si un analyseur répond — quatre lignes au-dessus de son propre
+     * « Analyseur configuré : non ».
+     *
+     * Suivre ce conseil-là aurait coûté quelque chose : sans analyseur, chaque
+     * reprise rend « indisponible », et les pièces antérieures à la mise en
+     * service seraient passées de « jamais examinée » à « l'analyseur n'a pas
+     * répondu ». C'est faux, et cela efface la seule chose qui distingue ces
+     * pièces des autres — celle que `NOT_SCANNED` est justement conservé pour
+     * dire.
+     *
+     * `PENDING` garde sa consigne dans les deux cas : la file n'est pas vidée,
+     * ce qui reste vrai qu'un analyseur réponde ou non.
+     */
+    private function consigne(AttachmentScanStatus $etat, bool $analyseur): string
     {
         return match ($etat) {
             AttachmentScanStatus::CLEAN => 'téléchargeables.',
             AttachmentScanStatus::QUARANTINE => 'menace détectée ; fermées à tous, y compris au déposant.',
             AttachmentScanStatus::PENDING => 'la file n’est pas vidée : vérifier le cron « queue:work ».',
             AttachmentScanStatus::UNAVAILABLE => 'aucun analyseur n’a répondu : le rattrapage n’y changera rien.',
-            AttachmentScanStatus::NOT_SCANNED => 'antérieures à la mise en service : « php artisan attachments:scan ».',
+            AttachmentScanStatus::NOT_SCANNED => $analyseur
+                ? 'antérieures à la mise en service : « php artisan attachments:scan ».'
+                : 'antérieures à la mise en service ; sans analyseur, les reprendre les dirait « indisponibles » à tort.',
         };
     }
 
-    private function afficherLaConfiguration(): void
+    private function afficherLaConfiguration(bool $analyseur): void
     {
-        $analyseur = (bool) config('scanning.enabled');
         $derogation = (bool) config('scanning.allow_unscanned_internal');
 
         $this->line('Analyseur configuré : '.($analyseur ? 'oui' : 'non'));
