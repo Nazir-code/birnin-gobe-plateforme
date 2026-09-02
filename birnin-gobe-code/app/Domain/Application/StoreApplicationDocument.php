@@ -222,6 +222,23 @@ final readonly class StoreApplicationDocument
 
         abort_unless($autorise, 423, $etat->explication());
 
+        // Une pièce servie à un tiers sans verdict ne l'est que par dérogation
+        // (§15.1). Elle laisse une trace nominative — ce que le §15.1 réclame
+        // par ailleurs pour tout accès aux pièces, et qui manquait. Sans elle,
+        // la dérogation serait un risque qu'on prend sans pouvoir dire qui en a
+        // usé, ni sur quel dossier.
+        if (! $versLeDeposant && $etat !== AttachmentScanStatus::CLEAN) {
+            app(AuditWriter::class)->write(
+                actorId: (int) auth()->id(),
+                action: 'APPLICATION_DOCUMENT_SERVED_UNSCANNED',
+                targetType: Application::class,
+                targetId: (string) $piece->application_id,
+                oldValue: null,
+                newValue: ['type' => $piece->type->value, 'scan_status' => $etat->value],
+                reason: $etat->label(),
+            );
+        }
+
         return self::disk()->download(
             $piece->storage_key,
             $piece->original_filename,

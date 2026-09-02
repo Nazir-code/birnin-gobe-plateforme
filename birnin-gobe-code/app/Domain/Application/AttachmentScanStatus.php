@@ -87,10 +87,35 @@ enum AttachmentScanStatus: string
      * personne qui clique — un vérificateur, un évaluateur, sur son poste de
      * travail. C'est le sens de la protection : elle protège de ce que des
      * inconnus déposent.
+     *
+     * **Une dérogation existe, et elle est déclarée.** Sur un hébergement où
+     * aucun analyseur ne peut tourner, fermer toutes les pièces arrête le
+     * contrôle d'admissibilité du §10 — la protection coûte alors plus que le
+     * risque qu'elle écarte. `ATTACHMENTS_ALLOW_UNSCANNED` rouvre les états sans
+     * verdict, jamais la quarantaine, et chaque ouverture est journalisée.
      */
     public function autoriseLaRedistribution(): bool
     {
-        return $this === self::CLEAN;
+        if ($this === self::CLEAN) {
+            return true;
+        }
+
+        // La quarantaine ne s'ouvre sous aucune dérogation : une menace détectée
+        // ne se sert pas, quelle que soit la configuration.
+        if ($this === self::QUARANTINE) {
+            return false;
+        }
+
+        // Les trois états « sans verdict » peuvent s'ouvrir aux rôles internes,
+        // et seulement si l'exploitant l'a déclaré. Voir `config/scanning.php` :
+        // cela n'a de sens que là où aucun analyseur ne peut tourner.
+        return (bool) config('scanning.allow_unscanned_internal', false);
+    }
+
+    /** La dérogation du §15.1 est-elle active sur cet environnement ? */
+    public static function derogationActive(): bool
+    {
+        return (bool) config('scanning.allow_unscanned_internal', false);
     }
 
     /**
