@@ -245,6 +245,119 @@ final class AnalyseAntivirusTest extends TestCase
             ->assertStatus(423);
     }
 
+    // — La dérogation du §15.1 ————————————————————————————————————
+
+    /**
+     * Fermée par défaut : rien ne s'ouvre sans décision explicite.
+     *
+     * C'est la propriété qui rend la dérogation acceptable. Un réglage dont la
+     * valeur par défaut relâche une protection finit toujours par être trouvé
+     * relâché.
+     */
+    public function test_la_derogation_est_fermee_par_defaut(): void
+    {
+        $this->assertFalse(config('scanning.allow_unscanned_internal'));
+        $this->assertFalse(AttachmentScanStatus::derogationActive());
+        $this->assertFalse(AttachmentScanStatus::UNAVAILABLE->autoriseLaRedistribution());
+    }
+
+    #[DataProvider('etatsSansVerdict')]
+    public function test_la_derogation_ouvre_les_pieces_sans_verdict_aux_tiers(string $etat): void
+    {
+        config()->set('scanning.allow_unscanned_internal', true);
+
+        $admin = User::factory()->role(UserRole::ADMIN)->create();
+        $dossier = $this->dossier();
+        $piece = $this->piece($dossier, AttachmentScanStatus::from($etat));
+
+        $this->actingAs($admin)
+            ->get(route('admin.applications.documents.download', [$dossier, $piece->type->value]))
+            ->assertOk();
+    }
+
+    /** @return array<string, array{string}> */
+    public static function etatsSansVerdict(): array
+    {
+        $cas = [];
+
+        foreach (AttachmentScanStatus::cases() as $etat) {
+            if ($etat->seRejoue()) {
+                $cas[mb_strtolower($etat->label())] = [$etat->value];
+            }
+        }
+
+        return $cas;
+    }
+
+    /**
+     * La quarantaine ne s'ouvre sous aucune dérogation.
+     *
+     * C'est la limite qui ne bouge pas : une menace détectée ne se sert à
+     * personne, quelle que soit la configuration. Sans cette garde, la
+     * dérogation ne serait plus une tolérance sur l'incertitude mais une
+     * autorisation de distribuer un fichier vérolé.
+     */
+    public function test_la_derogation_n_ouvre_jamais_la_quarantaine(): void
+    {
+        config()->set('scanning.allow_unscanned_internal', true);
+
+        $admin = User::factory()->role(UserRole::ADMIN)->create();
+        $dossier = $this->dossier();
+        $piece = $this->piece($dossier, AttachmentScanStatus::QUARANTINE);
+
+        $this->actingAs($admin)
+            ->get(route('admin.applications.documents.download', [$dossier, $piece->type->value]))
+            ->assertStatus(423);
+
+        // Ni pour son déposant.
+        $this->actingAs($dossier->candidate)
+            ->get($this->urlCandidat($dossier, $piece))
+            ->assertStatus(423);
+    }
+
+    /**
+     * Chaque ouverture dérogatoire laisse une trace nominative.
+     *
+     * C'est ce qui distingue un écart assumé d'un trou de sécurité : on peut
+     * dire qui a ouvert quelle pièce, sur quel dossier, et dans quel état elle
+     * était. Le §15.1 réclame par ailleurs cette traçabilité pour tout accès aux
+     * pièces — elle manquait.
+     */
+    public function test_une_ouverture_derogatoire_est_journalisee(): void
+    {
+        config()->set('scanning.allow_unscanned_internal', true);
+
+        $admin = User::factory()->role(UserRole::ADMIN)->create();
+        $dossier = $this->dossier();
+        $piece = $this->piece($dossier, AttachmentScanStatus::UNAVAILABLE);
+
+        $this->actingAs($admin)
+            ->get(route('admin.applications.documents.download', [$dossier, $piece->type->value]))
+            ->assertOk();
+
+        $this->assertDatabaseHas('audit_events', [
+            'action' => 'APPLICATION_DOCUMENT_SERVED_UNSCANNED',
+            'actor_id' => $admin->getKey(),
+            'target_id' => (string) $dossier->getKey(),
+        ]);
+    }
+
+    /** Une pièce saine ne produit aucune trace dérogatoire : ce n'est pas un écart. */
+    public function test_une_piece_saine_n_est_pas_journalisee_comme_derogation(): void
+    {
+        $admin = User::factory()->role(UserRole::ADMIN)->create();
+        $dossier = $this->dossier();
+        $piece = $this->piece($dossier, AttachmentScanStatus::CLEAN);
+
+        $this->actingAs($admin)
+            ->get(route('admin.applications.documents.download', [$dossier, $piece->type->value]))
+            ->assertOk();
+
+        $this->assertDatabaseMissing('audit_events', [
+            'action' => 'APPLICATION_DOCUMENT_SERVED_UNSCANNED',
+        ]);
+    }
+
     // — Le job et les verdicts ————————————————————————————————————
 
     public function test_un_fichier_sain_devient_telechargeable(): void

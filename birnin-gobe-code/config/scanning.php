@@ -21,6 +21,26 @@
 return [
     'enabled' => env('CLAMAV_ENABLED', false),
 
+    /**
+     * Dérogation : les rôles internes peuvent-ils ouvrir une pièce non analysée ?
+     *
+     * **Fermée par défaut, et elle doit le rester partout où un analyseur peut
+     * tourner.** Elle existe pour un cas précis : un hébergement mutualisé où
+     * `clamd` est impossible — il exige un démon permanent et plusieurs centaines
+     * de mégaoctets pour sa base de signatures. Sans dérogation, aucun
+     * vérificateur ne peut ouvrir la moindre pièce, et le contrôle
+     * d'admissibilité du §10 s'arrête.
+     *
+     * Ce qu'elle n'ouvre **jamais** : une pièce en quarantaine. Une menace
+     * détectée reste fermée à tous, y compris au déposant.
+     *
+     * Le prix est assumé et rendu visible : chaque ouverture dérogatoire est
+     * écrite au journal d'audit, et l'écran de pilotage annonce en permanence
+     * que la dérogation est active. Un écart qu'on voit vaut mieux qu'une
+     * protection qu'on croit avoir.
+     */
+    'allow_unscanned_internal' => env('ATTACHMENTS_ALLOW_UNSCANNED', false),
+
     'host' => env('CLAMAV_HOST', 'clamav'),
     'port' => (int) env('CLAMAV_PORT', 3310),
 

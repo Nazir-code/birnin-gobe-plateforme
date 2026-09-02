@@ -30,6 +30,7 @@ enum AuditAction: string
     case APPLICATION_DOCUMENT_UPLOADED = 'APPLICATION_DOCUMENT_UPLOADED';
     case APPLICATION_DOCUMENT_REPLACED = 'APPLICATION_DOCUMENT_REPLACED';
     case APPLICATION_DOCUMENT_DELETED = 'APPLICATION_DOCUMENT_DELETED';
+    case APPLICATION_DOCUMENT_SERVED_UNSCANNED = 'APPLICATION_DOCUMENT_SERVED_UNSCANNED';
     case APPLICATION_SUBMITTED = 'APPLICATION_SUBMITTED';
     case VERIFICATION_CHECKS_RECORDED = 'VERIFICATION_CHECKS_RECORDED';
     case ADMISSIBILITY_DECIDED = 'ADMISSIBILITY_DECIDED';
@@ -53,6 +54,7 @@ enum AuditAction: string
             self::APPLICATION_DOCUMENT_UPLOADED => 'Pièce déposée',
             self::APPLICATION_DOCUMENT_REPLACED => 'Pièce remplacée',
             self::APPLICATION_DOCUMENT_DELETED => 'Pièce retirée',
+            self::APPLICATION_DOCUMENT_SERVED_UNSCANNED => 'Pièce non analysée ouverte par dérogation',
             self::APPLICATION_SUBMITTED => 'Candidature déposée',
             self::VERIFICATION_CHECKS_RECORDED => 'Grille d’admissibilité enregistrée',
             self::ADMISSIBILITY_DECIDED => 'Décision d’admissibilité',
@@ -92,6 +94,7 @@ enum AuditAction: string
             self::EVALUATION_LOCKED => AuditWeight::DECISIVE,
 
             self::APPLICATION_DOCUMENT_DELETED,
+            self::APPLICATION_DOCUMENT_SERVED_UNSCANNED,
             self::VERIFICATION_CHECKS_RECORDED,
             self::EVALUATION_ASSIGNED,
             self::EVALUATION_ASSIGNMENT_RELEASED,

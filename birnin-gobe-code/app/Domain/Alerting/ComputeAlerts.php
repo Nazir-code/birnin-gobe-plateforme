@@ -427,7 +427,9 @@ final readonly class ComputeAlerts
             severity: AlertSeverity::WARNING,
             label: 'Pièces sans verdict antivirus',
             detail: sprintf('%d pièce(s) attendent un verdict : elles ne sont pas téléchargeables.', $compte),
-            action: 'Vérifier que l’analyseur tourne, puis relancer : php artisan attachments:scan',
+            action: AttachmentScanStatus::derogationActive()
+                ? 'Dérogation active : ces pièces sont ouvertes aux rôles internes sans analyse, et chaque accès est journalisé.'
+                : 'Diagnostiquer avec « php artisan attachments:status » : la file et l’absence d’analyseur n’appellent pas le même geste.',
             count: $compte,
             url: null,
         );
