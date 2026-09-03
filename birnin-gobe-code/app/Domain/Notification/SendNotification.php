@@ -65,13 +65,14 @@ final readonly class SendNotification
         MessageTransactionnel $message,
         ?Application $dossier = null,
         ?Campaign $campagne = null,
+        ?string $occurrence = null,
     ): array {
         $traces = [];
 
         foreach ($evenement->channels() as $canal) {
             $traces[] = $canal === NotificationChannel::EMAIL
-                ? $this->parCourriel($evenement, $canal, $destinataire, $message, $dossier, $campagne)
-                : $this->nonServi($evenement, $canal, $destinataire, $dossier, $campagne);
+                ? $this->parCourriel($evenement, $canal, $destinataire, $message, $dossier, $campagne, $occurrence)
+                : $this->nonServi($evenement, $canal, $destinataire, $dossier, $campagne, $occurrence);
         }
 
         return $traces;
@@ -88,9 +89,23 @@ final readonly class SendNotification
      * ne compte pas : il mérite d'être retenté, sinon la panne d'un soir prive
      * définitivement quelqu'un de son rappel. Voir
      * `DeliveryStatus::vautPourUnEnvoi()`.
+     *
+     * **`$occurrence` distingue deux rappels d'un même événement.** Sans lui,
+     * la garde répondait « déjà prévenu » au jalon J-1 pour quiconque avait reçu
+     * celui de J-7 : le rappel de la veille de clôture — le seul qui fasse
+     * encore déposer — n'atteignait personne. La question posée n'était pas la
+     * bonne ; elle l'est quand on précise de quel rappel on parle.
+     *
+     * L'argument reste facultatif, et son absence ne filtre rien : les cinq
+     * autres événements du §8.3 n'arrivent qu'une fois par dossier, et leur
+     * garde ne doit pas changer de sens au passage.
      */
-    public function dejaEnvoye(NotificationEvent $evenement, User $destinataire, ?Campaign $campagne = null): bool
-    {
+    public function dejaEnvoye(
+        NotificationEvent $evenement,
+        User $destinataire,
+        ?Campaign $campagne = null,
+        ?string $occurrence = null,
+    ): bool {
         $prisEnCharge = array_values(array_map(
             fn (DeliveryStatus $statut) => $statut->value,
             array_filter(DeliveryStatus::cases(), fn (DeliveryStatus $statut) => $statut->vautPourUnEnvoi()),
@@ -101,6 +116,7 @@ final readonly class SendNotification
             ->where('recipient_id', $destinataire->getKey())
             ->whereIn('status', $prisEnCharge)
             ->when($campagne !== null, fn ($q) => $q->where('campaign_id', $campagne->getKey()))
+            ->when($occurrence !== null, fn ($q) => $q->where('occurrence', $occurrence))
             ->exists();
     }
 
@@ -111,12 +127,13 @@ final readonly class SendNotification
         MessageTransactionnel $message,
         ?Application $dossier,
         ?Campaign $campagne,
+        ?string $occurrence,
     ): NotificationDelivery {
         $adresse = trim((string) $destinataire->email);
 
         if ($adresse === '') {
             return $this->tracer($evenement, $canal, DeliveryStatus::SKIPPED, $destinataire, null, $dossier, $campagne,
-                'Le compte ne porte aucune adresse électronique.');
+                'Le compte ne porte aucune adresse électronique.', $occurrence);
         }
 
         // La trace est ouverte **avant** l'envoi, et c'est ce qui la rend
@@ -124,7 +141,7 @@ final readonly class SendNotification
         // compte : un processus tué entre l'envoi et l'écriture laisserait un
         // courriel parti sans aucune trace — un candidat prévenu que la
         // plateforme croit n'avoir jamais prévenu.
-        $trace = $this->tracer($evenement, $canal, DeliveryStatus::QUEUED, $destinataire, $adresse, $dossier, $campagne, null);
+        $trace = $this->tracer($evenement, $canal, DeliveryStatus::QUEUED, $destinataire, $adresse, $dossier, $campagne, null, $occurrence);
         $message->traceId = $trace->getKey();
 
         try {
@@ -161,10 +178,11 @@ final readonly class SendNotification
         User $destinataire,
         ?Application $dossier,
         ?Campaign $campagne,
+        ?string $occurrence,
     ): NotificationDelivery {
         return $this->tracer(
             $evenement, $canal, DeliveryStatus::SKIPPED, $destinataire, null, $dossier, $campagne,
-            $canal->raisonDIndisponibilite(),
+            $canal->raisonDIndisponibilite(), $occurrence,
         );
     }
 
@@ -177,9 +195,11 @@ final readonly class SendNotification
         ?Application $dossier,
         ?Campaign $campagne,
         ?string $detail,
+        ?string $occurrence = null,
     ): NotificationDelivery {
         return NotificationDelivery::query()->create([
             'event' => $evenement->value,
+            'occurrence' => $occurrence,
             'channel' => $canal->value,
             'status' => $statut->value,
             'recipient_id' => $destinataire->getKey(),

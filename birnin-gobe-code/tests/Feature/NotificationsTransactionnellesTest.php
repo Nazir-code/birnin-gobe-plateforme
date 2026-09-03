@@ -416,6 +416,53 @@ final class NotificationsTransactionnellesTest extends TestCase
         Notification::assertSentToTimes($candidat, RappelDeCloture::class, 1);
     }
 
+    /**
+     * Deux jalons, deux rappels — et le second est celui qui compte.
+     *
+     * Le test au-dessus lance la commande deux fois **le même jour** : il
+     * éprouve l'idempotence quotidienne, jamais le passage d'un jalon au
+     * suivant. C'est par ce trou qu'est passé le défaut : la garde interrogeait
+     * la campagne entière sans le jalon, si bien qu'un candidat prévenu à J-7
+     * était réputé prévenu à J-1. Le rappel de la veille de clôture — le seul
+     * qui fasse encore déposer un brouillon — n'atteignait personne.
+     *
+     * Le scénario avance donc le temps entre les deux appels, ce qu'aucun autre
+     * ne faisait. Il exige **deux** envois au même candidat, et vérifie que la
+     * trace nomme chaque jalon : sans ce nom, la garde ne saurait pas les
+     * distinguer, et le premier suffirait à écarter le second.
+     */
+    public function test_le_rappel_repart_au_jalon_suivant(): void
+    {
+        $campagne = Campaign::factory()->create(['closes_at' => now()->addDays(7)->endOfDay()]);
+        $this->campagne = $campagne;
+
+        $candidat = $this->candidat();
+
+        Application::factory()
+            ->for($campagne, 'campaign')
+            ->for($candidat, 'candidate')
+            ->withSection(ApplicationSection::ELIGIBILITY, ['renseigne' => 'oui'])
+            ->create();
+
+        // J-7
+        $this->artisan('notifications:rappel-cloture')->assertSuccessful();
+        Notification::assertSentToTimes($candidat, RappelDeCloture::class, 1);
+
+        // J-1 : six jours plus tard, le dossier est toujours en brouillon.
+        $this->travel(6)->days();
+
+        $this->artisan('notifications:rappel-cloture')->assertSuccessful();
+        Notification::assertSentToTimes($candidat, RappelDeCloture::class, 2);
+
+        foreach (['J-7', 'J-1'] as $jalon) {
+            $this->assertDatabaseHas('notification_deliveries', [
+                'event' => NotificationEvent::CLOSING_REMINDER->value,
+                'recipient_id' => $candidat->getKey(),
+                'occurrence' => $jalon,
+            ]);
+        }
+    }
+
     /** Un dossier déjà déposé n'a rien à rattraper. */
     public function test_le_rappel_ignore_les_dossiers_deja_deposes(): void
     {
