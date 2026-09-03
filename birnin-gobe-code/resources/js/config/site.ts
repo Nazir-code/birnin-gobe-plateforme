@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { useAuthUser } from '@/hooks/useAuth';
 import type { Dictionary } from '@/i18n';
 
 export type FooterLinkKey = keyof Dictionary['footer']['links'];
@@ -80,6 +81,53 @@ export const candidateEntryTarget = '/login';
 
 /** Inscription publique — crée exclusivement des comptes candidat. */
 export const candidateSignupTarget = '/register';
+
+/** Espace du candidat déjà inscrit. */
+export const candidateDashboardTarget = '/candidate/dashboard';
+
+/**
+ * Ce que l'appel à candidater doit faire, selon qui regarde la page.
+ *
+ * **`/register` est derrière le middleware `guest`.** Pour quelqu'un de déjà
+ * connecté, Laravel le renvoie vers la première route nommée `dashboard` ou
+ * `home` ; la route candidat s'appelant `candidate.dashboard`, c'est `home` qui
+ * gagne — c'est-à-dire la page d'accueil. Un visiteur connecté qui cliquait
+ * depuis l'accueil déclenchait donc une visite Inertia vers la page où il se
+ * trouvait déjà : aucune erreur, aucune navigation, aucun retour visuel. Le
+ * bouton paraissait mort.
+ *
+ * Le défaut n'était visible qu'en étant connecté, ce qu'aucun test public ne
+ * fait — signalé le 3 septembre 2026, après la correction d'un premier défaut
+ * sur le même bouton.
+ *
+ * Trois cas, et le troisième n'est pas une commodité :
+ *
+ *  - **visiteur anonyme** — l'inscription, cas nominal ;
+ *  - **candidat connecté** — son espace. Lui proposer de créer un second compte
+ *    n'a pas de sens, et « Commencer » est faux quand un dossier existe déjà :
+ *    l'appelant lit `reprise` pour changer le libellé ;
+ *  - **rôle interne** — rien. ADR-003 interdit au portail public de mener aux
+ *    espaces internes, et inviter un administrateur à déposer une candidature
+ *    n'aurait pas de sens. Le bouton disparaît plutôt que de mentir.
+ *
+ * Sert à l'affichage seulement, comme `useAuthUser` : le contrôle d'accès reste
+ * au serveur.
+ */
+export type ApplyCta = { href: string; reprise: boolean } | null;
+
+export function useApplyCta(): ApplyCta {
+  const role = useAuthUser()?.role;
+
+  if (role === undefined) {
+    return { href: candidateSignupTarget, reprise: false };
+  }
+
+  if (role === 'candidate') {
+    return { href: candidateDashboardTarget, reprise: true };
+  }
+
+  return null;
+}
 
 /**
  * Logos officiels déjà présents dans le dépôt (aucune copie, aucun logo recréé).

@@ -5,13 +5,13 @@ import { BrandLogo } from '@/Components/Brand';
 import { Reveal } from '@/Components/Reveal';
 import { useI18n } from '@/i18n';
 import {
-  candidateSignupTarget,
   institutionalPartners,
   isAnchorHref,
   legalLinks,
   publicSiteLink,
   siteMakers,
   supportLink,
+  useApplyCta,
   useSiteData,
   type SiteLink,
 } from '@/config/site';
@@ -110,6 +110,7 @@ function FooterLink({ link, tone = 'column' }: { link: SiteLink & { href: string
 function ApplyCta() {
   const t = useI18n();
   const { campaign } = useSiteData();
+  const applyCta = useApplyCta();
 
   // Aucun état de campagne n'est codé en dur : le libellé suit le statut partagé
   // par le serveur quand il existe.
@@ -123,7 +124,8 @@ function ApplyCta() {
   // `props.site`, que le serveur ne partage pas encore.
   //
   // Trois boutons portent ce libellé — hero, en-tête, pied de page. Ils doivent
-  // mener au même endroit, et c'est `candidateSignupTarget` qui le dit.
+  // mener au même endroit, et c'est `useApplyCta` qui le dit — pour tous les
+  // rôles, pas seulement pour un visiteur anonyme.
   if (campaign?.status === 'CLOSED' || campaign?.status === 'UPCOMING') {
     return (
       <span className="inline-flex min-h-11 items-center rounded-xl border border-white/25 px-5 text-sm font-bold text-white/70">
@@ -132,12 +134,18 @@ function ApplyCta() {
     );
   }
 
-  const href = campaign?.applyUrl ?? candidateSignupTarget;
+  // Rien à proposer à un rôle interne : le bouton disparaît plutôt que de mener
+  // à une page qui le renverrait d'où il vient.
+  if (applyCta === null) {
+    return null;
+  }
+
+  const href = campaign?.applyUrl ?? applyCta.href;
   const className =
     'focus-ring press-feedback group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-gold-500 px-6 text-sm font-extrabold text-slate-950 transition-colors hover:bg-gold-600';
   const content = (
     <>
-      {t.footer.ctaApply}
+      {applyCta.reprise ? t.footer.ctaResume : t.footer.ctaApply}
       <ArrowRight size={17} className="transition-transform duration-200 group-hover:translate-x-1" />
     </>
   );

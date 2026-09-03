@@ -22,6 +22,9 @@ export const fr = {
     ctaTitle: 'Prêt à transformer votre idée en solution ?',
     ctaText: 'Déposez votre dossier en plusieurs étapes, avec sauvegarde automatique.',
     ctaApply: 'Commencer ma candidature',
+    // « Commencer » est faux pour un candidat déjà inscrit : son dossier existe,
+    // il le reprend. Le bouton mène alors à son espace, pas à l'inscription.
+    ctaResume: 'Reprendre ma candidature',
     ctaUpcoming: 'Ouverture prochaine',
     ctaClosed: 'Candidatures closes',
     contact: 'Contact',

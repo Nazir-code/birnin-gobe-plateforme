@@ -6,6 +6,8 @@ import { Card, SectionTitle } from '@/Components/Ui';
 import { AnimatedCounter } from '@/Components/AnimatedCounter';
 import { Reveal } from '@/Components/Reveal';
 import { HeroCarousel, type HeroImage } from '@/Components/HeroCarousel';
+import { useApplyCta } from '@/config/site';
+import { useI18n } from '@/i18n';
 
 const countdownLabels: Record<string, string> = { days: 'jours', hours: 'heures', minutes: 'minutes', seconds: 'secondes' };
 
@@ -155,6 +157,10 @@ export default function Home({ campaign, themes, criteria }: {
 }) {
   const restant = useCompteARebours(campaign?.closesAt ?? null);
   const depotOuvert = campaign !== null && restant !== null;
+  const t = useI18n();
+  // L'appel à candidater dépend aussi de qui regarde : un candidat déjà inscrit
+  // reprend son dossier, un rôle interne ne voit pas le bouton. Voir useApplyCta.
+  const applyCta = useApplyCta();
 
   return (
     <PublicLayout>
@@ -183,13 +189,13 @@ export default function Home({ campaign, themes, criteria }: {
               {/* Le bouton ne promet une candidature que s'il y en a une a
                   deposer. Hors periode il disparait, et la raison est dite
                   juste en dessous. */}
-              {depotOuvert ? (
+              {depotOuvert && applyCta ? (
                 <Link
-                  href="/register"
+                  href={applyCta.href}
                   className="focus-ring press-feedback inline-flex min-h-11 min-w-56 items-center justify-center gap-2 rounded-xl bg-gold-500 px-5 text-sm font-bold text-ink-950 transition-colors hover:bg-gold-600"
                   data-testid="cta-candidater"
                 >
-                  Commencer ma candidature <ArrowRight size={17} />
+                  {applyCta.reprise ? t.footer.ctaResume : t.footer.ctaApply} <ArrowRight size={17} />
                 </Link>
               ) : null}
             </div>

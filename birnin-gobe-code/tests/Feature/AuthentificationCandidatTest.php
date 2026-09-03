@@ -256,11 +256,27 @@ final class AuthentificationCandidatTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    /**
+     * Les écrans d'authentification renvoient un utilisateur connecté — **vers
+     * l'accueil**, et cette destination est le fait qui compte.
+     *
+     * L'assertion était `assertRedirect()` sans cible. Elle passait, et laissait
+     * dans l'ombre ce qui a coûté cher : la redirection tombe sur `/`, parce que
+     * `RedirectIfAuthenticated` cherche une route nommée `dashboard` puis `home`,
+     * et que la route candidat s'appelle `candidate.dashboard`. Un bouton public
+     * pointant sur `/register` renvoyait donc un visiteur connecté sur la page
+     * d'où il venait : visite Inertia, aucune erreur, aucun mouvement. Le bouton
+     * paraissait mort — voir `useApplyCta` dans `resources/js/config/site.ts`.
+     *
+     * Nommer la cible fige le piège. Le jour où une route `dashboard` apparaît,
+     * ce test échouera, et c'est le bon moment pour relire les appels publics
+     * qui visent une route `guest`.
+     */
     public function test_un_utilisateur_connecte_ne_revoit_pas_les_ecrans_d_authentification(): void
     {
         $user = User::factory()->create();
 
-        $this->actingAs($user)->get('/login')->assertRedirect();
-        $this->actingAs($user)->get('/register')->assertRedirect();
+        $this->actingAs($user)->get('/login')->assertRedirect('/');
+        $this->actingAs($user)->get('/register')->assertRedirect('/');
     }
 }
