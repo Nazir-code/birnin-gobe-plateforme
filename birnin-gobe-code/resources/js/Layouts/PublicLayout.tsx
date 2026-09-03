@@ -3,11 +3,13 @@ import { Link } from '@inertiajs/react';
 import { Menu, UserRound, X } from 'lucide-react';
 import { BrandLogo } from '@/Components/Brand';
 import { SiteFooter } from '@/Components/SiteFooter';
-import { candidateEntryTarget, candidateSignupTarget, quickLinks } from '@/config/site';
+import { quickLinks, useApplyCta, useCandidateEntry } from '@/config/site';
 import { useI18n } from '@/i18n';
 
 export function PublicLayout({ children }: PropsWithChildren) {
   const t = useI18n();
+  const applyCta = useApplyCta();
+  const entreeCandidat = useCandidateEntry();
   const navLinks = quickLinks.filter((link): link is { key: typeof link.key; href: string } => link.href !== null);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -44,13 +46,19 @@ export function PublicLayout({ children }: PropsWithChildren) {
             ))}
           </nav>
           <div className="flex items-center gap-2.5">
-            <Link
-              href={candidateEntryTarget}
-              className="focus-ring hidden min-h-11 items-center gap-2 rounded-xl border border-brand-900 px-4 text-sm font-bold text-brand-900 md:flex"
-            >
-              <UserRound size={17} /> Se connecter
-            </Link>
-            <Link href={candidateSignupTarget} className="focus-ring inline-flex min-h-11 items-center rounded-xl bg-gold-500 px-5 text-sm font-extrabold text-slate-950 hover:bg-gold-600">{t.footer.ctaApply}</Link>
+            {entreeCandidat ? (
+              <Link
+                href={entreeCandidat}
+                className="focus-ring hidden min-h-11 items-center gap-2 rounded-xl border border-brand-900 px-4 text-sm font-bold text-brand-900 md:flex"
+              >
+                <UserRound size={17} /> Se connecter
+              </Link>
+            ) : null}
+            {applyCta ? (
+              <Link href={applyCta.href} className="focus-ring inline-flex min-h-11 items-center rounded-xl bg-gold-500 px-5 text-sm font-extrabold text-slate-950 hover:bg-gold-600">
+                {applyCta.reprise ? t.footer.ctaResume : t.footer.ctaApply}
+              </Link>
+            ) : null}
             <button
               type="button"
               className="focus-ring grid h-11 w-11 place-items-center rounded-xl border border-slate-200 text-brand-900 xl:hidden"
@@ -86,16 +94,21 @@ export function PublicLayout({ children }: PropsWithChildren) {
             </ul>
 
             {/* Entree candidat uniquement. Le menu public ne doit exposer aucun
-                acces aux espaces internes — voir ADR-003. */}
-            <div className="mt-3 border-t border-slate-100 pt-3 md:hidden">
-              <Link
-                href={candidateEntryTarget}
-                className="focus-ring flex min-h-12 items-center gap-2 rounded-lg px-3 text-base font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-900"
-                onClick={() => setMenuOpen(false)}
-              >
-                <UserRound size={17} /> Se connecter
-              </Link>
-            </div>
+                acces aux espaces internes — voir ADR-003.
+
+                Le separateur est dans la condition, pas autour : sans cela, un
+                visiteur connecte gardait un filet horizontal suivi de rien. */}
+            {entreeCandidat ? (
+              <div className="mt-3 border-t border-slate-100 pt-3 md:hidden">
+                <Link
+                  href={entreeCandidat}
+                  className="focus-ring flex min-h-12 items-center gap-2 rounded-lg px-3 text-base font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-900"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <UserRound size={17} /> Se connecter
+                </Link>
+              </div>
+            ) : null}
 
           </nav>
         ) : null}
