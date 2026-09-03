@@ -27,6 +27,12 @@ use Illuminate\Console\Command;
  * question « l'a-t-on déjà prévenu ? », et c'est l'une des raisons pour
  * lesquelles cette table existe.
  *
+ * **« Par échéance » n'a longtemps été qu'une intention.** La garde interrogeait
+ * la campagne entière, sans le jalon : dès le rappel de J-7 envoyé, celui de J-1
+ * était écarté pour tout le monde — le dernier, « celui qui compte », ne partait
+ * jamais. Le jalon est désormais nommé (`J-7`, `J-1`) et porté par la trace ;
+ * c'est lui qui rend la phrase ci-dessus vraie.
+ *
  * **Les jalons sont des constantes**, pas des réglages de campagne : le §8.3
  * demande un rappel sans fixer de délai, et le §9.2 ne fait pas figurer ce seuil
  * parmi les paramètres administrables. L'exposer donnerait à croire qu'il a été
@@ -73,6 +79,13 @@ final class EnvoyerRappelsDeCloture extends Command
             return self::SUCCESS;
         }
 
+        // Le jalon nomme l'occurrence, et c'est lui qui rend la garde correcte.
+        // Sans ce nom, « a-t-on déjà prévenu cette personne ? » portait sur la
+        // campagne entière : quiconque avait reçu le rappel de J-7 était réputé
+        // prévenu à J-1, et le rappel de la veille — le seul qui fasse encore
+        // déposer un brouillon — n'atteignait personne.
+        $jalon = 'J-'.$restants;
+
         $simulation = (bool) $this->option('dry-run');
         $envoyes = 0;
         $ignores = 0;
@@ -81,12 +94,12 @@ final class EnvoyerRappelsDeCloture extends Command
             ->where('campaign_id', $campagne->getKey())
             ->where('status', ApplicationStatus::DRAFT->value)
             ->with(['candidate', 'campaign'])
-            ->chunkById(200, function ($dossiers) use (&$envoyes, &$ignores, $notifier, $restants, $simulation, $campagne): void {
+            ->chunkById(200, function ($dossiers) use (&$envoyes, &$ignores, $notifier, $restants, $jalon, $simulation, $campagne): void {
                 foreach ($dossiers as $dossier) {
                     $candidat = $dossier->candidate;
 
                     // Déjà prévenu à ce jalon, ou sans compte rattaché.
-                    if ($candidat === null || $notifier->dejaEnvoye(NotificationEvent::CLOSING_REMINDER, $candidat, $campagne)) {
+                    if ($candidat === null || $notifier->dejaEnvoye(NotificationEvent::CLOSING_REMINDER, $candidat, $campagne, $jalon)) {
                         $ignores++;
 
                         continue;
@@ -99,6 +112,7 @@ final class EnvoyerRappelsDeCloture extends Command
                             message: new RappelDeCloture($dossier, $restants),
                             dossier: $dossier,
                             campagne: $campagne,
+                            occurrence: $jalon,
                         );
                     }
 
