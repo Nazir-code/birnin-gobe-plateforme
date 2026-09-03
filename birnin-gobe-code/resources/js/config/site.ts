@@ -113,6 +113,27 @@ export const candidateDashboardTarget = '/candidate/dashboard';
  * Sert à l'affichage seulement, comme `useAuthUser` : le contrôle d'accès reste
  * au serveur.
  */
+/**
+ * L'entrée « Se connecter » du portail, ou `null` si elle n'a plus lieu d'être.
+ *
+ * **Le même piège que l'appel à candidater, sur le bouton d'à côté.** `/login`
+ * est aussi derrière `guest` : pour quelqu'un de déjà connecté, le clic
+ * déclenchait une visite vers `/`, c'est-à-dire nulle part. Le défaut est resté
+ * invisible parce qu'on cliquait sur l'autre bouton.
+ *
+ * Connecté, l'entrée disparaît, et ce n'est pas un pis-aller :
+ *
+ *  - **un candidat** a déjà son chemin de retour, l'appel à candidater dit
+ *    « Reprendre ma candidature » et mène à son espace. Un second bouton vers la
+ *    même page n'ajouterait rien qu'une hésitation ;
+ *  - **un rôle interne** ne doit pas se voir proposer la connexion *candidat* —
+ *    c'est le seul parcours que le portail public expose (ADR-003). L'entrée de
+ *    son propre espace n'a pas sa place ici non plus, pour la même raison.
+ */
+export function useCandidateEntry(): string | null {
+  return useAuthUser() === null ? candidateEntryTarget : null;
+}
+
 export type ApplyCta = { href: string; reprise: boolean } | null;
 
 export function useApplyCta(): ApplyCta {

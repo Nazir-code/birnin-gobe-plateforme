@@ -24,6 +24,8 @@ import { expect, test, type Page } from '@playwright/test';
 const ARTISAN = process.env.E2E_ARTISAN ?? 'docker compose exec -T app php artisan';
 const MOT_DE_PASSE = 'MotDePasseSolide!2026';
 
+const SELECTEUR_CONNEXION = 'a[href="/login"]';
+
 const LIBELLE_CTA = /Commencer ma candidature|Reprendre ma candidature/i;
 
 function jetonUnique() {
@@ -76,6 +78,9 @@ test.describe('Appel à candidater', () => {
       await expect(boutons.nth(i)).toHaveAttribute('href', '/register');
       await expect(boutons.nth(i)).toContainText('Commencer ma candidature');
     }
+
+    // Et l'entree « Se connecter » est bien la : c'est le cas ou elle sert.
+    await expect(page.locator(SELECTEUR_CONNEXION).first()).toBeAttached();
   });
 
   /**
@@ -108,6 +113,26 @@ test.describe('Appel à candidater', () => {
   });
 
   /**
+   * « Se connecter » disparait des qu'on l'est.
+   *
+   * Meme piege, bouton d'a cote : `/login` est aussi derriere `guest`, donc le
+   * clic renvoyait un visiteur connecte sur la page ou il etait. Le defaut est
+   * reste invisible parce qu'on cliquait sur l'autre.
+   */
+  test('connecté, l’entrée « Se connecter » n’est plus proposée', async ({ page }) => {
+    await inscrireCandidat(page);
+
+    await page.goto('/');
+    await expect(page.locator(SELECTEUR_CONNEXION)).toHaveCount(0);
+
+    // Y compris dans le tiroir mobile, ou elle vit a un autre endroit du DOM.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload();
+    await page.getByRole('button', { name: /ouvrir le menu/i }).click();
+    await expect(page.locator(SELECTEUR_CONNEXION)).toHaveCount(0);
+  });
+
+  /**
    * Un role interne ne se voit rien proposer.
    *
    * Ce n'est pas une commodite d'affichage : ADR-003 interdit au portail public
@@ -125,5 +150,9 @@ test.describe('Appel à candidater', () => {
 
     await expect(page.getByRole('link', { name: LIBELLE_CTA })).toHaveCount(0);
     await expect(page.getByTestId('cta-candidater')).toHaveCount(0);
+
+    // Ni la connexion candidat : le portail public n'expose qu'un parcours, et
+    // ce n'est pas le sien.
+    await expect(page.locator(SELECTEUR_CONNEXION)).toHaveCount(0);
   });
 });
