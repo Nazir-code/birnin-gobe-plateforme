@@ -5,10 +5,10 @@ import { BrandLogo } from '@/Components/Brand';
 import { Reveal } from '@/Components/Reveal';
 import { useI18n } from '@/i18n';
 import {
+  candidateSignupTarget,
   institutionalPartners,
   isAnchorHref,
   legalLinks,
-  prototypeApplyTarget,
   publicSiteLink,
   siteMakers,
   supportLink,
@@ -112,8 +112,18 @@ function ApplyCta() {
   const { campaign } = useSiteData();
 
   // Aucun état de campagne n'est codé en dur : le libellé suit le statut partagé
-  // par le serveur quand il existe, sinon l'action reprend la cible de l'appel à
-  // candidater déjà présent dans l'en-tête public et le hero.
+  // par le serveur quand il existe.
+  //
+  // **La cible de repli est l'inscription, pas une ancre.** Elle a longtemps été
+  // `/#candidater`, héritée du prototype « tant qu'aucune route de dépôt
+  // n'existe » ; la route existe depuis, et l'ancre est restée. Une candidate a
+  // signalé le 2 septembre 2026 que le bouton « ne montre rien » : déroulé
+  // jusqu'au pied de page, cliqué, elle était renvoyée en haut de la même page.
+  // Le repli `applyUrl` ne pouvait pas la sauver — `useSiteData()` lit
+  // `props.site`, que le serveur ne partage pas encore.
+  //
+  // Trois boutons portent ce libellé — hero, en-tête, pied de page. Ils doivent
+  // mener au même endroit, et c'est `candidateSignupTarget` qui le dit.
   if (campaign?.status === 'CLOSED' || campaign?.status === 'UPCOMING') {
     return (
       <span className="inline-flex min-h-11 items-center rounded-xl border border-white/25 px-5 text-sm font-bold text-white/70">
@@ -122,7 +132,7 @@ function ApplyCta() {
     );
   }
 
-  const href = campaign?.applyUrl ?? prototypeApplyTarget;
+  const href = campaign?.applyUrl ?? candidateSignupTarget;
   const className =
     'focus-ring press-feedback group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-gold-500 px-6 text-sm font-extrabold text-slate-950 transition-colors hover:bg-gold-600';
   const content = (

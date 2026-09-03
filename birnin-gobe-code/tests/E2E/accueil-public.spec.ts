@@ -112,6 +112,33 @@ test.describe('Page d’accueil publique', () => {
   });
 
   /**
+   * Tous les boutons qui promettent une candidature menent au meme endroit.
+   *
+   * Le test precedent ne regardait que celui du hero, designe par son
+   * `data-testid`. Le pied de page en porte un autre, avec le meme libelle, et
+   * il pointait sur `/#candidater` — une ancre heritee du prototype, restee
+   * apres la creation de la route d'inscription. Une candidate l'a signale le
+   * 2 septembre 2026 : deroule jusqu'en bas, clique, renvoyee en haut de la
+   * meme page. « Ca ne montre rien. »
+   *
+   * L'assertion porte donc sur *tous* les liens portant ce libelle, pas sur un
+   * identifiant precis : c'est la seule forme qui attrape celui qu'on a oublie.
+   */
+  test('tout bouton « Commencer ma candidature » mene a l’inscription', async ({ page }) => {
+    await accueil(page);
+
+    const boutons = page.getByRole('link', { name: /Commencer ma candidature/i });
+    const total = await boutons.count();
+
+    // Hors periode d'ouverture le hero n'en rend aucun ; le pied de page, lui,
+    // en rend un des que la campagne n'est ni fermee ni a venir. Zero est donc
+    // un etat legitime, et le test n'a alors rien a prouver.
+    for (let i = 0; i < total; i++) {
+      await expect(boutons.nth(i)).toHaveAttribute('href', '/register');
+    }
+  });
+
+  /**
    * Ce que la page ne doit plus porter.
    *
    * Une suppression se verifie par l'absence, pas par la relecture du diff :

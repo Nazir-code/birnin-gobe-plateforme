@@ -66,13 +66,6 @@ export const siteMakers: SiteMaker[] = [
 export const publicSiteLink: SiteLink = { key: 'publicSite', href: '/' };
 
 /**
- * Cible du bouton « Candidater » tant qu'aucune route de dépôt n'existe : la même
- * ancre que les appels à l'action déjà présents dans l'en-tête et le hero.
- * Remplacée dès que la campagne expose son `applyUrl` (voir `SiteData`).
- */
-export const prototypeApplyTarget = '/#candidater';
-
-/**
  * Entrée candidat depuis le portail public.
  *
  * **Contrainte d'architecture non négociable** : l'interface publique et
