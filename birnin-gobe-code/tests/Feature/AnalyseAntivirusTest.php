@@ -515,6 +515,81 @@ final class AnalyseAntivirusTest extends TestCase
         Queue::assertPushed(ScanAttachment::class, count($reprises));
     }
 
+    // — Le refus dit pourquoi ————————————————————————————————————
+
+    /**
+     * Un 423 affiche le motif, pas une page de panne.
+     *
+     * Le code refusait déjà correctement, et joignait l'explication — mais
+     * aucun gabarit ne répondait au 423, si bien que Laravel se rabattait sur
+     * la page générique de Symfony : « Something is broken ». Le blocage,
+     * volontaire et le plus souvent temporaire, se lisait comme un serveur
+     * cassé ; on réessayait en boucle et on ouvrait un incident.
+     *
+     * Ce test tient les deux bouts : le motif est présent, et la formule de
+     * panne a disparu.
+     */
+    public function test_le_refus_au_deposant_affiche_le_motif(): void
+    {
+        $candidat = $this->candidat();
+        $dossier = $this->dossier($candidat);
+        $piece = $this->piece($dossier, AttachmentScanStatus::QUARANTINE);
+
+        $this->actingAs($candidat)
+            ->get($this->urlCandidat($dossier, $piece))
+            ->assertStatus(423)
+            ->assertSee(AttachmentScanStatus::QUARANTINE->explication(), false)
+            ->assertDontSee('Something is broken');
+    }
+
+    /** Le vérificateur du §10 a droit à la même explication. */
+    public function test_le_refus_a_un_tiers_affiche_le_motif(): void
+    {
+        $admin = User::factory()->role(UserRole::ADMIN)->create();
+        $dossier = $this->dossier();
+        $piece = $this->piece($dossier, AttachmentScanStatus::UNAVAILABLE);
+
+        $this->actingAs($admin)
+            ->get(route('admin.applications.documents.download', [$dossier, $piece->type->value]))
+            ->assertStatus(423)
+            ->assertSee(AttachmentScanStatus::UNAVAILABLE->explication(), false)
+            ->assertDontSee('Something is broken');
+    }
+
+    // — L'état ne conseille pas un geste inutile ——————————————————
+
+    /**
+     * Sans analyseur, `attachments:status` ne renvoie plus vers le rattrapage.
+     *
+     * C'est le piège que cette commande devait fermer et dans lequel elle
+     * tombait : elle conseillait `attachments:scan` pour les pièces jamais
+     * analysées, quatre lignes au-dessus de son propre « Analyseur configuré :
+     * non ». Le rattrapage les aurait toutes marquées « indisponible » —
+     * effaçant la seule chose qui les distingue.
+     */
+    public function test_sans_analyseur_l_etat_ne_conseille_pas_le_rattrapage(): void
+    {
+        config()->set('scanning.enabled', false);
+
+        $this->piece($this->dossier(), AttachmentScanStatus::NOT_SCANNED);
+
+        $this->artisan('attachments:status')
+            ->doesntExpectOutputToContain('attachments:scan')
+            ->assertSuccessful();
+    }
+
+    /** Avec un analyseur joignable, le rattrapage redevient le bon geste. */
+    public function test_avec_analyseur_l_etat_conseille_le_rattrapage(): void
+    {
+        config()->set('scanning.enabled', true);
+
+        $this->piece($this->dossier(), AttachmentScanStatus::NOT_SCANNED);
+
+        $this->artisan('attachments:status')
+            ->expectsOutputToContain('attachments:scan')
+            ->assertSuccessful();
+    }
+
     private function analyseurRend(ScanVerdict $verdict): void
     {
         $this->app->bind(VirusScanner::class, fn (): VirusScanner => new class($verdict) implements VirusScanner
