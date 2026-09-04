@@ -463,6 +463,65 @@ final class NotificationsTransactionnellesTest extends TestCase
         }
     }
 
+    /**
+     * La relance manuelle lève le jalon, et rien d'autre.
+     *
+     * `--maintenant` existe pour les moments qu'aucune règle n'anticipe. Ce
+     * test tient les deux bouts : l'envoi part bien hors jalon, et la garde
+     * anti-doublon continue de s'appliquer — sans quoi une seconde exécution le
+     * même jour, par prudence ou par erreur, écrirait deux fois aux mêmes
+     * personnes.
+     */
+    public function test_la_relance_manuelle_part_hors_jalon_puis_ne_se_repete_pas(): void
+    {
+        $campagne = Campaign::factory()->create(['closes_at' => now()->addDays(20)->endOfDay()]);
+        $this->campagne = $campagne;
+
+        $candidat = $this->candidat();
+
+        Application::factory()
+            ->for($campagne, 'campaign')
+            ->for($candidat, 'candidate')
+            ->withSection(ApplicationSection::ELIGIBILITY, ['renseigne' => 'oui'])
+            ->create();
+
+        // Sans l'option, J-20 n'est pas un jalon : rien ne part.
+        $this->artisan('notifications:rappel-cloture')->assertSuccessful();
+        Notification::assertNothingSent();
+
+        $this->artisan('notifications:rappel-cloture --maintenant --force')->assertSuccessful();
+        Notification::assertSentToTimes($candidat, RappelDeCloture::class, 1);
+
+        // Relancée le même jour, elle ne double pas l'envoi.
+        $this->artisan('notifications:rappel-cloture --maintenant --force')->assertSuccessful();
+        Notification::assertSentToTimes($candidat, RappelDeCloture::class, 1);
+
+        $this->assertDatabaseHas('notification_deliveries', [
+            'event' => NotificationEvent::CLOSING_REMINDER->value,
+            'recipient_id' => $candidat->getKey(),
+            'occurrence' => 'J-20',
+        ]);
+    }
+
+    /** La simulation reste une simulation, y compris en relance manuelle. */
+    public function test_la_relance_manuelle_en_simulation_n_envoie_rien(): void
+    {
+        $campagne = Campaign::factory()->create(['closes_at' => now()->addDays(20)->endOfDay()]);
+        $this->campagne = $campagne;
+
+        Application::factory()
+            ->for($campagne, 'campaign')
+            ->for($this->candidat(), 'candidate')
+            ->withSection(ApplicationSection::ELIGIBILITY, ['renseigne' => 'oui'])
+            ->create();
+
+        $this->artisan('notifications:rappel-cloture --maintenant --dry-run')->assertSuccessful();
+
+        Notification::assertNothingSent();
+        $this->assertSame(0, NotificationDelivery::query()
+            ->where('event', NotificationEvent::CLOSING_REMINDER->value)->count());
+    }
+
     /** Un dossier déjà déposé n'a rien à rattraper. */
     public function test_le_rappel_ignore_les_dossiers_deja_deposes(): void
     {
