@@ -7,6 +7,7 @@ use App\Domain\Campaign\ActiveCampaign;
 use App\Domain\Notification\NotificationEvent;
 use App\Domain\Notification\SendNotification;
 use App\Models\Application;
+use App\Models\Campaign;
 use App\Notifications\Candidat\RappelDeCloture;
 use Illuminate\Console\Command;
 
@@ -41,11 +42,29 @@ use Illuminate\Console\Command;
  * **`--dry-run` existe parce qu'un envoi ne se rattrape pas.** Avant la première
  * campagne réelle, on voudra savoir combien de personnes seraient jointes sans
  * les joindre.
+ *
+ * **`--maintenant` relance à la main, hors jalon.** Le §8.3 fixe deux échéances ;
+ * une campagne réelle produit aussi des moments qu'aucune règle n'anticipe — une
+ * communication institutionnelle, un incident, un délai prolongé. L'option lève
+ * la seule vérification du jalon, jamais les autres : les destinataires restent
+ * les brouillons de la campagne ouverte, et la garde anti-doublon s'applique.
+ *
+ * Elle annonce le nombre exact de personnes qu'elle va joindre et **demande
+ * confirmation**, parce qu'elle s'utilise à la main sur des centaines de vraies
+ * adresses. `--force` la saute, pour un script qui sait ce qu'il fait.
+ *
+ * Une chose dont il faut avoir conscience : l'occurrence est le jour même
+ * (`J-27`, `J-26`…). Deux relances manuelles à deux jours d'intervalle sont donc
+ * deux occurrences différentes, et la garde ne les confond pas — elle protège du
+ * doublon dans la journée, pas de l'insistance sur la semaine. C'est à
+ * l'opérateur de juger.
  */
 final class EnvoyerRappelsDeCloture extends Command
 {
     protected $signature = 'notifications:rappel-cloture
-                            {--dry-run : Compter les destinataires sans rien envoyer}';
+                            {--dry-run : Compter les destinataires sans rien envoyer}
+                            {--maintenant : Relance manuelle hors jalon, aujourd’hui}
+                            {--force : Ne pas demander confirmation (avec --maintenant)}';
 
     protected $description = 'Rappelle la clôture aux candidats dont le dossier est encore en brouillon (§8.3).';
 
@@ -72,8 +91,9 @@ final class EnvoyerRappelsDeCloture extends Command
         }
 
         $jalons = (array) config('notifications.closing_reminder_days', []);
+        $manuel = (bool) $this->option('maintenant');
 
-        if (! in_array($restants, $jalons, strict: true)) {
+        if (! $manuel && ! in_array($restants, $jalons, strict: true)) {
             $this->info(sprintf('J-%d : aucun jalon de rappel aujourd’hui (jalons : J-%s).', $restants, implode(', J-', $jalons)));
 
             return self::SUCCESS;
@@ -87,6 +107,34 @@ final class EnvoyerRappelsDeCloture extends Command
         $jalon = 'J-'.$restants;
 
         $simulation = (bool) $this->option('dry-run');
+
+        // Une relance manuelle est un envoi de masse déclenché à la main : elle
+        // annonce ce qu'elle va faire et demande confirmation. Les jalons
+        // automatiques, eux, tournent sous cron et ne peuvent rien demander à
+        // personne — mais ils sont bornés par la configuration, pas par une
+        // frappe de clavier à trois heures du matin.
+        if ($manuel && ! $simulation) {
+            $aJoindre = $this->brouillonsSansRappel($campagne, $notifier, $jalon);
+
+            $this->warn(sprintf(
+                'Relance manuelle : %d candidat(s) vont recevoir un courriel « il reste %d jour(s) ».',
+                $aJoindre,
+                $restants,
+            ));
+
+            if ($aJoindre === 0) {
+                $this->info('Personne à joindre : tous ont déjà reçu ce rappel. Rien n’est envoyé.');
+
+                return self::SUCCESS;
+            }
+
+            if (! $this->option('force') && ! $this->confirm('Confirmer l’envoi ?', false)) {
+                $this->info('Annulé, rien n’a été envoyé.');
+
+                return self::SUCCESS;
+            }
+        }
+
         $envoyes = 0;
         $ignores = 0;
 
@@ -129,5 +177,35 @@ final class EnvoyerRappelsDeCloture extends Command
         ));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Combien de brouillons n'ont pas encore reçu ce rappel-ci.
+     *
+     * Sert au décompte annoncé avant une relance manuelle, et rejoue exactement
+     * la garde de la boucle d'envoi. Annoncer « 178 » puis n'en joindre que
+     * douze — les autres ayant déjà été prévenus — rendrait la confirmation
+     * trompeuse, et cette confirmation est tout ce qui sépare l'opérateur d'un
+     * envoi de masse irréversible.
+     */
+    private function brouillonsSansRappel(Campaign $campagne, SendNotification $notifier, string $jalon): int
+    {
+        $total = 0;
+
+        Application::query()
+            ->where('campaign_id', $campagne->getKey())
+            ->where('status', ApplicationStatus::DRAFT->value)
+            ->with('candidate')
+            ->chunkById(200, function ($dossiers) use (&$total, $notifier, $campagne, $jalon): void {
+                foreach ($dossiers as $dossier) {
+                    $candidat = $dossier->candidate;
+
+                    if ($candidat !== null && ! $notifier->dejaEnvoye(NotificationEvent::CLOSING_REMINDER, $candidat, $campagne, $jalon)) {
+                        $total++;
+                    }
+                }
+            });
+
+        return $total;
     }
 }
